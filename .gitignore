@@ -1,0 +1,69 @@
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+package-lock.json
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/vendor/
+/Godeps/
+
+# Hyperledger Fabric
+/channel-artifacts/*.tx
+/channel-artifacts/*.block
+/crypto-config/
+/organizations/
+*.tar.gz
+log.txt
+*.block
+*.tx
+
+# Docker
+.env
+docker-compose.override.yml
+
+# Build
+/build/
+/bin/
+/dist/
+*.o
+*.a
+
+# Logs
+*.log
+logs/
+log/
+
+# Temp files
+*.tmp
+*.temp
+.cache/
+
+# Environment variables
+.env*
+!.env.example
+
+# Test coverage
+coverage/
+.nyc_output/
+
+fabric-samples/
