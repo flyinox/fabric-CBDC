@@ -70,3 +70,9 @@ fabric-samples/
 
 fabric-ca
 config/
+
+test-network/
+
+bin/
+
+channel-artifacts/

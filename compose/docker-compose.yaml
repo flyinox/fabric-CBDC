@@ -1,0 +1,260 @@
+#
+# 此文件由 generate-compose.sh 脚本自动生成
+# 基于 configtx/network-config.json 配置文件
+# 请勿手动修改此文件！如需更改请修改 network-config.json 后重新生成
+# 生成时间: 2025-06-23 16:49:43
+#
+
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+version: '3.7'
+
+volumes:
+  orderer.centralbank.cbdc.com:
+  peer0.centralbank.cbdc.com:
+  couchdb.centralbank.cbdc.com:
+  peer0.ab1.cbdc.com:
+  couchdb.ab1.cbdc.com:
+  peer0.bb1.cbdc.com:
+  couchdb.bb1.cbdc.com:
+
+networks:
+  cbdc:
+    name: fabric_cbdc
+
+services:
+
+  # 央行排序节点
+  orderer.centralbank.cbdc.com:
+    container_name: orderer.centralbank.cbdc.com
+    image: hyperledger/fabric-orderer:latest
+    labels:
+      service: hyperledger-fabric
+    environment:
+      - FABRIC_LOGGING_SPEC=INFO
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_LISTENPORT=7050
+      - ORDERER_GENERAL_LOCALMSPID=CentralBankMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_GENERAL_BOOTSTRAPMETHOD=none
+      - ORDERER_CHANNELPARTICIPATION_ENABLED=true
+      - ORDERER_ADMIN_TLS_ENABLED=true
+      - ORDERER_ADMIN_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_ADMIN_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_ADMIN_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_ADMIN_TLS_CLIENTROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:7543
+      - ORDERER_OPERATIONS_LISTENADDRESS=orderer.centralbank.cbdc.com:7443
+      - ORDERER_METRICS_PROVIDER=prometheus
+    working_dir: /root
+    command: orderer
+    volumes:
+        - ../organizations/ordererOrganizations/centralbank.cbdc.com/orderers/orderer.centralbank.cbdc.com/msp:/var/hyperledger/orderer/msp
+        - ../organizations/ordererOrganizations/centralbank.cbdc.com/orderers/orderer.centralbank.cbdc.com/tls/:/var/hyperledger/orderer/tls
+        - orderer.centralbank.cbdc.com:/var/hyperledger/production/orderer
+    ports:
+      - 7050:7050
+      - 7443:7443
+      - 7543:7543
+    networks:
+      - cbdc
+
+  # 央行CouchDB
+  couchdb.centralbank.cbdc.com:
+    container_name: couchdb.centralbank.cbdc.com
+    image: couchdb:3.3.0
+    labels:
+      service: hyperledger-fabric
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - "5984:5984"
+    volumes:
+      - couchdb.centralbank.cbdc.com:/opt/couchdb/data
+    networks:
+      - cbdc
+
+  # 央行Peer节点
+  peer0.centralbank.cbdc.com:
+    container_name: peer0.centralbank.cbdc.com
+    image: hyperledger/fabric-peer:latest
+    labels:
+      service: hyperledger-fabric
+    environment:
+      - FABRIC_CFG_PATH=/etc/hyperledger/peercfg
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_PROFILE_ENABLED=false
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+      - CORE_PEER_ID=peer0.centralbank.cbdc.com
+      - CORE_PEER_ADDRESS=peer0.centralbank.cbdc.com:7051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+      - CORE_PEER_CHAINCODEADDRESS=peer0.centralbank.cbdc.com:7052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.centralbank.cbdc.com:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.centralbank.cbdc.com:7051
+      - CORE_PEER_LOCALMSPID=CentralBankPeerMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+      - CORE_OPERATIONS_LISTENADDRESS=peer0.centralbank.cbdc.com:9443
+      - CORE_METRICS_PROVIDER=prometheus
+      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0centralbank"}
+      - CORE_CHAINCODE_EXECUTETIMEOUT=300s
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.centralbank.cbdc.com:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+    volumes:
+      - /var/run/:/host/var/run/
+      - ../organizations/peerOrganizations/centralbank.cbdc.com/peers/peer0.centralbank.cbdc.com/msp:/etc/hyperledger/fabric/msp
+      - ../organizations/peerOrganizations/centralbank.cbdc.com/peers/peer0.centralbank.cbdc.com/tls:/etc/hyperledger/fabric/tls
+      - ../organizations/peerOrganizations/centralbank.cbdc.com/peers/peer0.centralbank.cbdc.com:/var/hyperledger/production
+      - ../configtx/core.yaml:/etc/hyperledger/peercfg/core.yaml
+    working_dir: /root
+    command: peer node start
+    ports:
+      - 7051:7051
+      - 9443:9443
+    depends_on:
+      - couchdb.centralbank.cbdc.com
+    networks:
+      - cbdc
+
+  # ab1 CouchDB
+  couchdb.ab1.cbdc.com:
+    container_name: couchdb.ab1.cbdc.com
+    image: couchdb:3.3.0
+    labels:
+      service: hyperledger-fabric
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - "6984:5984"
+    volumes:
+      - couchdb.ab1.cbdc.com:/opt/couchdb/data
+    networks:
+      - cbdc
+
+  # ab1 Peer节点
+  peer0.ab1.cbdc.com:
+    container_name: peer0.ab1.cbdc.com
+    image: hyperledger/fabric-peer:latest
+    labels:
+      service: hyperledger-fabric
+    environment:
+      - FABRIC_CFG_PATH=/etc/hyperledger/peercfg
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_PROFILE_ENABLED=false
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+      - CORE_PEER_ID=peer0.ab1.cbdc.com
+      - CORE_PEER_ADDRESS=peer0.ab1.cbdc.com:8051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:8051
+      - CORE_PEER_CHAINCODEADDRESS=peer0.ab1.cbdc.com:8052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:8052
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.ab1.cbdc.com:8051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.centralbank.cbdc.com:7051
+      - CORE_PEER_LOCALMSPID=ab1MSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+      - CORE_OPERATIONS_LISTENADDRESS=peer0.ab1.cbdc.com:10443
+      - CORE_METRICS_PROVIDER=prometheus
+      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0ab1"}
+      - CORE_CHAINCODE_EXECUTETIMEOUT=300s
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.ab1.cbdc.com:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+    volumes:
+      - /var/run/:/host/var/run/
+      - ../organizations/peerOrganizations/ab1.cbdc.com/peers/peer0.ab1.cbdc.com/msp:/etc/hyperledger/fabric/msp
+      - ../organizations/peerOrganizations/ab1.cbdc.com/peers/peer0.ab1.cbdc.com/tls:/etc/hyperledger/fabric/tls
+      - ../organizations/peerOrganizations/ab1.cbdc.com/peers/peer0.ab1.cbdc.com:/var/hyperledger/production
+      - ../configtx/core.yaml:/etc/hyperledger/peercfg/core.yaml
+    working_dir: /root
+    command: peer node start
+    ports:
+      - 8051:8051
+      - 10443:10443
+    depends_on:
+      - couchdb.ab1.cbdc.com
+    networks:
+      - cbdc
+
+  # bb1 CouchDB
+  couchdb.bb1.cbdc.com:
+    container_name: couchdb.bb1.cbdc.com
+    image: couchdb:3.3.0
+    labels:
+      service: hyperledger-fabric
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - "7984:5984"
+    volumes:
+      - couchdb.bb1.cbdc.com:/opt/couchdb/data
+    networks:
+      - cbdc
+
+  # bb1 Peer节点
+  peer0.bb1.cbdc.com:
+    container_name: peer0.bb1.cbdc.com
+    image: hyperledger/fabric-peer:latest
+    labels:
+      service: hyperledger-fabric
+    environment:
+      - FABRIC_CFG_PATH=/etc/hyperledger/peercfg
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_PROFILE_ENABLED=false
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+      - CORE_PEER_ID=peer0.bb1.cbdc.com
+      - CORE_PEER_ADDRESS=peer0.bb1.cbdc.com:9051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:9051
+      - CORE_PEER_CHAINCODEADDRESS=peer0.bb1.cbdc.com:9052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:9052
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.bb1.cbdc.com:9051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.centralbank.cbdc.com:7051
+      - CORE_PEER_LOCALMSPID=bb1MSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+      - CORE_OPERATIONS_LISTENADDRESS=peer0.bb1.cbdc.com:11443
+      - CORE_METRICS_PROVIDER=prometheus
+      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0bb1"}
+      - CORE_CHAINCODE_EXECUTETIMEOUT=300s
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.bb1.cbdc.com:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+    volumes:
+      - /var/run/:/host/var/run/
+      - ../organizations/peerOrganizations/bb1.cbdc.com/peers/peer0.bb1.cbdc.com/msp:/etc/hyperledger/fabric/msp
+      - ../organizations/peerOrganizations/bb1.cbdc.com/peers/peer0.bb1.cbdc.com/tls:/etc/hyperledger/fabric/tls
+      - ../organizations/peerOrganizations/bb1.cbdc.com/peers/peer0.bb1.cbdc.com:/var/hyperledger/production
+      - ../configtx/core.yaml:/etc/hyperledger/peercfg/core.yaml
+    working_dir: /root
+    command: peer node start
+    ports:
+      - 9051:9051
+      - 11443:11443
+    depends_on:
+      - couchdb.bb1.cbdc.com
+    networks:
+      - cbdc
+

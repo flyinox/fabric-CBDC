@@ -1,181 +1,306 @@
 #!/bin/bash
 
-# 脚本用于生成银行组织的 MSP 材料
-# 确保 fabric-ca-client 已经安装并且在 PATH 中，或者使用 Docker 容器运行
+#
+# 银行数字货币网络加密材料生成脚本
+# 基于 network-config.json 生成所有组织的证书和密钥
+#
 
-# 颜色定义
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
-
-# 检查 docker-compose-ca.yaml 是否存在
-if [ ! -f "docker-compose-ca.yaml" ]; then
-    echo -e "${RED}错误: docker-compose-ca.yaml 文件未找到!${NC}"
-    echo -e "${RED}请确保您在正确的目录下运行此脚本，并且该文件存在。${NC}"
-    exit 1
-fi
-
-# 检查是否使用 Docker 容器运行 fabric-ca-client
-USE_DOCKER=false
-if ! command -v fabric-ca-client &> /dev/null; then
-    echo -e "${YELLOW}未找到 fabric-ca-client 工具，将使用 Docker 容器运行。${NC}"
+# 检查必要工具
+check_prerequisites() {
+    local missing_tools=()
     
-    # 检查是否有 hyperledger/fabric-ca 镜像
-    if ! docker images | grep -q "hyperledger/fabric-ca"; then
-        echo -e "${YELLOW}正在拉取 hyperledger/fabric-ca 镜像...${NC}"
-        docker pull hyperledger/fabric-ca:latest
+    # 检查 cryptogen
+    if ! command -v cryptogen &> /dev/null; then
+        missing_tools+=("cryptogen")
     fi
     
-    USE_DOCKER=true
+    # 检查 configtxgen
+    if ! command -v configtxgen &> /dev/null; then
+        missing_tools+=("configtxgen")
+    fi
     
-    # 定义 fabric-ca-client 函数，使用 Docker 容器运行
-    fabric-ca-client() {
-        # 获取当前目录的绝对路径
-        local current_dir=$(pwd)
-        
-        # 构建 Docker 命令
-        docker run --rm \
-            --network=host \
-            -v "$current_dir:/opt/workspace" \
-            -w /opt/workspace \
-            hyperledger/fabric-ca:latest \
-            fabric-ca-client "$@"
-    }
+    # 检查 jq
+    if ! command -v jq &> /dev/null; then
+        missing_tools+=("jq")
+    fi
     
-    echo -e "${GREEN}已配置使用 Docker 容器运行 fabric-ca-client${NC}"
-fi
-
-echo -e "${GREEN}正在启动 CA 服务 (如果尚未运行)...${NC}"
-docker-compose -f docker-compose-ca.yaml up -d ca_bank1 ca_bank2
-# 等待 CA 服务启动
-echo -e "${GREEN}等待 CA 服务启动 (10 秒)...${NC}"
-sleep 10
-
-# 定义通用函数来生成MSP
-# 参数:
-# 1. 组织名称 (例如: bank1)
-# 2. 组织域名 (例如: bank1.example.com)
-# 3. CA 服务端口 (例如: 8054)
-# 4. CA 名称 (例如: ca-bank1)
-generate_msp_for_org() {
-    ORG_NAME=$1
-    ORG_DOMAIN=$2
-    CA_PORT=$3
-    CA_NAME=$4
-    CA_ADMIN_USER=admin
-    CA_ADMIN_PASS=adminpw
-    ORG_ADMIN_USER="Admin@${ORG_DOMAIN}"
-    ORG_ADMIN_PASS="${ORG_NAME}adminpw" # 为每个银行的Admin设置不同的密码
-
-    echo ""
-    echo -e "${GREEN}#################################################################${NC}"
-    echo -e "${GREEN}#### 生成 ${ORG_NAME} 的 MSP 材料 ####${NC}"
-    echo -e "${GREEN}#################################################################${NC}"
-
-    # 设置 Fabric CA 客户端的 Home 目录，用于隔离不同组织的证书
-    export FABRIC_CA_CLIENT_HOME=${PWD}/crypto-config/fabric-ca-client/${ORG_NAME}
-    mkdir -p ${FABRIC_CA_CLIENT_HOME}
-
-    CA_URL="http://${CA_ADMIN_USER}:${CA_ADMIN_PASS}@localhost:${CA_PORT}"
-
-    echo "FABRIC_CA_CLIENT_HOME: ${FABRIC_CA_CLIENT_HOME}"
-    echo "CA_URL: ${CA_URL}"
-    echo "CA_NAME: ${CA_NAME}"
-
-    # 1. Enroll CA Admin (获取 CA 根证书)
-    echo ""
-    echo -e "${GREEN}正在为 ${ORG_NAME} enroll CA 管理员 (${CA_ADMIN_USER})...${NC}"
-    fabric-ca-client enroll -u ${CA_URL} --caname ${CA_NAME} --mspdir ${FABRIC_CA_CLIENT_HOME}/ca-admin-msp
-
-    # CA 根证书路径可能会变化，我们查找它
-    CA_CERT_PATH=$(find ${FABRIC_CA_CLIENT_HOME}/ca-admin-msp/cacerts -type f)
-    if [ -z "${CA_CERT_PATH}" ]; then
-        echo -e "${RED}错误: 未能找到 CA 根证书 for ${CA_NAME}${NC}"
+    if [ ${#missing_tools[@]} -ne 0 ]; then
+        echo "错误: 缺少必要工具: ${missing_tools[*]}"
+        echo "请安装 Hyperledger Fabric 二进制文件和 jq"
         exit 1
     fi
-    echo "CA 根证书路径: ${CA_CERT_PATH}"
-
-
-    # MSP 目录结构
-    ORG_MSP_DIR=${PWD}/crypto-config/peerOrganizations/${ORG_DOMAIN}/msp
-    ORG_ADMIN_MSP_DIR=${PWD}/crypto-config/peerOrganizations/${ORG_DOMAIN}/users/${ORG_ADMIN_USER}/msp
-
-    mkdir -p ${ORG_MSP_DIR}/{admincerts,cacerts,tlscacerts}
-    mkdir -p ${ORG_ADMIN_MSP_DIR}/{signcerts,keystore,cacerts,tlscacerts,admincerts} # admincerts for admin user msp
-
-    # 复制 CA 根证书到组织的 MSP 目录
-    cp "${CA_CERT_PATH}" "${ORG_MSP_DIR}/cacerts/ca.${ORG_DOMAIN}-cert.pem"
-    cp "${CA_CERT_PATH}" "${ORG_MSP_DIR}/tlscacerts/tlsca.${ORG_DOMAIN}-cert.pem"
-    # 也复制到组织管理员用户的 MSP 目录
-    cp "${CA_CERT_PATH}" "${ORG_ADMIN_MSP_DIR}/cacerts/ca.${ORG_DOMAIN}-cert.pem"
-    cp "${CA_CERT_PATH}" "${ORG_ADMIN_MSP_DIR}/tlscacerts/tlsca.${ORG_DOMAIN}-cert.pem"
-
-
-    # 2. Register Organization Admin User
-    echo ""
-    echo -e "${GREEN}正在为 ${ORG_NAME} 注册组织管理员用户 ${ORG_ADMIN_USER}...${NC}"
-    # affiliations 默认为空，可以根据需要设置，例如 --id.affiliation org1.department1
-    fabric-ca-client register --caname ${CA_NAME} --id.name ${ORG_ADMIN_USER} --id.secret ${ORG_ADMIN_PASS} --id.type admin -u ${CA_URL}
-
-    # 3. Enroll Organization Admin User
-    echo ""
-    echo -e "${GREEN}正在为 ${ORG_NAME} enroll 组织管理员用户 ${ORG_ADMIN_USER}...${NC}"
-    # --enrollment.profile tls 可以用于生成 TLS 证书，但这里我们主要关注签名证书
-    fabric-ca-client enroll -u http://${ORG_ADMIN_USER}:${ORG_ADMIN_PASS}@localhost:${CA_PORT} --caname ${CA_NAME} --mspdir ${ORG_ADMIN_MSP_DIR}
-
-    # 将组织管理员的签名证书复制到组织 MSP 的 admincerts 目录下
-    ADMIN_CERT_PATH=${ORG_ADMIN_MSP_DIR}/signcerts/*
-    if [ ! -f "$ADMIN_CERT_PATH" ] && [ -z "$(ls -A ${ORG_ADMIN_MSP_DIR}/signcerts)" ]; then # check if file or if dir empty
-        # Handle cases where ADMIN_CERT_PATH might be a pattern that doesn't match if no certs exist
-        # Re-check with find
-        ADMIN_CERT_PATH=$(find ${ORG_ADMIN_MSP_DIR}/signcerts -type f 2>/dev/null | head -n 1)
-         if [ -z "${ADMIN_CERT_PATH}" ]; then
-            echo -e "${RED}错误: 未找到组织管理员 ${ORG_ADMIN_USER} 的签名证书。${NC}"
-            exit 1
-        fi
-    elif [ -f "$ADMIN_CERT_PATH" ]; then
-         # if it is a file, use it directly
-         : # do nothing, ADMIN_CERT_PATH is correct
-    else # if it is a directory (should not happen with *) or pattern that matched multiple
-        ADMIN_CERT_PATH=$(find ${ORG_ADMIN_MSP_DIR}/signcerts -type f 2>/dev/null | head -n 1)
-         if [ -z "${ADMIN_CERT_PATH}" ]; then
-            echo -e "${RED}错误: 未找到组织管理员 ${ORG_ADMIN_USER} 的签名证书 (检查路径)。${NC}"
-            exit 1
-        fi
-    fi
-
-    echo "组织管理员 ${ORG_ADMIN_USER} 的签名证书路径: ${ADMIN_CERT_PATH}"
-    cp "${ADMIN_CERT_PATH}" "${ORG_MSP_DIR}/admincerts/Admin@${ORG_DOMAIN}-cert.pem"
-    # 也复制到Admin用户的msp/admincerts，虽然典型结构中用户的admincerts通常为空，但有些工具或场景可能需要
-    cp "${ADMIN_CERT_PATH}" "${ORG_ADMIN_MSP_DIR}/admincerts/Admin@${ORG_DOMAIN}-cert.pem"
-
-    echo -e "${GREEN}#### ${ORG_NAME} 的 MSP 材料生成完毕 ####${NC}"
-    echo "MSP 目录: ${ORG_MSP_DIR}"
-    echo "管理员用户 (${ORG_ADMIN_USER}) MSP 目录: ${ORG_ADMIN_MSP_DIR}"
 }
 
-# 清理旧的 crypto-config (如果存在)
-if [ -d "crypto-config" ]; then
-    echo -e "${YELLOW}发现旧的 crypto-config 目录，是否删除并重新生成? (y/N) ${NC}"
-    read -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo -e "${YELLOW}正在删除旧的 crypto-config...${NC}"
-        rm -rf crypto-config
-    else
-        echo -e "${YELLOW}保留现有的 crypto-config 目录。脚本将尝试在此基础上操作，可能导致冲突。${NC}"
+# 转换为小写
+to_lower() {
+    echo "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+# 生成 crypto-config.yaml
+generate_crypto_config() {
+    local config_file="$1"
+    local output_file="$2"
+    
+    echo "生成 crypto-config.yaml..."
+    
+    # 读取配置
+    local central_bank_name=$(jq -r '.network.central_bank.name' "$config_file")
+    local central_bank_lower=$(to_lower "$central_bank_name")
+    local banks_count=$(jq '.network.banks | length' "$config_file")
+    
+    # 生成 crypto-config.yaml
+    cat > "$output_file" << EOF
+#
+# 此文件由 generate-crypto.sh 脚本自动生成
+# 基于 configtx/network-config.json 配置文件
+# 请勿手动修改此文件！如需更改请修改 network-config.json 后重新生成
+# 生成时间: $(date '+%Y-%m-%d %H:%M:%S')
+#
+
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+# 排序节点组织
+OrdererOrgs:
+  - Name: ${central_bank_name}
+    Domain: ${central_bank_lower}.cbdc.com
+    EnableNodeOUs: true
+    Specs:
+      - Hostname: orderer
+        SANS:
+          - localhost
+
+# Peer 组织
+PeerOrgs:
+  # 央行 Peer 组织
+  - Name: ${central_bank_name}Peer
+    Domain: ${central_bank_lower}.cbdc.com
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS:
+        - localhost
+    Users:
+      Count: 1
+
+EOF
+
+    # 添加银行组织
+    for ((i=0; i<banks_count; i++)); do
+        local bank_name=$(jq -r ".network.banks[$i].name" "$config_file")
+        local bank_lower=$(to_lower "$bank_name")
+        
+        cat >> "$output_file" << EOF
+  # ${bank_name} 银行组织
+  - Name: ${bank_name}
+    Domain: ${bank_lower}.cbdc.com
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS:
+        - localhost
+    Users:
+      Count: 1
+
+EOF
+    done
+    
+    echo "crypto-config.yaml 已生成: $output_file"
+}
+
+# 生成加密材料
+generate_crypto_materials() {
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local network_dir="$(dirname "$script_dir")"
+    local config_file="$network_dir/configtx/network-config.json"
+    local crypto_config_file="$network_dir/crypto-config.yaml"
+    local organizations_dir="$network_dir/organizations"
+    
+    # 检查网络配置文件
+    if [ ! -f "$config_file" ]; then
+        echo "错误: 未找到网络配置文件 $config_file"
+        echo "请先运行 network-config.sh 生成网络配置"
+        exit 1
     fi
-fi
-mkdir -p crypto-config/fabric-ca-client # 创建 fabric-ca-client 的根目录
+    
+    echo "开始生成加密材料..."
+    
+    # 生成 crypto-config.yaml
+    generate_crypto_config "$config_file" "$crypto_config_file"
+    
+    # 清理旧的加密材料
+    if [ -d "$organizations_dir" ]; then
+        echo "清理旧的加密材料..."
+        rm -rf "$organizations_dir"
+    fi
+    
+    # 生成加密材料
+    echo "使用 cryptogen 生成证书和密钥..."
+    cd "$network_dir"
+    
+    cryptogen generate --config=crypto-config.yaml --output="$organizations_dir"
+    
+    if [ $? -eq 0 ]; then
+        echo "✓ 加密材料生成成功"
+        
+        # 设置正确的权限
+        echo "设置文件权限..."
+        find "$organizations_dir" -type f -name "*_sk" -exec chmod 600 {} \;
+        find "$organizations_dir" -type f -name "*.key" -exec chmod 600 {} \;
+        
+        # 显示生成的组织结构
+        echo ""
+        echo "生成的组织结构:"
+        tree "$organizations_dir" -L 3 2>/dev/null || ls -la "$organizations_dir"
+        
+        return 0
+    else
+        echo "✗ 加密材料生成失败"
+        return 1
+    fi
+}
 
-# 为 bank1 生成 MSP
-generate_msp_for_org "bank1" "bank1.example.com" "8054" "ca-bank1"
-# 为 bank2 生成 MSP
-generate_msp_for_org "bank2" "bank2.example.com" "9054" "ca-bank2"
+# 生成创世区块
+generate_genesis_block() {
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local network_dir="$(dirname "$script_dir")"
+    local config_file="$network_dir/configtx/network-config.json"
+    local configtx_file="$network_dir/configtx/configtx.yaml"
+    local channel_artifacts_dir="$network_dir/channel-artifacts"
+    
+    # 检查必要文件
+    if [ ! -f "$configtx_file" ]; then
+        echo "错误: 未找到 configtx.yaml 文件"
+        echo "请先运行配置生成"
+        return 1
+    fi
+    
+    # 创建 channel-artifacts 目录
+    mkdir -p "$channel_artifacts_dir"
+    
+    # 读取配置
+    local channel_name=$(jq -r '.network.channel_name' "$config_file")
+    local channel_title=$(echo "$channel_name" | sed 's/\b\w/\U&/g')
+    
+    echo "生成创世区块..."
+    
+    cd "$network_dir"
+    export FABRIC_CFG_PATH="$network_dir/configtx"
+    
+    # 生成排序节点创世区块
+    configtxgen -profile "${channel_title}OrdererGenesis" -channelID system-channel -outputBlock "$channel_artifacts_dir/genesis.block"
+    
+    if [ $? -eq 0 ]; then
+        echo "✓ 创世区块生成成功: $channel_artifacts_dir/genesis.block"
+        return 0
+    else
+        echo "✗ 创世区块生成失败"
+        return 1
+    fi
+}
 
-echo ""
-echo -e "${GREEN}所有银行的 MSP 材料已生成在 crypto-config 目录下。${NC}"
-echo -e "${YELLOW}您可以关闭 CA 服务: docker-compose -f docker-compose-ca.yaml down${NC}"
+# 生成频道交易文件
+generate_channel_tx() {
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local network_dir="$(dirname "$script_dir")"
+    local config_file="$network_dir/configtx/network-config.json"
+    local configtx_file="$network_dir/configtx/configtx.yaml"
+    local channel_artifacts_dir="$network_dir/channel-artifacts"
+    
+    # 读取配置
+    local channel_name=$(jq -r '.network.channel_name' "$config_file")
+    local channel_title=$(echo "$channel_name" | sed 's/\b\w/\U&/g')
+    
+    echo "生成频道交易文件..."
+    
+    cd "$network_dir"
+    export FABRIC_CFG_PATH="$network_dir/configtx"
+    
+    # 生成频道交易文件
+    configtxgen -profile "${channel_title}Channel" -outputCreateChannelTx "$channel_artifacts_dir/${channel_name}.tx" -channelID "$channel_name"
+    
+    if [ $? -eq 0 ]; then
+        echo "✓ 频道交易文件生成成功: $channel_artifacts_dir/${channel_name}.tx"
+        
+        # 生成锚点节点更新交易
+        generate_anchor_peer_updates "$config_file" "$channel_artifacts_dir" "$channel_name" "$channel_title"
+        
+        return 0
+    else
+        echo "✗ 频道交易文件生成失败"
+        return 1
+    fi
+}
 
-exit 0
+# 生成锚点节点更新交易
+generate_anchor_peer_updates() {
+    local config_file="$1"
+    local channel_artifacts_dir="$2"
+    local channel_name="$3"
+    local channel_title="$4"
+    
+    echo "生成锚点节点更新交易..."
+    
+    # 央行锚点节点
+    local central_bank_name=$(jq -r '.network.central_bank.name' "$config_file")
+    configtxgen -profile "${channel_title}Channel" -outputAnchorPeersUpdate "$channel_artifacts_dir/${central_bank_name}PeerMSPanchors.tx" -channelID "$channel_name" -asOrg "${central_bank_name}PeerMSP"
+    
+    # 银行锚点节点
+    local banks_count=$(jq '.network.banks | length' "$config_file")
+    for ((i=0; i<banks_count; i++)); do
+        local bank_name=$(jq -r ".network.banks[$i].name" "$config_file")
+        configtxgen -profile "${channel_title}Channel" -outputAnchorPeersUpdate "$channel_artifacts_dir/${bank_name}MSPanchors.tx" -channelID "$channel_name" -asOrg "${bank_name}MSP"
+    done
+    
+    echo "✓ 锚点节点更新交易生成完成"
+}
+
+# 主函数
+main() {
+    case "${1:-all}" in
+        "all")
+            check_prerequisites
+            generate_crypto_materials
+            if [ $? -eq 0 ]; then
+                generate_genesis_block
+                generate_channel_tx
+            fi
+            ;;
+        "crypto")
+            check_prerequisites
+            generate_crypto_materials
+            ;;
+        "genesis")
+            check_prerequisites
+            generate_genesis_block
+            ;;
+        "channel")
+            check_prerequisites
+            generate_channel_tx
+            ;;
+        "help"|"-h"|"--help")
+            echo "用法: $0 [命令]"
+            echo ""
+            echo "命令:"
+            echo "  all       生成所有加密材料和配置文件（默认）"
+            echo "  crypto    仅生成证书和密钥"
+            echo "  genesis   仅生成创世区块"
+            echo "  channel   仅生成频道交易文件"
+            echo "  help      显示帮助信息"
+            echo ""
+            echo "注意: 需要先运行 network-config.sh 生成网络配置"
+            ;;
+        *)
+            echo "未知命令: $1"
+            echo "使用 '$0 help' 查看帮助信息"
+            exit 1
+            ;;
+    esac
+}
+
+# 如果直接运行脚本，执行主函数
+if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
+    main "$@"
+fi 

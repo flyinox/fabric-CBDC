@@ -148,14 +148,14 @@ download_fabric_script() {
 # 运行install-fabric.sh脚本
 run_fabric_script() {
     log_info "开始运行Hyperledger Fabric安装脚本..."
-    
-    # 确认是否需要安装示例和二进制文件
-    read -p "是否安装 Fabric 镜像? (y/n): " install_samples
+
+    ./install-fabric.sh docker binary
+    log_info "安装基础运行环境完成"
+
+    read -p "是否安装 Fabric 示例? (y/n): " install_samples
     
     if [[ "$install_samples" == "y" ]]; then
-        ./install-fabric.sh docker
-    else
-        ./install-fabric.sh binary samples
+        ./install-fabric.sh samples
     fi
     
     if [ $? -eq 0 ]; then

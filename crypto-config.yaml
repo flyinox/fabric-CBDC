@@ -1,0 +1,57 @@
+#
+# 此文件由 generate-crypto.sh 脚本自动生成
+# 基于 configtx/network-config.json 配置文件
+# 请勿手动修改此文件！如需更改请修改 network-config.json 后重新生成
+# 生成时间: 2025-06-23 16:49:43
+#
+
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+# 排序节点组织
+OrdererOrgs:
+  - Name: CentralBank
+    Domain: centralbank.cbdc.com
+    EnableNodeOUs: true
+    Specs:
+      - Hostname: orderer
+        SANS:
+          - localhost
+
+# Peer 组织
+PeerOrgs:
+  # 央行 Peer 组织
+  - Name: CentralBankPeer
+    Domain: centralbank.cbdc.com
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS:
+        - localhost
+    Users:
+      Count: 1
+
+  # ab1 银行组织
+  - Name: ab1
+    Domain: ab1.cbdc.com
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS:
+        - localhost
+    Users:
+      Count: 1
+
+  # bb1 银行组织
+  - Name: bb1
+    Domain: bb1.cbdc.com
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS:
+        - localhost
+    Users:
+      Count: 1
+
