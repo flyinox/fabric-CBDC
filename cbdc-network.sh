@@ -166,7 +166,7 @@ setup_network() {
     fi
     
     print_message $GREEN "🎉 CBDC 网络设置完成！现在可以启动网络了"
-    print_message $BLUE "下一步运行: $0 start"
+    print_message $BLUE "下一步运行: $0 network start"
     
     return 0
 }
@@ -721,9 +721,667 @@ show_help() {
     echo ""
 }
 
+# ============ 网络管理命令 ============
+
+# 网络命令处理
+handle_network_command() {
+    case "${1:-help}" in
+        "setup")
+            check_prerequisites
+            shift
+            setup_network "$@"
+            ;;
+        "start")
+            check_prerequisites
+            start_network
+            ;;
+        "stop")
+            stop_network
+            ;;
+        "clean")
+            clean_network
+            ;;
+        "cleanup-files")
+            cleanup_files_only
+            ;;
+        "status")
+            show_status
+            ;;
+        "add-peer")
+            shift
+            add_peer_to_network "$@"
+            ;;
+        "add-orderer")
+            shift
+            add_orderer_to_network "$@"
+            ;;
+        "help"|"-h"|"--help")
+            show_network_help
+            ;;
+        *)
+            print_message $RED "未知网络命令: $1"
+            show_network_help
+            exit 1
+            ;;
+    esac
+}
+
+# 显示网络命令帮助
+show_network_help() {
+    echo "网络管理命令:"
+    echo ""
+    echo "用法: $0 network <子命令> [参数...]"
+    echo ""
+    echo "子命令:"
+    echo "  setup [频道名] [央行名] [银行1] [银行2] ...  完整设置网络（生成配置+加密材料）"
+    echo "  start                                         启动网络"
+    echo "  stop                                          停止网络"
+    echo "  clean                                         清理网络资源（停止容器+删除所有文件）"
+    echo "  cleanup-files                                 仅清理生成的文件（不停止容器）"
+    echo "  status                                        显示网络状态"
+    echo "  add-peer <组织名> <节点名> [端口]               向网络添加新的 peer 节点"
+    echo "  add-orderer <节点名> [端口]                    向网络添加新的 orderer 节点"
+    echo "  help                                          显示网络命令帮助"
+    echo ""
+    echo "示例:"
+    echo "  $0 network setup                              交互式完整设置"
+    echo "  $0 network setup cbdc-channel CentralBank ICBC CCB  命令行完整设置"
+    echo "  $0 network start                              启动网络"
+    echo "  $0 network status                             查看状态"
+    echo "  $0 network add-peer ICBC peer1 8051           为工商银行添加新节点"
+    echo "  $0 network add-orderer orderer2 8050          添加新的排序节点"
+}
+
+# 向网络添加新的 peer 节点
+add_peer_to_network() {
+    local org_name=$1
+    local peer_name=$2
+    local peer_port=${3:-}
+    
+    if [ -z "$org_name" ] || [ -z "$peer_name" ]; then
+        print_message $RED "用法: $0 network add-peer <组织名> <节点名> [端口]"
+        return 1
+    fi
+    
+    print_message $BLUE "向组织 $org_name 添加节点 $peer_name..."
+    
+    # 检查网络配置是否存在
+    local config_file="$NETWORK_DIR/configtx/network-config.json"
+    if [ ! -f "$config_file" ]; then
+        print_message $RED "网络配置文件不存在，请先运行 network setup"
+        return 1
+    fi
+    
+    # TODO: 实现添加 peer 节点的逻辑
+    # 1. 更新网络配置文件
+    # 2. 重新生成证书
+    # 3. 更新 docker-compose.yaml
+    # 4. 重启网络服务
+    
+    print_message $YELLOW "添加 peer 节点功能正在开发中..."
+}
+
+# 向网络添加新的 orderer 节点
+add_orderer_to_network() {
+    local orderer_name=$1
+    local orderer_port=${2:-}
+    
+    if [ -z "$orderer_name" ]; then
+        print_message $RED "用法: $0 network add-orderer <节点名> [端口]"
+        return 1
+    fi
+    
+    print_message $BLUE "添加排序节点 $orderer_name..."
+    
+    # TODO: 实现添加 orderer 节点的逻辑
+    print_message $YELLOW "添加 orderer 节点功能正在开发中..."
+}
+
+# ============ 组织管理命令 ============
+
+# 组织命令处理
+handle_org_command() {
+    case "${1:-help}" in
+        "list")
+            list_organizations
+            ;;
+        "info")
+            shift
+            show_org_info "$@"
+            ;;
+        "add-user")
+            shift
+            add_user_to_org "$@"
+            ;;
+        "add-peer")
+            shift
+            add_peer_to_org "$@"
+            ;;
+        "help"|"-h"|"--help")
+            show_org_help
+            ;;
+        *)
+            print_message $RED "未知组织命令: $1"
+            show_org_help
+            exit 1
+            ;;
+    esac
+}
+
+# 显示组织命令帮助
+show_org_help() {
+    echo "组织管理命令:"
+    echo ""
+    echo "用法: $0 org <子命令> [参数...]"
+    echo ""
+    echo "子命令:"
+    echo "  list                                显示所有组织"
+    echo "  info <组织名>                       显示组织详细信息"
+    echo "  add-user <组织名> <用户名> [类型]     向组织添加用户"
+    echo "  add-peer <组织名> <节点名> [端口]     向组织添加节点"
+    echo "  help                                显示组织命令帮助"
+    echo ""
+    echo "示例:"
+    echo "  $0 org list                         列出所有组织"
+    echo "  $0 org info ICBC                    显示工商银行信息"
+    echo "  $0 org add-user ICBC user1 client   为工商银行添加客户端用户"
+    echo "  $0 org add-peer ICBC peer1 8051      为工商银行添加节点"
+}
+
+# 列出所有组织
+list_organizations() {
+    print_message $BLUE "组织列表:"
+    
+    local config_file="$NETWORK_DIR/configtx/network-config.json"
+    if [ ! -f "$config_file" ]; then
+        print_message $RED "网络配置文件不存在，请先运行 network setup"
+        return 1
+    fi
+    
+    # 显示央行
+    local central_bank=$(jq -r '.network.central_bank.name' "$config_file")
+    print_message $GREEN "央行: $central_bank"
+    
+    # 显示银行
+    local banks_count=$(jq '.network.banks | length' "$config_file")
+    print_message $GREEN "参与银行 ($banks_count 个):"
+    
+    for ((i=0; i<banks_count; i++)); do
+        local bank_name=$(jq -r ".network.banks[$i].name" "$config_file")
+        local bank_port=$(jq -r ".network.banks[$i].peer.port" "$config_file")
+        print_message $BLUE "  - $bank_name (端口: $bank_port)"
+    done
+}
+
+# 显示组织详细信息
+show_org_info() {
+    local org_name=$1
+    
+    if [ -z "$org_name" ]; then
+        print_message $RED "用法: $0 org info <组织名>"
+        return 1
+    fi
+    
+    print_message $BLUE "组织 $org_name 详细信息:"
+    
+    # TODO: 实现显示组织详细信息的逻辑
+    print_message $YELLOW "组织信息显示功能正在开发中..."
+}
+
+# 向组织添加用户
+add_user_to_org() {
+    local org_name=$1
+    local user_name=$2
+    local user_type=${3:-client}
+    
+    if [ -z "$org_name" ] || [ -z "$user_name" ]; then
+        print_message $RED "用法: $0 org add-user <组织名> <用户名> [类型]"
+        return 1
+    fi
+    
+    print_message $BLUE "向组织 $org_name 添加用户 $user_name (类型: $user_type)..."
+    
+    # TODO: 实现添加用户的逻辑
+    print_message $YELLOW "添加用户功能正在开发中..."
+}
+
+# 向组织添加节点
+add_peer_to_org() {
+    local org_name=$1
+    local peer_name=$2
+    local peer_port=${3:-}
+    
+    if [ -z "$org_name" ] || [ -z "$peer_name" ]; then
+        print_message $RED "用法: $0 org add-peer <组织名> <节点名> [端口]"
+        return 1
+    fi
+    
+    print_message $BLUE "向组织 $org_name 添加节点 $peer_name..."
+    
+    # TODO: 实现向组织添加节点的逻辑
+    print_message $YELLOW "向组织添加节点功能正在开发中..."
+}
+
+# ============ 链码管理命令 ============
+
+# 链码命令处理
+handle_chaincode_command() {
+    case "${1:-help}" in
+        "package")
+            shift
+            package_chaincode "$@"
+            ;;
+        "install")
+            shift
+            install_chaincode "$@"
+            ;;
+        "deploy")
+            shift
+            deploy_chaincode "$@"
+            ;;
+        "upgrade")
+            shift
+            upgrade_chaincode "$@"
+            ;;
+        "list")
+            list_chaincodes
+            ;;
+        "help"|"-h"|"--help")
+            show_chaincode_help
+            ;;
+        *)
+            print_message $RED "未知链码命令: $1"
+            show_chaincode_help
+            exit 1
+            ;;
+    esac
+}
+
+# 显示链码命令帮助
+show_chaincode_help() {
+    echo "链码管理命令:"
+    echo ""
+    echo "用法: $0 chaincode <子命令> [参数...]"
+    echo ""
+    echo "子命令:"
+    echo "  package <链码名> <路径> [版本] [语言]                    打包链码"
+    echo "  install <链码名> <组织名> [版本]                         安装链码到指定组织"
+    echo "  deploy <链码名> <频道名> [版本] [需要初始化] [初始化参数] [序列号]  部署链码到频道"
+    echo "  upgrade <链码名> <版本> [频道名] [升级参数]               升级链码"
+    echo "  list                                                    列出所有已安装的链码"
+    echo "  help                                                    显示链码命令帮助"
+    echo ""
+    echo "完整部署流程:"
+    echo "  1. $0 chaincode package cbdc-token ./chaincode 1.0 golang"
+    echo "  2. $0 chaincode install cbdc-token CentralBank 1.0"
+    echo "  3. $0 chaincode install cbdc-token ICBC 1.0"
+    echo "  4. $0 chaincode install cbdc-token CCB 1.0"
+    echo "  5. $0 chaincode deploy cbdc-token cbdc-channel 1.0 false"
+    echo ""
+    echo "参数说明:"
+    echo "  语言选项: golang, node, java (默认: golang)"
+    echo "  需要初始化: true/false (默认: false)"
+    echo "  初始化参数: JSON格式，如 '{\"Args\":[\"init\",\"param1\"]}'"
+    echo "  序列号: 整数，用于链码版本管理 (默认: 1)"
+    echo ""
+    echo "示例:"
+    echo "  $0 chaincode package cbdc-token ./chaincode 1.0 golang"
+    echo "  $0 chaincode install cbdc-token ICBC 1.0"
+    echo "  $0 chaincode deploy cbdc-token cbdc-channel 1.0 true '{\"Args\":[\"init\"]}' 1"
+    echo "  $0 chaincode upgrade cbdc-token 1.1 cbdc-channel"
+    echo "  $0 chaincode list"
+}
+
+# 打包链码
+package_chaincode() {
+    local chaincode_name=$1
+    local chaincode_path=$2
+    local version=${3:-1.0}
+    local chaincode_lang=${4:-golang}
+    
+    if [ -z "$chaincode_name" ] || [ -z "$chaincode_path" ]; then
+        print_message $RED "用法: $0 chaincode package <链码名> <路径> [版本] [语言]"
+        print_message $YELLOW "支持的语言: golang, node, java"
+        return 1
+    fi
+    
+    # 检查必要工具
+    check_prerequisites
+    
+    # 加载实用工具函数
+    source "$NETWORK_DIR/scripts/cbdc-utils.sh"
+    
+    # 调用实际实现
+    package_chaincode_impl "$chaincode_name" "$chaincode_path" "$version" "$chaincode_lang"
+}
+
+# 安装链码
+install_chaincode() {
+    local chaincode_name=$1
+    local org_name=$2
+    local version=${3:-1.0}
+    
+    if [ -z "$chaincode_name" ] || [ -z "$org_name" ]; then
+        print_message $RED "用法: $0 chaincode install <链码名> <组织名> [版本]"
+        return 1
+    fi
+    
+    # 检查必要工具
+    check_prerequisites
+    
+    # 加载实用工具函数
+    source "$NETWORK_DIR/scripts/cbdc-utils.sh"
+    
+    # 调用实际实现
+    install_chaincode_impl "$chaincode_name" "$org_name" "$version"
+}
+
+# 部署链码
+deploy_chaincode() {
+    local chaincode_name=$1
+    local channel_name=$2
+    local version=${3:-1.0}
+    local init_required=${4:-false}
+    local init_args=${5:-"{}"}
+    local sequence=${6:-1}
+    
+    if [ -z "$chaincode_name" ] || [ -z "$channel_name" ]; then
+        print_message $RED "用法: $0 chaincode deploy <链码名> <频道名> [版本] [需要初始化] [初始化参数] [序列号]"
+        print_message $YELLOW "示例: $0 chaincode deploy cbdc-token cbdc-channel 1.0 true '{\"Args\":[\"init\"]}' 1"
+        return 1
+    fi
+    
+    # 检查必要工具
+    check_prerequisites
+    
+    # 加载实用工具函数
+    source "$NETWORK_DIR/scripts/cbdc-utils.sh"
+    
+    # 调用实际实现
+    deploy_chaincode_impl "$chaincode_name" "$channel_name" "$version" "$init_required" "$init_args" "$sequence"
+}
+
+# 升级链码
+upgrade_chaincode() {
+    local chaincode_name=$1
+    local version=$2
+    local channel_name=${3:-}
+    local upgrade_args=${4:-"{}"}
+    
+    if [ -z "$chaincode_name" ] || [ -z "$version" ]; then
+        print_message $RED "用法: $0 chaincode upgrade <链码名> <版本> [频道名] [升级参数]"
+        return 1
+    fi
+    
+    # 如果没有提供频道名，尝试从配置文件获取
+    if [ -z "$channel_name" ]; then
+        local config_file="$NETWORK_DIR/configtx/network-config.json"
+        if [ -f "$config_file" ]; then
+            channel_name=$(jq -r '.network.channel_name' "$config_file")
+        else
+            print_message $RED "无法获取频道名称，请提供频道名称"
+            return 1
+        fi
+    fi
+    
+    print_message $BLUE "升级链码 $chaincode_name 到版本 $version 在频道 $channel_name..."
+    
+    # 检查必要工具
+    check_prerequisites
+    
+    # 加载实用工具函数
+    source "$NETWORK_DIR/scripts/cbdc-utils.sh"
+    
+    # 获取当前序列号并加1
+    local current_sequence=$(get_current_chaincode_sequence "$chaincode_name" "$channel_name")
+    local new_sequence=$((current_sequence + 1))
+    
+    print_message $BLUE "当前序列号: $current_sequence, 新序列号: $new_sequence"
+    
+    # 调用部署实现（升级实际上是重新部署新版本）
+    deploy_chaincode_impl "$chaincode_name" "$channel_name" "$version" "false" "$upgrade_args" "$new_sequence"
+}
+
+# 列出所有链码
+list_chaincodes() {
+    print_message $BLUE "查询链码列表..."
+    
+    # 检查必要工具
+    check_prerequisites
+    
+    # 加载实用工具函数
+    source "$NETWORK_DIR/scripts/cbdc-utils.sh"
+    
+    # 调用实际实现
+    list_chaincodes_impl
+}
+
+# ============ 交易管理命令 ============
+
+# 交易命令处理
+handle_tx_command() {
+    case "${1:-help}" in
+        "invoke")
+            shift
+            invoke_transaction "$@"
+            ;;
+        "query")
+            shift
+            query_transaction "$@"
+            ;;
+        "history")
+            shift
+            show_tx_history "$@"
+            ;;
+        "help"|"-h"|"--help")
+            show_tx_help
+            ;;
+        *)
+            print_message $RED "未知交易命令: $1"
+            show_tx_help
+            exit 1
+            ;;
+    esac
+}
+
+# 显示交易命令帮助
+show_tx_help() {
+    echo "交易管理命令:"
+    echo ""
+    echo "用法: $0 tx <子命令> [参数...]"
+    echo ""
+    echo "子命令:"
+    echo "  invoke <链码名> <函数> <参数...>     调用链码函数（写操作）"
+    echo "  query <链码名> <函数> <参数...>      查询链码函数（读操作）"
+    echo "  history <交易ID>                    显示交易历史"
+    echo "  help                               显示交易命令帮助"
+    echo ""
+    echo "示例:"
+    echo "  $0 tx invoke cbdc-token transfer Alice Bob 100"
+    echo "  $0 tx query cbdc-token balanceOf Alice"
+    echo "  $0 tx history abc123def456"
+}
+
+# 调用交易
+invoke_transaction() {
+    local chaincode_name=$1
+    local function_name=$2
+    shift 2
+    local args=("$@")
+    local channel_name=""
+    
+    if [ -z "$chaincode_name" ] || [ -z "$function_name" ]; then
+        print_message $RED "用法: $0 tx invoke <链码名> <函数> <参数...>"
+        print_message $YELLOW "示例: $0 tx invoke cbdc-token transfer Alice Bob 100"
+        return 1
+    fi
+    
+    # 获取频道名称
+    local config_file="$NETWORK_DIR/configtx/network-config.json"
+    if [ -f "$config_file" ]; then
+        channel_name=$(jq -r '.network.channel_name' "$config_file")
+    else
+        print_message $RED "无法获取频道名称，请先运行 network setup"
+        return 1
+    fi
+    
+    # 检查必要工具
+    check_prerequisites
+    
+    # 加载实用工具函数
+    source "$NETWORK_DIR/scripts/cbdc-utils.sh"
+    
+    # 调用实际实现
+    invoke_transaction_impl "$chaincode_name" "$channel_name" "$function_name" "${args[@]}"
+}
+
+# 查询交易
+query_transaction() {
+    local chaincode_name=$1
+    local function_name=$2
+    shift 2
+    local args=("$@")
+    local channel_name=""
+    
+    if [ -z "$chaincode_name" ] || [ -z "$function_name" ]; then
+        print_message $RED "用法: $0 tx query <链码名> <函数> <参数...>"
+        print_message $YELLOW "示例: $0 tx query cbdc-token balanceOf Alice"
+        return 1
+    fi
+    
+    # 获取频道名称
+    local config_file="$NETWORK_DIR/configtx/network-config.json"
+    if [ -f "$config_file" ]; then
+        channel_name=$(jq -r '.network.channel_name' "$config_file")
+    else
+        print_message $RED "无法获取频道名称，请先运行 network setup"
+        return 1
+    fi
+    
+    # 检查必要工具
+    check_prerequisites
+    
+    # 加载实用工具函数
+    source "$NETWORK_DIR/scripts/cbdc-utils.sh"
+    
+    # 调用实际实现
+    query_transaction_impl "$chaincode_name" "$channel_name" "$function_name" "${args[@]}"
+}
+
+# 显示交易历史
+show_tx_history() {
+    local tx_id=$1
+    local channel_name=""
+    
+    if [ -z "$tx_id" ]; then
+        print_message $RED "用法: $0 tx history <交易ID>"
+        print_message $YELLOW "示例: $0 tx history abc123def456789"
+        return 1
+    fi
+    
+    # 获取频道名称
+    local config_file="$NETWORK_DIR/configtx/network-config.json"
+    if [ -f "$config_file" ]; then
+        channel_name=$(jq -r '.network.channel_name' "$config_file")
+    else
+        print_message $RED "无法获取频道名称，请先运行 network setup"
+        return 1
+    fi
+    
+    print_message $BLUE "查询交易 $tx_id 在频道 $channel_name 的历史..."
+    
+    # 检查必要工具
+    check_prerequisites
+    
+    # 设置央行环境变量
+    local config_file="$NETWORK_DIR/configtx/network-config.json"
+    export FABRIC_CFG_PATH="$NETWORK_DIR/configtx"
+    export CORE_PEER_TLS_ENABLED=true
+    export CORE_PEER_LOCALMSPID="CentralBankPeerMSP"
+    export CORE_PEER_TLS_ROOTCERT_FILE="$NETWORK_DIR/organizations/peerOrganizations/centralbank.cbdc.com/peers/peer0.centralbank.cbdc.com/tls/ca.crt"
+    export CORE_PEER_MSPCONFIGPATH="$NETWORK_DIR/organizations/peerOrganizations/centralbank.cbdc.com/users/Admin@centralbank.cbdc.com/msp"
+    export CORE_PEER_ADDRESS="localhost:7051"
+    
+    # 查询交易历史
+    peer channel getinfo -c "$channel_name"
+    
+    print_message $BLUE "尝试获取区块详情..."
+    peer channel fetch newest "$tx_id.block" -c "$channel_name"
+    
+    if [ -f "$tx_id.block" ]; then
+        print_message $GREEN "✓ 区块文件已下载: $tx_id.block"
+        print_message $BLUE "解析区块文件..."
+        configtxlator proto_decode --input "$tx_id.block" --type common.Block --output "$tx_id.json"
+        
+        if [ -f "$tx_id.json" ]; then
+            print_message $GREEN "✓ 区块解析成功，详情保存在: $tx_id.json"
+            print_message $BLUE "区块摘要："
+            jq '.header' "$tx_id.json" 2>/dev/null || cat "$tx_id.json"
+        fi
+        
+        # 清理临时文件
+        rm -f "$tx_id.block" "$tx_id.json"
+    else
+        print_message $YELLOW "⚠ 无法获取指定的交易历史，请检查交易ID是否正确"
+    fi
+}
+
+# ============ 主命令处理 ============
+
+# 显示主帮助信息
+show_help() {
+    echo "CBDC 银行数字货币网络管理脚本"
+    echo ""
+    echo "用法: $0 <模块> <命令> [参数...]"
+    echo ""
+    echo "模块:"
+    echo "  network     网络管理（设置、启动、停止、清理等）"
+    echo "  org         组织管理（用户、节点管理等）"
+    echo "  chaincode   链码管理（打包、安装、部署等）"
+    echo "  tx          交易管理（调用、查询等）"
+    echo ""
+    echo "快速开始:"
+    echo "  $0 network setup     完整设置网络"
+    echo "  $0 network start     启动网络"
+    echo "  $0 org list         查看所有组织"
+    echo "  $0 chaincode list   查看所有链码"
+    echo ""
+    echo "详细帮助:"
+    echo "  $0 network help     网络管理命令帮助"
+    echo "  $0 org help         组织管理命令帮助"
+    echo "  $0 chaincode help   链码管理命令帮助"
+    echo "  $0 tx help          交易管理命令帮助"
+    echo ""
+    echo "兼容性命令（保持向后兼容）:"
+    echo "  $0 setup            等同于 $0 network setup"
+    echo "  $0 start            等同于 $0 network start"
+    echo "  $0 stop             等同于 $0 network stop"
+    echo "  $0 clean            等同于 $0 network clean"
+    echo "  $0 status           等同于 $0 network status"
+}
+
 # 主函数
 main() {
-    case "${1:-help}" in
+    local command=${1:-help}
+    
+    case "$command" in
+        "network")
+            shift
+            handle_network_command "$@"
+            ;;
+        "org")
+            shift
+            handle_org_command "$@"
+            ;;
+        "chaincode")
+            shift
+            handle_chaincode_command "$@"
+            ;;
+        "tx")
+            shift
+            handle_tx_command "$@"
+            ;;
+        # 保持向后兼容的命令
         "setup")
             check_prerequisites
             shift
@@ -749,7 +1407,7 @@ main() {
             show_help
             ;;
         *)
-            print_message $RED "未知命令: $1"
+            print_message $RED "未知命令: $command"
             show_help
             exit 1
             ;;

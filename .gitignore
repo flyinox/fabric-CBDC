@@ -76,3 +76,8 @@ test-network/
 bin/
 
 channel-artifacts/
+
+compose/docker-compose.yaml
+configtx/configtx.yaml
+configtx/network-config.json
+crypto-config.yaml
