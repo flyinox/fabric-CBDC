@@ -571,14 +571,66 @@ clean_network() {
     docker volume prune -f
     
     # 清理生成的文件
-    print_message $BLUE "清理生成的配置文件..."
+    cleanup_files_only
+    
+    print_message $GREEN "✓ 网络资源清理完成"
+}
+
+# 仅清理生成的文件（不停止容器）
+cleanup_files_only() {
+    print_message $BLUE "清理所有生成的文件..."
+    
+    # 清理主要生成的配置文件
+    print_message $BLUE "清理配置文件..."
     rm -rf "$NETWORK_DIR/configtx/network-config.json"
     rm -rf "$NETWORK_DIR/configtx/configtx.yaml"
     rm -rf "$NETWORK_DIR/compose/docker-compose.yaml"
-    rm -rf "$NETWORK_DIR/channel-artifacts"
+    rm -rf "$NETWORK_DIR/crypto-config.yaml"
+    
+    # 清理证书和密钥
+    print_message $BLUE "清理证书和密钥..."
     rm -rf "$NETWORK_DIR/organizations"
     
-    print_message $GREEN "✓ 网络资源清理完成"
+    # 清理频道配置
+    print_message $BLUE "清理频道配置..."
+    rm -rf "$NETWORK_DIR/channel-artifacts"
+    
+    # 清理临时日志文件
+    print_message $BLUE "清理临时日志文件..."
+    rm -f /tmp/join_output.log 2>/dev/null || true
+    rm -f /tmp/bank_join_output.log 2>/dev/null || true
+    
+    # 清理可能的备份文件
+    print_message $BLUE "清理备份文件..."
+    find "$NETWORK_DIR" -name "*.bak" -type f -delete 2>/dev/null || true
+    find "$NETWORK_DIR" -name "*~" -type f -delete 2>/dev/null || true
+    
+    # 清理可能的隐藏文件
+    find "$NETWORK_DIR/configtx" -name ".DS_Store" -type f -delete 2>/dev/null || true
+    find "$NETWORK_DIR/compose" -name ".DS_Store" -type f -delete 2>/dev/null || true
+    
+    print_message $GREEN "✓ 所有生成的文件清理完成"
+    
+    # 显示清理后的状态
+    print_message $BLUE "清理后状态："
+    if [ ! -f "$NETWORK_DIR/configtx/network-config.json" ]; then
+        print_message $GREEN "  ✓ 网络配置文件已清理"
+    fi
+    if [ ! -f "$NETWORK_DIR/configtx/configtx.yaml" ]; then
+        print_message $GREEN "  ✓ Fabric配置文件已清理"
+    fi
+    if [ ! -f "$NETWORK_DIR/compose/docker-compose.yaml" ]; then
+        print_message $GREEN "  ✓ Docker配置文件已清理"
+    fi
+    if [ ! -f "$NETWORK_DIR/crypto-config.yaml" ]; then
+        print_message $GREEN "  ✓ 加密配置文件已清理"
+    fi
+    if [ ! -d "$NETWORK_DIR/organizations" ]; then
+        print_message $GREEN "  ✓ 证书和密钥已清理"
+    fi
+    if [ ! -d "$NETWORK_DIR/channel-artifacts" ]; then
+        print_message $GREEN "  ✓ 频道配置已清理"
+    fi
 }
 
 # 显示网络状态
@@ -628,7 +680,8 @@ show_help() {
     echo "  setup [频道名] [央行名] [银行1] [银行2] ...  完整设置网络（生成配置+加密材料）"
     echo "  start                                         启动网络"
     echo "  stop                                          停止网络"
-    echo "  clean                                         清理网络资源"
+    echo "  clean                                         清理网络资源（停止容器+删除所有文件）"
+    echo "  cleanup-files                                 仅清理生成的文件（不停止容器）"
     echo "  status                                        显示网络状态"
     echo "  help                                          显示帮助信息"
     echo ""
@@ -636,18 +689,35 @@ show_help() {
     echo "  1. $0 setup                                   完整设置网络（配置+加密材料）"
     echo "  2. $0 start                                   启动网络容器"
     echo ""
+    echo "清理命令区别:"
+    echo "  clean         停止所有容器，删除卷，清理所有生成的文件（完全重置）"
+    echo "  cleanup-files 仅清理生成的文件，保持容器运行（重新生成配置）"
+    echo ""
     echo "示例:"
     echo "  $0 setup                                      交互式完整设置"
     echo "  $0 setup cbdc-channel CentralBank ICBC CCB   命令行完整设置"
     echo "  $0 start                                      启动网络"
     echo "  $0 status                                     查看状态"
+    echo "  $0 cleanup-files                              仅清理生成的配置文件"
     echo "  $0 stop                                       停止网络"
-    echo "  $0 clean                                      清理所有数据"
+    echo "  $0 clean                                      完全清理所有数据"
+    echo ""
+    echo "清理的文件包括:"
+    echo "  - 网络配置文件 (configtx/network-config.json)"
+    echo "  - Fabric配置文件 (configtx/configtx.yaml)"
+    echo "  - Docker配置文件 (compose/docker-compose.yaml)"
+    echo "  - 加密配置文件 (crypto-config.yaml)"
+    echo "  - 组织证书和密钥 (organizations/)"
+    echo "  - 频道配置 (channel-artifacts/)"
+    echo "  - 临时日志文件 (/tmp/*_output.log)"
+    echo "  - 备份文件 (*.bak, *~)"
+    echo "  - 系统隐藏文件 (.DS_Store)"
     echo ""
     echo "注意事项:"
     echo "  - setup 命令需要安装 Hyperledger Fabric 二进制文件"
     echo "  - 现在只需要运行 setup -> start 两个步骤即可完成部署"
     echo "  - 使用 clean 命令会删除所有生成的文件和数据"
+    echo "  - 使用 cleanup-files 命令可以在保持容器运行的情况下重新生成配置"
     echo ""
 }
 
@@ -668,6 +738,9 @@ main() {
             ;;
         "clean")
             clean_network
+            ;;
+        "cleanup-files")
+            cleanup_files_only
             ;;
         "status")
             show_status
