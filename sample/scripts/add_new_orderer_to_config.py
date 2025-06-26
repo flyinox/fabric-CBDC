@@ -40,9 +40,8 @@ def _log_update(name: str, old: Any, new: Any) -> None:
     print('=' * 50)
 
 
-def _calculate_bft_quorum(n: int) -> int:
-    f = int((n - 1) / 3)
-    return int(math.ceil((n + f + 1) / 2))
+def _calculate_raft_quorum(n: int) -> int:
+    return int(math.ceil((n + 1) / 2))
 
 
 def update_config(config_path: str, updated_config_path: str, address: str, identity_pem_path: str, server_pem_path: str, client_pem_path: str):
@@ -70,7 +69,7 @@ def update_config(config_path: str, updated_config_path: str, address: str, iden
     rule = config['channel_group']['groups']['Orderer']['policies']['BlockValidation']['policy']['value'][
         'rule']
     rule_before_update = copy.deepcopy(rule)
-    rule['n_out_of']['n'] = _calculate_bft_quorum(new_orderers_count)
+    rule['n_out_of']['n'] = _calculate_raft_quorum(new_orderers_count)
     rule['n_out_of']['rules'].append({'signed_by': new_orderers_count - 1})
     _log_update('block validation rules', rule_before_update, rule)
 

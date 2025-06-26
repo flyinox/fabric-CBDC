@@ -26,7 +26,6 @@ function printHelp() {
     println
     println "    Flags:"
     println "    -ca - Use Certificate Authorities to generate network crypto material"
-    println "    -bft - Use Orderers with consensus type BFT (Not available in Fabric v2.x)"
     println "    -c <channel name> - Name of channel to create (defaults to \"mychannel\")"
     println "    -s <dbtype> - Peer state database to deploy: goleveldb (default) or couchdb"
     println "    -r <max retry> - CLI times out after certain number of attempts (defaults to 5)"
@@ -37,19 +36,15 @@ function printHelp() {
     println
     println " Possible Mode and flag combinations"
     println "   \033[0;32mup\033[0m -ca -r -d -s -verbose"
-    println "   \033[0;32mup\033[0m -bft -r -d -s -verbose"
     println "   \033[0;32mup createChannel\033[0m -ca -c -r -d -s -verbose"
-    println "   \033[0;32mup createChannel\033[0m -bft -c -r -d -s -verbose"
     println
     println " Examples:"
     println "   network.sh up createChannel -ca -c mychannel -s couchdb "
-    println "   network.sh up createChannel -bft -c mychannel -s couchdb "
   elif [ "$USAGE" == "createChannel" ]; then
     println "Usage: "
     println "  network.sh \033[0;32mcreateChannel\033[0m [Flags]"
     println
     println "    Flags:"
-    println "    -bft - Use Orderers with consensus type BFT (Not available in Fabric v2.x)"
     println "    -c <channel name> - Name of channel to create (defaults to \"mychannel\")"
     println "    -r <max retry> - CLI times out after certain number of attempts (defaults to 5)"
     println "    -d <delay> - CLI delays for a certain number of seconds (defaults to 3)"
@@ -58,11 +53,10 @@ function printHelp() {
     println "    -h - Print this message"
     println
     println " Possible Mode and flag combinations"
-    println "   \033[0;32mcreateChannel\033[0m -bft -c -r -d -verbose"
+    println "   \033[0;32mcreateChannel\033[0m -c -r -d -verbose"
     println
     println " Examples:"
     println "   network.sh createChannel -c channelName"
-    println "   network.sh createChannel -bft"
   elif [ "$USAGE" == "deployCC" ]; then
     println "Usage: "
     println "  network.sh \033[0;32mdeployCC\033[0m [Flags]"
@@ -163,7 +157,6 @@ function printHelp() {
     println
     println "    Used with \033[0;32mnetwork.sh up\033[0m, \033[0;32mnetwork.sh createChannel\033[0m:"
     println "    -ca - Use Certificate Authorities to generate network crypto material"
-    println "    -bft - Use Orderers with consensus type BFT (Not available in Fabric v2.x)"
     println "    -c <channel name> - Name of channel to create (defaults to \"mychannel\")"
     println "    -s <dbtype> - Peer state database to deploy: goleveldb (default) or couchdb"
     println "    -r <max retry> - CLI times out after certain number of attempts (defaults to 5)"
@@ -185,10 +178,8 @@ function printHelp() {
     println
     println " Possible Mode and flag combinations"
     println "   \033[0;32mup\033[0m -ca -r -d -s -verbose"
-    println "   \033[0;32mup\033[0m -bft -r -d -s -verbose"
     println "   \033[0;32mup createChannel\033[0m -ca -c -r -d -s -verbose"
-    println "   \033[0;32mup createChannel\033[0m -bft -c -r -d -s -verbose"
-    println "   \033[0;32mcreateChannel\033[0m -bft -c -r -d -verbose"
+    println "   \033[0;32mcreateChannel\033[0m -c -r -d -verbose"
     println "   \033[0;32mdeployCC\033[0m -ccn -ccl -ccv -ccs -ccp -cci -r -d -verbose"
     println
     println " Examples:"
