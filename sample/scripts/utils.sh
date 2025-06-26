@@ -64,7 +64,7 @@ function printHelp() {
     println "    Flags:"
     println "    -c <channel name> - Name of channel to deploy chaincode to"
     println "    -ccn <name> - Chaincode name."
-    println "    -ccl <language> - Programming language of chaincode to deploy: go, java, javascript, typescript"
+    println "    -ccl <language> - Programming language of chaincode to deploy: go"
     println "    -ccv <version>  - Chaincode version. 1.0 (default), v2, version3.x, etc"
     println "    -ccs <sequence>  - Chaincode definition sequence.  Must be auto (default) or an integer, 1 , 2, 3, etc"
     println "    -ccp <path>  - File path to the chaincode."
@@ -78,8 +78,8 @@ function printHelp() {
     println "   \033[0;32mdeployCC\033[0m -ccn -ccl -ccv -ccs -ccp -cci -r -d -verbose"
     println
     println " Examples:"
-    println "   network.sh deployCC -ccn basic -ccp ../asset-transfer-basic/chaincode-javascript/ ./ -ccl javascript"
-    println "   network.sh deployCC -ccn mychaincode -ccp ./user/mychaincode -ccv 1 -ccl javascript"
+    println "   network.sh deployCC -ccn basic -ccp ../asset-transfer-basic/chaincode-go/ -ccl go"
+    println "   network.sh deployCC -ccn mychaincode -ccp ./user/mychaincode -ccv 1 -ccl go"
   elif [ "$USAGE" == "deployCCAAS" ]; then
     println "Usage: "
     println "  network.sh \033[0;32mdeployCCAAS\033[0m [Flags]"
@@ -101,8 +101,8 @@ function printHelp() {
     println "   \033[0;32mdeployCC\033[0m -ccn -ccv -ccs -ccp -cci -r -d -verbose"
     println
     println " Examples:"
-    println "   network.sh deployCCAAS  -ccn basicj -ccp ../asset-transfer-basic/chaincode-java"
-    println "   network.sh deployCCAAS  -ccn basict -ccp ../asset-transfer-basic/chaincode-typescript -ccaasdocker false" 
+    println "   network.sh deployCCAAS  -ccn basic -ccp ../asset-transfer-basic/chaincode-go"
+    println "   network.sh deployCCAAS  -ccn basic -ccp ../asset-transfer-basic/chaincode-go -ccaasdocker false" 
   elif [ "$USAGE" == "cc" ] ; then
     println "Usage: "
     println "  network.sh cc <Mode> [Flags]"
@@ -117,7 +117,7 @@ function printHelp() {
     println "    -org <number>     - Org number for the executing the command (1,2,etc) (default is 1)."    
     println "    -c <channel name> - Name of channel"
     println "    -ccn <name>       - Chaincode name."
-    println "    -ccl <language>   - Programming language of chaincode to deploy: go, java, javascript, typescript"
+    println "    -ccl <language>   - Programming language of chaincode to deploy: go"
     println "    -ccv <version>    - Chaincode version. 1.0 (default), v2, version3.x, etc"
     println "    -ccp <path>       - File path to the chaincode."
     println "    -ccic <string>    - Chaincode invoke constructor."
@@ -166,7 +166,7 @@ function printHelp() {
     println "    Used with \033[0;32mnetwork.sh deployCC\033[0m:"
     println "    -c <channel name> - Name of channel to deploy chaincode to"
     println "    -ccn <name> - Chaincode name."
-    println "    -ccl <language> - Programming language of the chaincode to deploy: go, java, javascript, typescript"
+    println "    -ccl <language> - Programming language of the chaincode to deploy: go"
     println "    -ccv <version>  - Chaincode version. 1.0 (default), v2, version3.x, etc"
     println "    -ccs <sequence>  - Chaincode definition sequence.  Must be auto (default) or an integer, 1 , 2, 3, etc"
     println "    -ccp <path>  - File path to the chaincode."
@@ -185,8 +185,8 @@ function printHelp() {
     println " Examples:"
     println "   network.sh up createChannel -ca -c mychannel -s couchdb"
     println "   network.sh createChannel -c channelName"
-    println "   network.sh deployCC -ccn basic -ccp ../asset-transfer-basic/chaincode-javascript/ -ccl javascript"
-    println "   network.sh deployCC -ccn mychaincode -ccp ./user/mychaincode -ccv 1 -ccl javascript"
+    println "   network.sh deployCC -ccn basic -ccp ../asset-transfer-basic/chaincode-go/ -ccl go"
+    println "   network.sh deployCC -ccn mychaincode -ccp ./user/mychaincode -ccv 1 -ccl go"
     println
     println " NOTE: Default settings can be changed in network.config"
   fi

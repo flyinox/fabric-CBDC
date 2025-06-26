@@ -284,12 +284,12 @@ peer:
         # rootcert.file represents the trusted root certificate chain used for verifying certificates
         # of other nodes during outbound connections.
         # It is not required to be set, but can be used to augment the set of TLS CA certificates
-        # available from the MSPs of each channel’s configuration.
+        # available from the MSPs of each channel's configuration.
         rootcert:
             file: tls/ca.crt
         # If mutual TLS is enabled, clientRootCAs.files contains a list of additional root certificates
         # used for verifying certificates of client connections.
-        # It augments the set of TLS CA certificates available from the MSPs of each channel’s configuration.
+        # It augments the set of TLS CA certificates available from the MSPs of each channel's configuration.
         # Minimally, set your organization's TLS CA root certificate so that the peer can receive join channel requests.
         clientRootCAs:
             files:
@@ -567,17 +567,6 @@ chaincode:
 
         # whether or not golang chaincode should be linked dynamically
         dynamicLink: false
-
-    java:
-        # This is an image based on java:openjdk-8 with addition compiler
-        # tools added for java shim layer packaging.
-        # This image is packed with shim layer libraries that are necessary
-        # for Java chaincode runtime.
-        runtime: $(DOCKER_NS)/fabric-javaenv:2.5
-
-    node:
-        # This is an image based on node:$(NODE_VER)-alpine
-        runtime: $(DOCKER_NS)/fabric-nodeenv:2.5
 
     # List of directories to treat as external builders and launchers for
     # chaincode. The external builder detection processing will iterate over the

@@ -45,31 +45,8 @@ if [ "$CC_SRC_LANGUAGE" = "go" ]; then
   popd
   successln "Finished vendoring Go dependencies"
 
-elif [ "$CC_SRC_LANGUAGE" = "java" ]; then
-  CC_RUNTIME_LANGUAGE=java
-
-  infoln "Compiling Java code..."
-  pushd $CC_SRC_PATH
-  ./gradlew installDist
-  popd
-  successln "Finished compiling Java code"
-  CC_SRC_PATH=$CC_SRC_PATH/build/install/$CC_NAME
-
-elif [ "$CC_SRC_LANGUAGE" = "javascript" ]; then
-  CC_RUNTIME_LANGUAGE=node
-
-elif [ "$CC_SRC_LANGUAGE" = "typescript" ]; then
-  CC_RUNTIME_LANGUAGE=node
-
-  infoln "Compiling TypeScript code into JavaScript..."
-  pushd $CC_SRC_PATH
-  npm install
-  npm run build
-  popd
-  successln "Finished compiling TypeScript code into JavaScript"
-
 else
-  fatalln "The chaincode language ${CC_SRC_LANGUAGE} is not supported by this script. Supported chaincode languages are: go, java, javascript, and typescript"
+  fatalln "The chaincode language ${CC_SRC_LANGUAGE} is not supported by this script. Supported chaincode language is: go"
   exit 1
 fi
 
