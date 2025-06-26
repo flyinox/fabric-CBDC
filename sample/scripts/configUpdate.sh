@@ -7,10 +7,6 @@
 
 # import utils
 # test network home var targets to test network folder
-# the reason we use a var here is considering with org3 specific folder
-# when invoking this for org3 as test-network/scripts/org3-scripts
-# the value is changed from default as $PWD(test-network)
-# to .. as relative path to make the import works
 TEST_NETWORK_HOME=${TEST_NETWORK_HOME:-${PWD}}
 . ${TEST_NETWORK_HOME}/scripts/envVar.sh
 
