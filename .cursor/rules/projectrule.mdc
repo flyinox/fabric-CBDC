@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+请注意docker-compose.yaml, configtx.yaml, crypto-config.yaml 是模板文件自动生成的，如果需要更改这些文件，那么注意应该直接更改 sh 中的模板。
