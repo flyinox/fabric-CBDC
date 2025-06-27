@@ -8,7 +8,7 @@
 SPDX-License-Identifier: Apache-2.0
 */
 
-package chaincode
+package main
 
 import (
 	"encoding/json"
@@ -56,12 +56,12 @@ func (s *SmartContract) Mint(ctx contractapi.TransactionContextInterface, amount
 		return errors.New("Contract options need to be set before calling any function, call Initialize() to initialize contract")
 	}
 
-	// 检查铸币者授权 - 仅有org1可以铸造新代币
+	// 检查铸币者授权 - 仅有CentralMSP可以铸造新代币
 	clientMSPID, err := ctx.GetClientIdentity().GetMSPID()
 	if err != nil {
 		return fmt.Errorf("failed to get MSPID: %v", err)
 	}
-	if clientMSPID != "Org1MSP" {
+	if clientMSPID != "CentralMSP" {
 		return errors.New("client is not authorized to mint new tokens")
 	}
 
@@ -153,12 +153,12 @@ func (s *SmartContract) Burn(ctx contractapi.TransactionContextInterface, amount
 	if !initialized {
 		return errors.New("Contract options need to be set before calling any function, call Initialize() to initialize contract")
 	}
-	// 检查铸币者授权 - 仅有org1可以销毁代币
+	// 检查铸币者授权 - 仅有CentralMSP可以销毁代币
 	clientMSPID, err := ctx.GetClientIdentity().GetMSPID()
 	if err != nil {
 		return fmt.Errorf("failed to get MSPID: %v", err)
 	}
-	if clientMSPID != "Org1MSP" {
+	if clientMSPID != "CentralMSP" {
 		return errors.New("client is not authorized to burn tokens")
 	}
 
@@ -594,12 +594,12 @@ func (s *SmartContract) Symbol(ctx contractapi.TransactionContextInterface) (str
 // 参数 {String} decimals 用于代币操作的小数位数
 func (s *SmartContract) Initialize(ctx contractapi.TransactionContextInterface, name string, symbol string, decimals string) (bool, error) {
 
-	// 检查铸币者授权 - 此示例假设 Org1 是有权初始化合约的央行
+	// 检查铸币者授权 - 此示例假设 CentralMSP 是有权初始化合约的央行
 	clientMSPID, err := ctx.GetClientIdentity().GetMSPID()
 	if err != nil {
 		return false, fmt.Errorf("failed to get MSPID: %v", err)
 	}
-	if clientMSPID != "Org1MSP" {
+	if clientMSPID != "CentralMSP" {
 		return false, fmt.Errorf("client is not authorized to initialize contract")
 	}
 

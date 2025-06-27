@@ -20,7 +20,7 @@ function loadNetworkConfig() {
     NETWORK_ORGS=($(jq -r '.network.organizations[].name' "$config_file"))
     NETWORK_ORG_MSPS=($(jq -r '.network.organizations[].msp_id' "$config_file"))
     NETWORK_ORG_DOMAINS=($(jq -r '.network.organizations[].domain' "$config_file"))
-    NETWORK_ORG_PORTS=($(jq -r '.network.organizations[].port' "$config_file"))
+    NETWORK_ORG_PORTS=($(jq -r '.network.organizations[].peer.port' "$config_file"))
     
     return 0
   else

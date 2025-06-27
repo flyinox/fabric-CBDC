@@ -291,10 +291,12 @@ EOF
       - CORE_METRICS_PROVIDER=prometheus
       - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0${org_lower}"}
       - CORE_CHAINCODE_EXECUTETIMEOUT=300s
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabric_test
     volumes:
       - ../organizations/peerOrganizations/${org_domain}/peers/peer0.${org_domain}:/etc/hyperledger/fabric
       - peer0.${org_domain}:/var/hyperledger/production
       - ../compose/docker/peercfg/core.yaml:/etc/hyperledger/peercfg/core.yaml
+      - /var/run/docker.sock:/var/run/docker.sock
     working_dir: /root
     command: peer node start
     ports:
@@ -957,19 +959,18 @@ function networkDown() {
 
   # Don't remove the generated artifacts -- note, the ledgers are always removed
   if [ "$MODE" != "restart" ]; then
-    # Bring down the network, deleting the volumes
-    if [ "$NETWORK_CONFIG_LOADED" = true ]; then
-      # Dynamic volume cleanup
-      local volumes_to_remove="docker_orderer.${NETWORK_ORDERER_DOMAIN}"
-      for i in $(seq 0 $((NETWORK_ORGS_COUNT - 1))); do
-        local org_domain="${NETWORK_ORG_DOMAINS[$i]}"
-        volumes_to_remove="$volumes_to_remove docker_peer0.${org_domain}"
-      done
-      ${CONTAINER_CLI} volume rm $volumes_to_remove 2>/dev/null || true
+    # Enhanced volume cleanup - remove all fabric-related volumes
+    infoln "🧹 Cleaning up Fabric data volumes..."
+    
+    # Get all fabric-related volumes and remove them
+    local fabric_volumes=$(${CONTAINER_CLI} volume ls -q | grep -E "(orderer|peer)" || true)
+    if [ ! -z "$fabric_volumes" ]; then
+      echo "$fabric_volumes" | xargs ${CONTAINER_CLI} volume rm 2>/dev/null || true
+      successln "✅ Fabric data volumes cleaned"
     else
-      # Default volume cleanup
-      ${CONTAINER_CLI} volume rm docker_orderer.example.com docker_peer0.org1.example.com docker_peer0.org2.example.com
+      infoln "No Fabric volumes found to clean"
     fi
+    
     #Cleanup the chaincode containers
     clearContainers
     #Cleanup images
@@ -983,6 +984,44 @@ function networkDown() {
     # remove channel and script artifacts
     ${CONTAINER_CLI} run --rm -v "$(pwd):/data" busybox sh -c 'cd /data && rm -rf channel-artifacts log.txt *.tar.gz'
   fi
+}
+
+# Completely clean network (down + volume cleanup + artifacts cleanup)
+function networkClean() {
+  warnln "🚨 This will completely remove all network data, volumes, and artifacts!"
+  printf "Are you sure you want to continue? [y/N]: "
+  read -r response
+  case "$response" in
+    [yY][eE][sS]|[yY]) 
+      infoln "🧹 Starting complete network cleanup..."
+      ;;
+    *)
+      infoln "Cleanup cancelled."
+      return 0
+      ;;
+  esac
+  
+  # First, bring down the network
+  networkDown
+  
+  # Additional cleanup: remove ALL fabric-related volumes (even if not caught by networkDown)
+  infoln "🧹 Performing deep volume cleanup..."
+  local all_fabric_volumes=$(${CONTAINER_CLI} volume ls -q | grep -E "(compose_|docker_)?(orderer|peer)" || true)
+  if [ ! -z "$all_fabric_volumes" ]; then
+    echo "$all_fabric_volumes" | xargs ${CONTAINER_CLI} volume rm -f 2>/dev/null || true
+    successln "✅ All Fabric volumes removed"
+  fi
+  
+  # Remove any remaining fabric containers (including stopped ones)
+  infoln "🧹 Removing any remaining Fabric containers..."
+  local fabric_containers=$(${CONTAINER_CLI} ps -aq --filter "ancestor=hyperledger/fabric-peer" --filter "ancestor=hyperledger/fabric-orderer" --filter "ancestor=hyperledger/fabric-ccenv" || true)
+  if [ ! -z "$fabric_containers" ]; then
+    echo "$fabric_containers" | xargs ${CONTAINER_CLI} rm -f 2>/dev/null || true
+    successln "✅ Remaining Fabric containers removed"
+  fi
+  
+  successln "🎉 Complete network cleanup finished!"
+  infoln "You can now run './network.sh up' for a fresh start."
 }
 
 # Setup network configuration interactively
@@ -1372,6 +1411,9 @@ elif [ "$MODE" == "createChannel" ]; then
 elif [ "$MODE" == "down" ]; then
   infoln "Stopping network"
   networkDown
+elif [ "$MODE" == "clean" ]; then
+  infoln "Completely cleaning network (containers + volumes + artifacts)"
+  networkClean
 elif [ "$MODE" == "restart" ]; then
   infoln "Restarting network"
   networkDown

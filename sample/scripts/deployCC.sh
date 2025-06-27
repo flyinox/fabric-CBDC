@@ -78,43 +78,41 @@ function readNetworkConfig() {
       exit 1
     fi
     
-    # 读取组织信息
-    NETWORK_ORGS=($(jq -r '.network.organizations[].name' "$config_file"))
-    NETWORK_ORG_MSPS=($(jq -r '.network.organizations[].msp_id' "$config_file"))
+    # 读取组织信息 - 注意：不要覆盖envVar.sh中已经设置的变量
+    # 这些变量已经在envVar.sh的loadNetworkConfig中正确设置了
+    # NETWORK_ORGS, NETWORK_ORG_MSPS, NETWORK_ORG_PORTS, NETWORK_ORG_DOMAINS 等
     
-    if [[ ${#NETWORK_ORGS[@]} -eq 0 ]]; then
+    # 只检查组织数量以确保配置有效
+    local temp_orgs=($(jq -r '.network.organizations[].name' "$config_file"))
+    
+    if [[ ${#temp_orgs[@]} -eq 0 ]]; then
       errorln "No organizations found in $config_file"
       exit 1
     fi
     
-    infoln "Found ${#NETWORK_ORGS[@]} organizations: ${NETWORK_ORGS[*]}"
+    infoln "Found ${#temp_orgs[@]} organizations: ${temp_orgs[*]}"
     return 0
   else
     warnln "Network config file $config_file not found, using default org1/org2 configuration"
-    NETWORK_ORGS=("org1" "org2")
-    NETWORK_ORG_MSPS=("Org1MSP" "Org2MSP")
+    # 这里也不要覆盖，让envVar.sh处理默认配置
     return 1
   fi
 }
 
-# 生成MSP检查字符串
-function generateMspCheckString() {
+# 生成MSP检查参数数组
+function generateMspCheckArgs() {
   local approved_index=$1
-  local msp_check=""
+  local msp_args=()
   
   for i in "${!NETWORK_ORG_MSPS[@]}"; do
     local status="false"
     if [[ $i -le $approved_index ]]; then
       status="true"
     fi
-    
-    if [[ -n "$msp_check" ]]; then
-      msp_check="$msp_check "
-    fi
-    msp_check="$msp_check\"${NETWORK_ORG_MSPS[$i]}\": $status"
+    msp_args+=("\"${NETWORK_ORG_MSPS[$i]}\": $status")
   done
   
-  echo "$msp_check"
+  echo "${msp_args[@]}"
 }
 
 # 动态获取组织索引（用于向下兼容envVar.sh）
@@ -130,7 +128,8 @@ function getOrgIndex() {
   done
   
   # 如果没找到，尝试默认映射
-  case "${org_name,,}" in
+      local org_name_lower=$(echo "${org_name}" | tr '[:upper:]' '[:lower:]')
+    case "${org_name_lower}" in
     "org1"|"central") echo 1 ;;
     "org2"|"a1") echo 2 ;;
     "org3"|"b1") echo 3 ;;
@@ -170,16 +169,16 @@ for i in "${!NETWORK_ORGS[@]}"; do
   
   infoln "Approving chaincode definition for ${org_name}..."
   approveForMyOrg $org_index
-  
-  # 检查commit readiness
-  msp_check=$(generateMspCheckString $i)
-  infoln "Checking commit readiness after ${org_name} approval..."
-  
-  # 在所有组织上检查
-  for j in "${!NETWORK_ORGS[@]}"; do
-    check_org_index=$((j+1))
-    checkCommitReadiness $check_org_index "$msp_check"
-  done
+done
+
+## check commit readiness after all approvals
+msp_args=($(generateMspCheckArgs $((${#NETWORK_ORGS[@]}-1))))
+infoln "Checking commit readiness after all approvals..."
+
+# 检查所有组织的commit readiness
+for i in "${!NETWORK_ORGS[@]}"; do
+  org_index=$((i+1))
+  checkCommitReadiness $org_index "${msp_args[@]}"
 done
 
 ## now that we know for sure all orgs have approved, commit the definition
