@@ -20,9 +20,19 @@ fetchChannelConfig() {
 
   setGlobals $ORG
 
+  # 动态获取orderer hostname
+  local orderer_hostname="orderer.example.com"
+  if [[ -f "network-config.json" ]]; then
+    local orderer_domain=$(jq -r '.network.orderer.domain // "example.com"' "network-config.json")
+    orderer_hostname="orderer.${orderer_domain}"
+    infoln "Using dynamic orderer hostname: ${orderer_hostname}"
+  else
+    warnln "Using default orderer hostname: ${orderer_hostname}"
+  fi
+
   infoln "Fetching the most recent configuration block for the channel"
   set -x
-  peer channel fetch config ${TEST_NETWORK_HOME}/channel-artifacts/config_block.pb -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com -c $CHANNEL --tls --cafile "$ORDERER_CA"
+  peer channel fetch config ${TEST_NETWORK_HOME}/channel-artifacts/config_block.pb -o localhost:7050 --ordererTLSHostnameOverride ${orderer_hostname} -c $CHANNEL --tls --cafile "$ORDERER_CA"
   { set +x; } 2>/dev/null
 
   infoln "Decoding config block to JSON and isolating config to ${OUTPUT}"

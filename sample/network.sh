@@ -22,6 +22,494 @@ export PATH=${ROOTDIR}/../bin:${PWD}/../bin:$PATH
 export FABRIC_CFG_PATH=${PWD}/configtx
 export VERBOSE=false
 
+# Global variables for network configuration
+NETWORK_CONFIG_LOADED=false
+NETWORK_CHANNEL_NAME=""
+NETWORK_ORDERER_NAME=""
+NETWORK_ORDERER_MSP_ID=""
+NETWORK_ORDERER_DOMAIN=""
+NETWORK_ORDERER_PORT=""
+NETWORK_ORDERER_OPERATIONS_PORT=""
+NETWORK_ORGS_COUNT=0
+NETWORK_ORG_NAMES=()
+NETWORK_ORG_MSP_IDS=()
+NETWORK_ORG_DOMAINS=()
+NETWORK_ORG_PORTS=()
+NETWORK_ORG_OPERATIONS_PORTS=()
+NETWORK_ORG_COUCHDB_PORTS=()
+
+# Function to read network configuration from JSON file
+function readNetworkConfig() {
+  local config_file="network-config.json"
+  
+  if [ ! -f "$config_file" ]; then
+    warnln "Network configuration file $config_file not found. Using default configuration."
+    return 1
+  fi
+  
+  # Validate JSON format
+  if ! jq --version > /dev/null 2>&1; then
+    warnln "jq not found. Please install jq to use network-config.json. Using default configuration."
+    return 1
+  fi
+  
+  if ! jq empty "$config_file" 2>/dev/null; then
+    fatalln "Invalid JSON format in $config_file"
+  fi
+  
+  # Read configuration values
+  NETWORK_CHANNEL_NAME=$(jq -r '.network.channel_name // "mychannel"' "$config_file")
+  NETWORK_ORDERER_NAME=$(jq -r '.network.orderer.name // "OrdererOrg"' "$config_file")
+  NETWORK_ORDERER_MSP_ID=$(jq -r '.network.orderer.msp_id // "OrdererMSP"' "$config_file")
+  NETWORK_ORDERER_DOMAIN=$(jq -r '.network.orderer.domain // "example.com"' "$config_file")
+  NETWORK_ORDERER_PORT=$(jq -r '.network.orderer.port // 7050' "$config_file")
+  NETWORK_ORDERER_OPERATIONS_PORT=$(jq -r '.network.orderer.operations_port // 9443' "$config_file")
+  
+  # Read organizations
+  NETWORK_ORGS_COUNT=$(jq -r '.network.organizations | length' "$config_file")
+  
+  # Clear arrays
+  NETWORK_ORG_NAMES=()
+  NETWORK_ORG_MSP_IDS=()
+  NETWORK_ORG_DOMAINS=()
+  NETWORK_ORG_PORTS=()
+  NETWORK_ORG_OPERATIONS_PORTS=()
+  NETWORK_ORG_COUCHDB_PORTS=()
+  
+  for i in $(seq 0 $((NETWORK_ORGS_COUNT - 1))); do
+    NETWORK_ORG_NAMES+=("$(jq -r ".network.organizations[$i].name" "$config_file")")
+    NETWORK_ORG_MSP_IDS+=("$(jq -r ".network.organizations[$i].msp_id" "$config_file")")
+    NETWORK_ORG_DOMAINS+=("$(jq -r ".network.organizations[$i].domain" "$config_file")")
+    NETWORK_ORG_PORTS+=("$(jq -r ".network.organizations[$i].peer.port" "$config_file")")
+    NETWORK_ORG_OPERATIONS_PORTS+=("$(jq -r ".network.organizations[$i].peer.operations_port" "$config_file")")
+    NETWORK_ORG_COUCHDB_PORTS+=("$(jq -r ".network.organizations[$i].peer.couchdb_port" "$config_file")")
+  done
+  
+  # Override channel name if specified in config
+  if [ ! -z "$NETWORK_CHANNEL_NAME" ] && [ "$NETWORK_CHANNEL_NAME" != "mychannel" ]; then
+    CHANNEL_NAME="$NETWORK_CHANNEL_NAME"
+  fi
+  
+  NETWORK_CONFIG_LOADED=true
+  
+  infoln "✅ Network configuration loaded from $config_file"
+  infoln "   - Channel: $NETWORK_CHANNEL_NAME"
+  infoln "   - Orderer: $NETWORK_ORDERER_NAME ($NETWORK_ORDERER_MSP_ID)"
+  infoln "   - Organizations: $NETWORK_ORGS_COUNT"
+  for i in $(seq 0 $((NETWORK_ORGS_COUNT - 1))); do
+    infoln "     * ${NETWORK_ORG_NAMES[$i]} (${NETWORK_ORG_MSP_IDS[$i]}) - Port: ${NETWORK_ORG_PORTS[$i]}"
+  done
+  
+  return 0
+}
+
+# Function to generate crypto-config files dynamically
+function generateCryptoConfigs() {
+  # Try to read network config
+  if ! readNetworkConfig; then
+    infoln "Using default crypto configuration"
+    return 0
+  fi
+  
+  infoln "🔑 Generating dynamic crypto-config files..."
+  
+  # Generate orderer crypto config
+  cat > organizations/cryptogen/crypto-config-orderer.yaml << EOF
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+# ---------------------------------------------------------------------------
+# "OrdererOrgs" - Definition of organizations managing orderer nodes  
+# ---------------------------------------------------------------------------
+OrdererOrgs:
+  - Name: ${NETWORK_ORDERER_NAME}
+    Domain: ${NETWORK_ORDERER_DOMAIN}
+    EnableNodeOUs: true
+    # ---------------------------------------------------------------------------
+    # "Specs"
+    # ---------------------------------------------------------------------------
+    Specs:
+      - Hostname: orderer
+        SANS:
+          - localhost
+    # ---------------------------------------------------------------------------
+    # "Users"
+    # ---------------------------------------------------------------------------
+    Users:
+      Count: 1
+EOF
+
+  # Generate peer org crypto configs
+  for i in $(seq 0 $((NETWORK_ORGS_COUNT - 1))); do
+    local org_name="${NETWORK_ORG_NAMES[$i]}"
+    local org_domain="${NETWORK_ORG_DOMAINS[$i]}"
+    local org_lower=$(echo "$org_name" | tr '[:upper:]' '[:lower:]')
+    
+    cat > "organizations/cryptogen/crypto-config-${org_lower}.yaml" << EOF
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+# ---------------------------------------------------------------------------
+# "PeerOrgs" - Definition of organizations managing peer nodes
+# ---------------------------------------------------------------------------
+PeerOrgs:
+  - Name: ${org_name}
+    Domain: ${org_domain}
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS:
+        - localhost
+    Users:
+      Count: 1
+EOF
+  done
+  
+  infoln "✅ Crypto configuration files generated"
+}
+
+# Function to generate compose files dynamically
+function generateComposeFiles() {
+  # Try to read network config
+  if ! readNetworkConfig; then
+    infoln "Using default compose configuration"
+    return 0
+  fi
+  
+  infoln "🐳 Generating dynamic compose files..."
+  
+  # Generate main compose file
+  local compose_file="compose/compose-test-net.yaml"
+  
+  cat > "$compose_file" << EOF
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+version: '3.7'
+
+volumes:
+EOF
+
+  # Add volumes
+  echo "  orderer.${NETWORK_ORDERER_DOMAIN}:" >> "$compose_file"
+  
+  for i in $(seq 0 $((NETWORK_ORGS_COUNT - 1))); do
+    local org_domain="${NETWORK_ORG_DOMAINS[$i]}"
+    echo "  peer0.${org_domain}:" >> "$compose_file"
+  done
+  
+  cat >> "$compose_file" << EOF
+
+networks:
+  test:
+    name: fabric_test
+
+services:
+
+  orderer.${NETWORK_ORDERER_DOMAIN}:
+    container_name: orderer.${NETWORK_ORDERER_DOMAIN}
+    image: hyperledger/fabric-orderer:latest
+    labels:
+      service: hyperledger-fabric
+    environment:
+      - FABRIC_LOGGING_SPEC=INFO
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_LISTENPORT=${NETWORK_ORDERER_PORT}
+      - ORDERER_GENERAL_LOCALMSPID=${NETWORK_ORDERER_MSP_ID}
+      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_GENERAL_BOOTSTRAPMETHOD=none
+      - ORDERER_CHANNELPARTICIPATION_ENABLED=true
+      - ORDERER_ADMIN_TLS_ENABLED=true
+      - ORDERER_ADMIN_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_ADMIN_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_ADMIN_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_ADMIN_TLS_CLIENTROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:7053
+      - ORDERER_OPERATIONS_LISTENADDRESS=orderer.${NETWORK_ORDERER_DOMAIN}:${NETWORK_ORDERER_OPERATIONS_PORT}
+      - ORDERER_METRICS_PROVIDER=prometheus
+    working_dir: /root
+    command: orderer
+    volumes:
+        - ../organizations/ordererOrganizations/${NETWORK_ORDERER_DOMAIN}/orderers/orderer.${NETWORK_ORDERER_DOMAIN}/msp:/var/hyperledger/orderer/msp
+        - ../organizations/ordererOrganizations/${NETWORK_ORDERER_DOMAIN}/orderers/orderer.${NETWORK_ORDERER_DOMAIN}/tls/:/var/hyperledger/orderer/tls
+        - orderer.${NETWORK_ORDERER_DOMAIN}:/var/hyperledger/production/orderer
+    ports:
+      - ${NETWORK_ORDERER_PORT}:${NETWORK_ORDERER_PORT}
+      - 7053:7053
+      - ${NETWORK_ORDERER_OPERATIONS_PORT}:${NETWORK_ORDERER_OPERATIONS_PORT}
+    networks:
+      - test
+
+EOF
+
+  # Add peer services
+  for i in $(seq 0 $((NETWORK_ORGS_COUNT - 1))); do
+    local org_name="${NETWORK_ORG_NAMES[$i]}"
+    local org_msp_id="${NETWORK_ORG_MSP_IDS[$i]}"
+    local org_domain="${NETWORK_ORG_DOMAINS[$i]}"
+    local org_port="${NETWORK_ORG_PORTS[$i]}"
+    local org_ops_port="${NETWORK_ORG_OPERATIONS_PORTS[$i]}"
+    local org_lower=$(echo "$org_name" | tr '[:upper:]' '[:lower:]')
+    
+    cat >> "$compose_file" << EOF
+  peer0.${org_domain}:
+    container_name: peer0.${org_domain}
+    image: hyperledger/fabric-peer:latest
+    labels:
+      service: hyperledger-fabric
+    environment:
+      - FABRIC_CFG_PATH=/etc/hyperledger/peercfg
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_PROFILE_ENABLED=false
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+      - CORE_PEER_ID=peer0.${org_domain}
+      - CORE_PEER_ADDRESS=peer0.${org_domain}:${org_port}
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:${org_port}
+      - CORE_PEER_CHAINCODEADDRESS=peer0.${org_domain}:$((org_port + 1))
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:$((org_port + 1))
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.${org_domain}:${org_port}
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.${org_domain}:${org_port}
+      - CORE_PEER_LOCALMSPID=${org_msp_id}
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+      - CORE_OPERATIONS_LISTENADDRESS=peer0.${org_domain}:${org_ops_port}
+      - CORE_METRICS_PROVIDER=prometheus
+      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0${org_lower}"}
+      - CORE_CHAINCODE_EXECUTETIMEOUT=300s
+    volumes:
+      - ../organizations/peerOrganizations/${org_domain}/peers/peer0.${org_domain}:/etc/hyperledger/fabric
+      - peer0.${org_domain}:/var/hyperledger/production
+      - ../compose/docker/peercfg/core.yaml:/etc/hyperledger/peercfg/core.yaml
+    working_dir: /root
+    command: peer node start
+    ports:
+      - ${org_port}:${org_port}
+      - ${org_ops_port}:${org_ops_port}
+    networks:
+      - test
+
+EOF
+  done
+  
+  infoln "✅ Compose file generated: $compose_file"
+}
+
+# Function to generate configtx.yaml dynamically
+function generateConfigtx() {
+  # Try to read network config
+  if ! readNetworkConfig; then
+    infoln "Using default configtx configuration"
+    return 0
+  fi
+  
+  infoln "⚙️ Generating dynamic configtx.yaml..."
+  
+  local configtx_file="configtx/configtx.yaml"
+  
+  cat > "$configtx_file" << EOF
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+---
+################################################################################
+#
+#   Section: Organizations
+#
+#   - This section defines the different organizational identities which will
+#   be referenced later in the configuration.
+#
+################################################################################
+Organizations:
+  - &${NETWORK_ORDERER_NAME}
+    Name: ${NETWORK_ORDERER_NAME}
+    ID: ${NETWORK_ORDERER_MSP_ID}
+    MSPDir: ../organizations/ordererOrganizations/${NETWORK_ORDERER_DOMAIN}/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('${NETWORK_ORDERER_MSP_ID}.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('${NETWORK_ORDERER_MSP_ID}.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('${NETWORK_ORDERER_MSP_ID}.admin')"
+    OrdererEndpoints:
+      - orderer.${NETWORK_ORDERER_DOMAIN}:${NETWORK_ORDERER_PORT}
+EOF
+
+  # Add peer organizations
+  for i in $(seq 0 $((NETWORK_ORGS_COUNT - 1))); do
+    local org_name="${NETWORK_ORG_NAMES[$i]}"
+    local org_msp_id="${NETWORK_ORG_MSP_IDS[$i]}"
+    local org_domain="${NETWORK_ORG_DOMAINS[$i]}"
+    
+    cat >> "$configtx_file" << EOF
+  - &${org_name}
+    Name: ${org_msp_id}
+    ID: ${org_msp_id}
+    MSPDir: ../organizations/peerOrganizations/${org_domain}/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('${org_msp_id}.admin', '${org_msp_id}.peer', '${org_msp_id}.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('${org_msp_id}.admin', '${org_msp_id}.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('${org_msp_id}.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('${org_msp_id}.peer')"
+EOF
+  done
+
+  # Add the rest of the configtx.yaml
+  cat >> "$configtx_file" << EOF
+################################################################################
+#
+#   SECTION: Capabilities
+#
+################################################################################
+Capabilities:
+  Channel: &ChannelCapabilities
+    V2_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_5: true
+
+################################################################################
+#
+#   SECTION: Application
+#
+################################################################################
+Application: &ApplicationDefaults
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    LifecycleEndorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+    Endorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+################################################################################
+#
+#   SECTION: Orderer
+#
+################################################################################
+Orderer: &OrdererDefaults
+  OrdererType: etcdraft
+  Addresses:
+    - orderer.${NETWORK_ORDERER_DOMAIN}:${NETWORK_ORDERER_PORT}
+  BatchTimeout: 2s
+  BatchSize:
+    MaxMessageCount: 10
+    AbsoluteMaxBytes: 99 MB
+    PreferredMaxBytes: 512 KB
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    BlockValidation:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+  EtcdRaft:
+    Consenters:
+    - Host: orderer.${NETWORK_ORDERER_DOMAIN}
+      Port: ${NETWORK_ORDERER_PORT}
+      ClientTLSCert: ../organizations/ordererOrganizations/${NETWORK_ORDERER_DOMAIN}/orderers/orderer.${NETWORK_ORDERER_DOMAIN}/tls/server.crt
+      ServerTLSCert: ../organizations/ordererOrganizations/${NETWORK_ORDERER_DOMAIN}/orderers/orderer.${NETWORK_ORDERER_DOMAIN}/tls/server.crt
+  Capabilities:
+    <<: *OrdererCapabilities
+
+################################################################################
+#
+#   CHANNEL
+#
+################################################################################
+Channel: &ChannelDefaults
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *ChannelCapabilities
+
+################################################################################
+#
+#   Profile
+#
+################################################################################
+Profiles:
+  ChannelUsingRaft:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *${NETWORK_ORDERER_NAME}
+      Capabilities: *OrdererCapabilities
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+EOF
+
+  # Add organizations to the profile
+  for i in $(seq 0 $((NETWORK_ORGS_COUNT - 1))); do
+    local org_name="${NETWORK_ORG_NAMES[$i]}"
+    echo "        - *${org_name}" >> "$configtx_file"
+  done
+  
+  cat >> "$configtx_file" << EOF
+      Capabilities: *ApplicationCapabilities
+EOF
+  
+  infoln "✅ Configtx file generated: $configtx_file"
+}
+
 # push to the required directory & set a trap to go back if needed
 pushd ${ROOTDIR} > /dev/null
 trap "popd > /dev/null" EXIT
@@ -146,6 +634,12 @@ function createOrgs() {
     rm -Rf organizations/peerOrganizations && rm -Rf organizations/ordererOrganizations
   fi
 
+  # Generate dynamic crypto configs first
+  generateCryptoConfigs
+  
+  # Generate dynamic configtx.yaml
+  generateConfigtx
+
   # Create crypto material using cryptogen
   if [ "$CRYPTO" == "cryptogen" ]; then
     which cryptogen
@@ -154,34 +648,64 @@ function createOrgs() {
     fi
     infoln "Generating certificates using cryptogen tool"
 
-    infoln "Creating Org1 Identities"
+    # Generate for dynamic or default organizations
+    if [ "$NETWORK_CONFIG_LOADED" = true ]; then
+      # Dynamic organization generation
+      for i in $(seq 0 $((NETWORK_ORGS_COUNT - 1))); do
+        local org_name="${NETWORK_ORG_NAMES[$i]}"
+        local org_lower=$(echo "$org_name" | tr '[:upper:]' '[:lower:]')
+        
+        infoln "Creating ${org_name} Identities"
+        
+        set -x
+        cryptogen generate --config=./organizations/cryptogen/crypto-config-${org_lower}.yaml --output="organizations"
+        res=$?
+        { set +x; } 2>/dev/null
+        if [ $res -ne 0 ]; then
+          fatalln "Failed to generate certificates for ${org_name}..."
+        fi
+      done
+      
+      infoln "Creating ${NETWORK_ORDERER_NAME} Identities"
+      
+      set -x
+      cryptogen generate --config=./organizations/cryptogen/crypto-config-orderer.yaml --output="organizations"
+      res=$?
+      { set +x; } 2>/dev/null
+      if [ $res -ne 0 ]; then
+        fatalln "Failed to generate certificates for orderer..."
+      fi
+    else
+      # Default organization generation (Org1, Org2, OrdererOrg)
+      infoln "Creating Org1 Identities"
 
-    set -x
-    cryptogen generate --config=./organizations/cryptogen/crypto-config-org1.yaml --output="organizations"
-    res=$?
-    { set +x; } 2>/dev/null
-    if [ $res -ne 0 ]; then
-      fatalln "Failed to generate certificates..."
-    fi
+      set -x
+      cryptogen generate --config=./organizations/cryptogen/crypto-config-org1.yaml --output="organizations"
+      res=$?
+      { set +x; } 2>/dev/null
+      if [ $res -ne 0 ]; then
+        fatalln "Failed to generate certificates..."
+      fi
 
-    infoln "Creating Org2 Identities"
+      infoln "Creating Org2 Identities"
 
-    set -x
-    cryptogen generate --config=./organizations/cryptogen/crypto-config-org2.yaml --output="organizations"
-    res=$?
-    { set +x; } 2>/dev/null
-    if [ $res -ne 0 ]; then
-      fatalln "Failed to generate certificates..."
-    fi
+      set -x
+      cryptogen generate --config=./organizations/cryptogen/crypto-config-org2.yaml --output="organizations"
+      res=$?
+      { set +x; } 2>/dev/null
+      if [ $res -ne 0 ]; then
+        fatalln "Failed to generate certificates..."
+      fi
 
-    infoln "Creating Orderer Org Identities"
+      infoln "Creating Orderer Org Identities"
 
-    set -x
-    cryptogen generate --config=./organizations/cryptogen/crypto-config-orderer.yaml --output="organizations"
-    res=$?
-    { set +x; } 2>/dev/null
-    if [ $res -ne 0 ]; then
-      fatalln "Failed to generate certificates..."
+      set -x
+      cryptogen generate --config=./organizations/cryptogen/crypto-config-orderer.yaml --output="organizations"
+      res=$?
+      { set +x; } 2>/dev/null
+      if [ $res -ne 0 ]; then
+        fatalln "Failed to generate certificates..."
+      fi
     fi
 
   fi
@@ -231,7 +755,7 @@ function createOrgs() {
 
   fi
 
-  infoln "Generating CCP files for Org1 and Org2"
+  infoln "Generating CCP (Connection Configuration Profile) files"
   ./organizations/ccp-generate.sh
 }
 
@@ -271,10 +795,28 @@ function networkUp() {
     createOrgs
   fi
 
-  COMPOSE_FILES="-f compose/${COMPOSE_FILE_BASE} -f compose/${CONTAINER_CLI}/${CONTAINER_CLI}-${COMPOSE_FILE_BASE}"
+  # Generate dynamic compose files
+  generateComposeFiles
 
-  if [ "${DATABASE}" == "couchdb" ]; then
-    COMPOSE_FILES="${COMPOSE_FILES} -f compose/${COMPOSE_FILE_COUCH} -f compose/${CONTAINER_CLI}/${CONTAINER_CLI}-${COMPOSE_FILE_COUCH}"
+  # Check if we have dynamic network configuration
+  if [[ "$NETWORK_CONFIG_LOADED" == "true" ]]; then
+    # Use only dynamic compose files when network config is loaded
+    COMPOSE_FILES="-f compose/${COMPOSE_FILE_BASE}"
+    
+    if [ "${DATABASE}" == "couchdb" ]; then
+      COMPOSE_FILES="${COMPOSE_FILES} -f compose/${COMPOSE_FILE_COUCH}"
+    fi
+    
+    infoln "🔄 Using dynamic compose configuration (network-config.json loaded)"
+  else
+    # Use traditional compose files for backward compatibility
+    COMPOSE_FILES="-f compose/${COMPOSE_FILE_BASE} -f compose/${CONTAINER_CLI}/${CONTAINER_CLI}-${COMPOSE_FILE_BASE}"
+    
+    if [ "${DATABASE}" == "couchdb" ]; then
+      COMPOSE_FILES="${COMPOSE_FILES} -f compose/${COMPOSE_FILE_COUCH} -f compose/${CONTAINER_CLI}/${CONTAINER_CLI}-${COMPOSE_FILE_COUCH}"
+    fi
+    
+    infoln "📁 Using traditional compose configuration (org1/org2)"
   fi
 
   DOCKER_SOCK="${DOCKER_SOCK}" ${CONTAINER_CLI_COMPOSE} ${COMPOSE_FILES} up -d 2>&1
@@ -395,25 +937,39 @@ function queryChaincode() {
 }
 
 
-# Tear down running network
+# Bring down running network
 function networkDown() {
-  COMPOSE_BASE_FILES="-f compose/${COMPOSE_FILE_BASE} -f compose/${CONTAINER_CLI}/${CONTAINER_CLI}-${COMPOSE_FILE_BASE}"
-  COMPOSE_COUCH_FILES="-f compose/${COMPOSE_FILE_COUCH} -f compose/${CONTAINER_CLI}/${CONTAINER_CLI}-${COMPOSE_FILE_COUCH}"
-  COMPOSE_CA_FILES="-f compose/${COMPOSE_FILE_CA} -f compose/${CONTAINER_CLI}/${CONTAINER_CLI}-${COMPOSE_FILE_CA}"
-  COMPOSE_FILES="${COMPOSE_BASE_FILES} ${COMPOSE_COUCH_FILES} ${COMPOSE_CA_FILES}"
-
-  if [ "${CONTAINER_CLI}" == "docker" ]; then
-    DOCKER_SOCK=$DOCKER_SOCK ${CONTAINER_CLI_COMPOSE} ${COMPOSE_FILES} down --volumes --remove-orphans
-  elif [ "${CONTAINER_CLI}" == "podman" ]; then
-    ${CONTAINER_CLI_COMPOSE} ${COMPOSE_FILES} down --volumes
-  else
-    fatalln "Container CLI  ${CONTAINER_CLI} not supported"
+  # Try to read network config for proper cleanup
+  readNetworkConfig
+  
+  local temp_compose=${COMPOSE_FILE_BASE}
+  if [ "${DATABASE}" == "couchdb" ]; then
+    COMPOSE_FILE_BASE=${COMPOSE_FILE_BASE}-couch.yaml
   fi
+
+  if [ "${CRYPTO}" == "Certificate Authorities" ]; then
+    ${CONTAINER_CLI_COMPOSE} -f compose/${COMPOSE_FILE_BASE} -f compose/${CONTAINER_CLI}/${CONTAINER_CLI}-${COMPOSE_FILE_CA} down --volumes --remove-orphans
+  else
+    ${CONTAINER_CLI_COMPOSE} -f compose/${COMPOSE_FILE_BASE} -f compose/${CONTAINER_CLI}/${CONTAINER_CLI}-${COMPOSE_FILE_BASE} down --volumes --remove-orphans
+  fi
+
+  COMPOSE_FILE_BASE=${temp_compose}
 
   # Don't remove the generated artifacts -- note, the ledgers are always removed
   if [ "$MODE" != "restart" ]; then
     # Bring down the network, deleting the volumes
-    ${CONTAINER_CLI} volume rm docker_orderer.example.com docker_peer0.org1.example.com docker_peer0.org2.example.com
+    if [ "$NETWORK_CONFIG_LOADED" = true ]; then
+      # Dynamic volume cleanup
+      local volumes_to_remove="docker_orderer.${NETWORK_ORDERER_DOMAIN}"
+      for i in $(seq 0 $((NETWORK_ORGS_COUNT - 1))); do
+        local org_domain="${NETWORK_ORG_DOMAINS[$i]}"
+        volumes_to_remove="$volumes_to_remove docker_peer0.${org_domain}"
+      done
+      ${CONTAINER_CLI} volume rm $volumes_to_remove 2>/dev/null || true
+    else
+      # Default volume cleanup
+      ${CONTAINER_CLI} volume rm docker_orderer.example.com docker_peer0.org1.example.com docker_peer0.org2.example.com
+    fi
     #Cleanup the chaincode containers
     clearContainers
     #Cleanup images
@@ -426,6 +982,222 @@ function networkDown() {
     ${CONTAINER_CLI} run --rm -v "$(pwd):/data" busybox sh -c 'cd /data && rm -rf organizations/fabric-ca/ordererOrg/msp organizations/fabric-ca/ordererOrg/tls-cert.pem organizations/fabric-ca/ordererOrg/ca-cert.pem organizations/fabric-ca/ordererOrg/IssuerPublicKey organizations/fabric-ca/ordererOrg/IssuerRevocationPublicKey organizations/fabric-ca/ordererOrg/fabric-ca-server.db'
     # remove channel and script artifacts
     ${CONTAINER_CLI} run --rm -v "$(pwd):/data" busybox sh -c 'cd /data && rm -rf channel-artifacts log.txt *.tar.gz'
+  fi
+}
+
+# Setup network configuration interactively
+function setupNetwork() {
+  local config_file="network-config.json"
+  local use_auto="${SETUP_AUTO:-false}"
+  local load_from_file="${SETUP_CONFIG_FILE:-}"
+  
+  infoln "🚀 Setting up Hyperledger Fabric Network Configuration"
+  println
+  
+  # Check if using auto configuration
+  if [ "$use_auto" == "true" ]; then
+    infoln "Using default configuration..."
+    generate_default_config
+    return 0
+  fi
+  
+  # Check if loading from file
+  if [ ! -z "$load_from_file" ] && [ -f "$load_from_file" ]; then
+    infoln "Loading configuration from file: $load_from_file"
+    cp "$load_from_file" "$config_file"
+    validate_config "$config_file"
+    return 0
+  fi
+  
+  # Interactive setup
+  println "This will configure your Hyperledger Fabric network with custom organizations."
+  println "The configuration will be saved to 'network-config.json'"
+  println
+  
+  # Get channel name
+  local channel_name="$CHANNEL_NAME"
+  if [ -z "$channel_name" ]; then
+    printf "Enter channel name [mychannel]: "
+    read user_channel
+    channel_name=${user_channel:-mychannel}
+  fi
+  
+  # Get number of organizations
+  printf "How many peer organizations do you want? [2]: "
+  read org_count
+  org_count=${org_count:-2}
+  
+  # Validate org count
+  if ! [[ "$org_count" =~ ^[0-9]+$ ]] || [ "$org_count" -lt 1 ] || [ "$org_count" -gt 10 ]; then
+    errorln "Invalid number of organizations. Must be between 1 and 10."
+    exit 1
+  fi
+  
+  println
+  infoln "Configuring $org_count peer organizations..."
+  println
+  
+  # Get organization names
+  local orgs=()
+  for ((i=1; i<=org_count; i++)); do
+    local default_name="Org$i"
+    printf "Enter name for organization $i [$default_name]: "
+    read org_name
+    org_name=${org_name:-$default_name}
+    
+    # Validate org name (alphanumeric only)
+    if ! [[ "$org_name" =~ ^[a-zA-Z][a-zA-Z0-9]*$ ]]; then
+      errorln "Invalid organization name: $org_name"
+      errorln "Organization names must start with a letter and contain only alphanumeric characters."
+      exit 1
+    fi
+    
+    orgs+=("$org_name")
+  done
+  
+  # Get orderer organization name
+  printf "Enter orderer organization name [OrdererOrg]: "
+  read orderer_name
+  orderer_name=${orderer_name:-OrdererOrg}
+  
+  if ! [[ "$orderer_name" =~ ^[a-zA-Z][a-zA-Z0-9]*$ ]]; then
+    errorln "Invalid orderer organization name: $orderer_name"
+    exit 1
+  fi
+  
+  # Generate configuration
+  println
+  infoln "Generating network configuration..."
+  
+  generate_network_config "$channel_name" "$orderer_name" "${orgs[@]}"
+  
+  successln "✅ Network configuration saved to: $config_file"
+  println
+  infoln "Configuration summary:"
+  println "  Channel: $channel_name"
+  println "  Orderer: $orderer_name"
+  println "  Peer Organizations: ${orgs[*]}"
+  println
+  infoln "Next steps:"
+  println "  1. Run './network.sh up' to start the network"
+  println "  2. Run './network.sh createChannel' to create and join the channel"
+  println "  3. Deploy your chaincode with './network.sh deployCC'"
+}
+
+# Generate default network configuration
+function generate_default_config() {
+  local config_file="network-config.json"
+  local channel_name="${CHANNEL_NAME:-mychannel}"
+  
+  generate_network_config "$channel_name" "OrdererOrg" "Org1" "Org2"
+  
+  successln "✅ Default network configuration saved to: $config_file"
+  infoln "Using default configuration: 2 organizations (Org1, Org2) with channel '$channel_name'"
+}
+
+# Generate network configuration JSON
+function generate_network_config() {
+  local channel_name="$1"
+  local orderer_name="$2"
+  shift 2
+  local orgs=("$@")
+  
+  local config_file="network-config.json"
+  local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+  
+  # Start JSON
+  cat > "$config_file" << EOF
+{
+  "_comment": "Generated by network.sh setup command",
+  "_generated_time": "$timestamp",
+  "_warning": "Do not edit this file manually. Use 'network.sh setup' to regenerate.",
+  "network": {
+    "channel_name": "$channel_name",
+    "orderer": {
+      "name": "$orderer_name",
+      "msp_id": "${orderer_name}MSP",
+      "domain": "$(echo "$orderer_name" | tr '[:upper:]' '[:lower:]').example.com",
+      "port": 7050,
+      "operations_port": 9443
+    },
+    "organizations": [
+EOF
+
+  # Add organizations
+  local org_count=${#orgs[@]}
+  for ((i=0; i<org_count; i++)); do
+    local org_name="${orgs[$i]}"
+    local org_lower=$(echo "$org_name" | tr '[:upper:]' '[:lower:]')
+    local peer_port=$((7051 + i * 1000))
+    local operations_port=$((9444 + i))
+    local couchdb_port=$((5984 + i * 1000))
+    
+    cat >> "$config_file" << EOF
+      {
+        "name": "$org_name",
+        "msp_id": "${org_name}MSP",
+        "domain": "${org_lower}.example.com",
+        "peer": {
+          "port": $peer_port,
+          "operations_port": $operations_port,
+          "couchdb_port": $couchdb_port
+        }
+      }
+EOF
+    
+    if [ $i -lt $((org_count - 1)) ]; then
+      echo "," >> "$config_file"
+    fi
+  done
+  
+  # Close JSON
+  cat >> "$config_file" << EOF
+
+    ]
+  }
+}
+EOF
+}
+
+# Validate network configuration
+function validate_config() {
+  local config_file="$1"
+  
+  if [ ! -f "$config_file" ]; then
+    errorln "Configuration file not found: $config_file"
+    exit 1
+  fi
+  
+  # Check if jq is available for validation
+  if command -v jq &> /dev/null; then
+    if ! jq empty "$config_file" 2>/dev/null; then
+      errorln "Invalid JSON format in configuration file: $config_file"
+      exit 1
+    fi
+    
+    # Validate required fields
+    local channel_name=$(jq -r '.network.channel_name' "$config_file" 2>/dev/null)
+    local orderer_name=$(jq -r '.network.orderer.name' "$config_file" 2>/dev/null)
+    local org_count=$(jq '.network.organizations | length' "$config_file" 2>/dev/null)
+    
+    if [ "$channel_name" == "null" ] || [ -z "$channel_name" ]; then
+      errorln "Missing or invalid channel name in configuration"
+      exit 1
+    fi
+    
+    if [ "$orderer_name" == "null" ] || [ -z "$orderer_name" ]; then
+      errorln "Missing or invalid orderer name in configuration"
+      exit 1
+    fi
+    
+    if [ "$org_count" == "null" ] || [ "$org_count" -lt 1 ]; then
+      errorln "No organizations defined in configuration"
+      exit 1
+    fi
+    
+    successln "Configuration validation passed"
+  else
+    warnln "jq not found, skipping JSON validation"
   fi
 }
 
@@ -562,6 +1334,13 @@ while [[ $# -ge 1 ]] ; do
   -ccqc )
     CC_QUERY_CONSTRUCTOR="$2"
     shift
+    ;;
+  -auto )
+    SETUP_AUTO=true
+    ;;
+  -f )
+    SETUP_CONFIG_FILE="$2"
+    shift
     ;;    
   * )
     errorln "Unknown flag: $key"
@@ -611,6 +1390,8 @@ elif [ "$MODE" == "cc" ] && [ "$SUBCOMMAND" == "invoke" ]; then
   invokeChaincode
 elif [ "$MODE" == "cc" ] && [ "$SUBCOMMAND" == "query" ]; then
   queryChaincode
+elif [ "$MODE" == "setup" ]; then
+  setupNetwork
 else
   printHelp
   exit 1

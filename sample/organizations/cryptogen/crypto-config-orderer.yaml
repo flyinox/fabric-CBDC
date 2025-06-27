@@ -4,30 +4,21 @@
 #
 
 # ---------------------------------------------------------------------------
-# "OrdererOrgs" - Definition of organizations managing orderer nodes
+# "OrdererOrgs" - Definition of organizations managing orderer nodes  
 # ---------------------------------------------------------------------------
 OrdererOrgs:
-  # ---------------------------------------------------------------------------
-  # Orderer
-  # ---------------------------------------------------------------------------
-  - Name: Orderer
-    Domain: example.com
+  - Name: OrdererOrg
+    Domain: ordererorg.example.com
     EnableNodeOUs: true
-
-
     # ---------------------------------------------------------------------------
-    # "Specs" - See PeerOrgs for complete description
+    # "Specs"
     # ---------------------------------------------------------------------------
     Specs:
       - Hostname: orderer
         SANS:
           - localhost
-      - Hostname: orderer2
-        SANS:
-          - localhost
-      - Hostname: orderer3
-        SANS:
-          - localhost
-      - Hostname: orderer4
-        SANS:
-          - localhost
+    # ---------------------------------------------------------------------------
+    # "Users"
+    # ---------------------------------------------------------------------------
+    Users:
+      Count: 1

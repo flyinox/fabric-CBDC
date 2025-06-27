@@ -20,6 +20,25 @@ function printHelp() {
     println "    -i     FabricVersion (default: '2.5.13')"
     println "    -cai   Fabric CA Version (default: '1.5.15')"
     println  
+  elif [ "$USAGE" == "setup" ]; then
+    println "Usage: "
+    println "  network.sh \033[0;32msetup\033[0m [Flags]"
+    println
+    println "    Description:"
+    println "      Interactive setup to define network organizations and configuration"
+    println "      This command should be run before 'up' to configure the network"
+    println
+    println "    Flags:"
+    println "    -c <channel name> - Name of channel to create (defaults to \"mychannel\")"
+    println "    -auto - Use default configuration (2 orgs: Org1, Org2)"
+    println "    -f <config-file> - Load configuration from JSON file"
+    println "    -h - Print this message"
+    println
+    println " Examples:"
+    println "   network.sh setup                           # Interactive setup"
+    println "   network.sh setup -auto                     # Use default config"
+    println "   network.sh setup -c cbdc-channel           # Custom channel name"
+    println "   network.sh setup -f my-network-config.json # Load from file"
   elif [ "$USAGE" == "up" ]; then
     println "Usage: "
     println "  network.sh \033[0;32mup\033[0m [Flags]"
@@ -142,6 +161,7 @@ function printHelp() {
     println "Usage: "
     println "  network.sh <Mode> [Flags]"
     println "    Modes:"
+    println "      \033[0;32msetup\033[0m - Configure network organizations and settings (run before 'up')"
     println "      \033[0;32mprereq\033[0m - Install Fabric binaries and docker images"
     println "      \033[0;32mup\033[0m - Bring up Fabric orderer and peer nodes. No channel is created"
     println "      \033[0;32mup createChannel\033[0m - Bring up fabric network with one channel"

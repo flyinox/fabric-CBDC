@@ -65,54 +65,144 @@ function checkPrereqs() {
   fi
 }
 
+# 读取网络配置
+function readNetworkConfig() {
+  local config_file="network-config.json"
+  
+  if [[ -f "$config_file" ]]; then
+    infoln "Reading network configuration from $config_file"
+    
+    # 验证JSON格式
+    if ! jq empty "$config_file" >/dev/null 2>&1; then
+      errorln "Invalid JSON format in $config_file"
+      exit 1
+    fi
+    
+    # 读取组织信息
+    NETWORK_ORGS=($(jq -r '.network.organizations[].name' "$config_file"))
+    NETWORK_ORG_MSPS=($(jq -r '.network.organizations[].msp_id' "$config_file"))
+    
+    if [[ ${#NETWORK_ORGS[@]} -eq 0 ]]; then
+      errorln "No organizations found in $config_file"
+      exit 1
+    fi
+    
+    infoln "Found ${#NETWORK_ORGS[@]} organizations: ${NETWORK_ORGS[*]}"
+    return 0
+  else
+    warnln "Network config file $config_file not found, using default org1/org2 configuration"
+    NETWORK_ORGS=("org1" "org2")
+    NETWORK_ORG_MSPS=("Org1MSP" "Org2MSP")
+    return 1
+  fi
+}
+
+# 生成MSP检查字符串
+function generateMspCheckString() {
+  local approved_index=$1
+  local msp_check=""
+  
+  for i in "${!NETWORK_ORG_MSPS[@]}"; do
+    local status="false"
+    if [[ $i -le $approved_index ]]; then
+      status="true"
+    fi
+    
+    if [[ -n "$msp_check" ]]; then
+      msp_check="$msp_check "
+    fi
+    msp_check="$msp_check\"${NETWORK_ORG_MSPS[$i]}\": $status"
+  done
+  
+  echo "$msp_check"
+}
+
+# 动态获取组织索引（用于向下兼容envVar.sh）
+function getOrgIndex() {
+  local org_name=$1
+  
+  # 如果使用动态配置，返回组织在数组中的索引+1
+  for i in "${!NETWORK_ORGS[@]}"; do
+    if [[ "${NETWORK_ORGS[$i]}" == "$org_name" ]]; then
+      echo $((i+1))
+      return
+    fi
+  done
+  
+  # 如果没找到，尝试默认映射
+  case "${org_name,,}" in
+    "org1"|"central") echo 1 ;;
+    "org2"|"a1") echo 2 ;;
+    "org3"|"b1") echo 3 ;;
+    *) echo 1 ;;  # 默认返回1
+  esac
+}
+
 #check for prerequisites
 checkPrereqs
+
+# 读取网络配置
+readNetworkConfig
 
 ## package the chaincode
 ./scripts/packageCC.sh $CC_NAME $CC_SRC_PATH $CC_SRC_LANGUAGE $CC_VERSION 
 
 PACKAGE_ID=$(peer lifecycle chaincode calculatepackageid ${CC_NAME}.tar.gz)
 
-## Install chaincode on peer0.org1 and peer0.org2
-infoln "Installing chaincode on peer0.org1..."
-installChaincode 1
-infoln "Install chaincode on peer0.org2..."
-installChaincode 2
+## Install chaincode on all peer organizations
+for i in "${!NETWORK_ORGS[@]}"; do
+  org_name="${NETWORK_ORGS[$i]}"
+  org_index=$((i+1))
+  
+  infoln "Installing chaincode on peer0.${org_name}..."
+  installChaincode $org_index
+done
 
 resolveSequence
 
-## query whether the chaincode is installed
+## query whether the chaincode is installed (on first org)
 queryInstalled 1
 
-## approve the definition for org1
-approveForMyOrg 1
+## approve the definition for each org sequentially
+for i in "${!NETWORK_ORGS[@]}"; do
+  org_name="${NETWORK_ORGS[$i]}"
+  org_index=$((i+1))
+  
+  infoln "Approving chaincode definition for ${org_name}..."
+  approveForMyOrg $org_index
+  
+  # 检查commit readiness
+  msp_check=$(generateMspCheckString $i)
+  infoln "Checking commit readiness after ${org_name} approval..."
+  
+  # 在所有组织上检查
+  for j in "${!NETWORK_ORGS[@]}"; do
+    check_org_index=$((j+1))
+    checkCommitReadiness $check_org_index "$msp_check"
+  done
+done
 
-## check whether the chaincode definition is ready to be committed
-## expect org1 to have approved and org2 not to
-checkCommitReadiness 1 "\"Org1MSP\": true" "\"Org2MSP\": false"
-checkCommitReadiness 2 "\"Org1MSP\": true" "\"Org2MSP\": false"
+## now that we know for sure all orgs have approved, commit the definition
+infoln "Committing chaincode definition..."
+org_indices=""
+for i in "${!NETWORK_ORGS[@]}"; do
+  org_indices="$org_indices $((i+1))"
+done
+commitChaincodeDefinition $org_indices
 
-## now approve also for org2
-approveForMyOrg 2
-
-## check whether the chaincode definition is ready to be committed
-## expect them both to have approved
-checkCommitReadiness 1 "\"Org1MSP\": true" "\"Org2MSP\": true"
-checkCommitReadiness 2 "\"Org1MSP\": true" "\"Org2MSP\": true"
-
-## now that we know for sure both orgs have approved, commit the definition
-commitChaincodeDefinition 1 2
-
-## query on both orgs to see that the definition committed successfully
-queryCommitted 1
-queryCommitted 2
+## query on all orgs to see that the definition committed successfully
+for i in "${!NETWORK_ORGS[@]}"; do
+  org_index=$((i+1))
+  queryCommitted $org_index
+done
 
 ## Invoke the chaincode - this does require that the chaincode have the 'initLedger'
 ## method defined
 if [ "$CC_INIT_FCN" = "NA" ]; then
   infoln "Chaincode initialization is not required"
 else
-  chaincodeInvokeInit 1 2
+  infoln "Initializing chaincode..."
+  chaincodeInvokeInit $org_indices
 fi
 
 exit 0
