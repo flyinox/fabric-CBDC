@@ -18,7 +18,7 @@
 # this script is actually in and infer location from there. (putting first)
 
 ROOTDIR=$(cd "$(dirname "$0")" && pwd)
-export PATH=${ROOTDIR}/../bin:${PWD}/../bin:$PATH
+export PATH=${ROOTDIR}/bin:${PWD}/bin:$PATH
 export FABRIC_CFG_PATH=${PWD}/configtx
 export VERBOSE=false
 
@@ -550,11 +550,11 @@ NONWORKING_VERSIONS="^1\.0\. ^1\.1\. ^1\.2\. ^1\.3\. ^1\.4\."
 # binaries/images are available. In the future, additional checking for the presence
 # of go or other items could be added.
 function checkPrereqs() {
-  ## Check if your have cloned the peer binaries and configuration files.
+  ## Check if Fabric binaries are available.
   peer version > /dev/null 2>&1
 
-  if [[ $? -ne 0 || ! -d "../config" ]]; then
-    errorln "Peer binary and configuration files not found.."
+  if [[ $? -ne 0 ]]; then
+    errorln "Peer binary not found.."
     errorln
     errorln "Follow the instructions in the Fabric docs to install the Fabric Binaries:"
     errorln "https://hyperledger-fabric.readthedocs.io/en/latest/install.html"
