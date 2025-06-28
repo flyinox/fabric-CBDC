@@ -355,11 +355,11 @@ listAllCommitted() {
 chaincodeInvoke() {
   ORG=$1
   CHANNEL=$2
-  CC_NAME=$3
+  CC_NAME_LOCAL=$3
   CC_INVOKE_CONSTRUCTOR=$4
   local org_name=$(getOrgName $ORG)
   
-  infoln "Invoking on peer0.${org_name} on channel '$CHANNEL_NAME'..."
+  infoln "Invoking on peer0.${org_name} on channel '$CHANNEL'..."
   local rc=1
   local COUNTER=1
   # continue to poll
@@ -379,15 +379,15 @@ chaincodeInvoke() {
     done
     
     set -x
-    peer chaincode invoke -o localhost:7050 -C $CHANNEL_NAME -n ${CC_NAME} -c ${CC_INVOKE_CONSTRUCTOR} --tls --cafile $ORDERER_CA $peer_conn_params >&log.txt
+    peer chaincode invoke -o localhost:7050 -C $CHANNEL -n ${CC_NAME_LOCAL} -c ${CC_INVOKE_CONSTRUCTOR} --tls --cafile $ORDERER_CA $peer_conn_params >&log.txt
     res=$?
     { set +x; } 2>/dev/null
-    let rc=$res
-    COUNTER=$(expr $COUNTER + 1)
+    rc=$res
+    COUNTER=$(($COUNTER + 1))
   done
   cat log.txt
   if test $rc -eq 0; then
-    successln "Invoke successful on peer0.${org_name} on channel '$CHANNEL_NAME'"
+    successln "Invoke successful on peer0.${org_name} on channel '$CHANNEL'"
   else
     fatalln "After $MAX_RETRY attempts, Invoke result on peer0.${org_name} is INVALID!"
   fi
@@ -396,11 +396,11 @@ chaincodeInvoke() {
 chaincodeQuery() {
   ORG=$1
   CHANNEL=$2
-  CC_NAME=$3
+  CC_NAME_LOCAL=$3
   CC_QUERY_CONSTRUCTOR=$4
   local org_name=$(getOrgName $ORG)
 
-  infoln "Querying on peer0.${org_name} on channel '$CHANNEL_NAME'..."
+  infoln "Querying on peer0.${org_name} on channel '$CHANNEL'..."
   local rc=1
   local COUNTER=1
   # continue to poll
@@ -409,15 +409,15 @@ chaincodeQuery() {
     sleep $DELAY
     infoln "Attempting to Query peer0.${org_name}, Retry after $DELAY seconds."
     set -x
-    peer chaincode query -C $CHANNEL_NAME -n ${CC_NAME} -c ${CC_QUERY_CONSTRUCTOR} >&log.txt
+    peer chaincode query -C $CHANNEL -n ${CC_NAME_LOCAL} -c ${CC_QUERY_CONSTRUCTOR} >&log.txt
     res=$?
     { set +x; } 2>/dev/null
-    let rc=$res
-    COUNTER=$(expr $COUNTER + 1)
+    rc=$res
+    COUNTER=$(($COUNTER + 1))
   done
   cat log.txt
   if test $rc -eq 0; then
-    successln "Query successful on peer0.${org_name} on channel '$CHANNEL_NAME'"
+    successln "Query successful on peer0.${org_name} on channel '$CHANNEL'"
   else
     fatalln "After $MAX_RETRY attempts, Query result on peer0.${org_name} is INVALID!"
   fi

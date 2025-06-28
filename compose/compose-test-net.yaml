@@ -6,10 +6,11 @@
 version: '3.7'
 
 volumes:
-  orderer.ordererorg.example.com:
-  peer0.central.example.com:
-  peer0.a1.example.com:
-  peer0.b1.example.com:
+  orderer.example.com:
+  peer0.pboc.example.com:
+  peer0.icbc.example.com:
+  peer0.abc.example.com:
+  peer0.boc.example.com:
 
 networks:
   test:
@@ -17,8 +18,8 @@ networks:
 
 services:
 
-  orderer.ordererorg.example.com:
-    container_name: orderer.ordererorg.example.com
+  orderer.example.com:
+    container_name: orderer.example.com
     image: hyperledger/fabric-orderer:latest
     labels:
       service: hyperledger-fabric
@@ -26,7 +27,7 @@ services:
       - FABRIC_LOGGING_SPEC=INFO
       - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
       - ORDERER_GENERAL_LISTENPORT=7050
-      - ORDERER_GENERAL_LOCALMSPID=OrdererOrgMSP
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
       - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
       - ORDERER_GENERAL_TLS_ENABLED=true
       - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
@@ -43,14 +44,14 @@ services:
       - ORDERER_ADMIN_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
       - ORDERER_ADMIN_TLS_CLIENTROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
       - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:7053
-      - ORDERER_OPERATIONS_LISTENADDRESS=orderer.ordererorg.example.com:9443
+      - ORDERER_OPERATIONS_LISTENADDRESS=orderer.example.com:9443
       - ORDERER_METRICS_PROVIDER=prometheus
     working_dir: /root
     command: orderer
     volumes:
-        - ../organizations/ordererOrganizations/ordererorg.example.com/orderers/orderer.ordererorg.example.com/msp:/var/hyperledger/orderer/msp
-        - ../organizations/ordererOrganizations/ordererorg.example.com/orderers/orderer.ordererorg.example.com/tls/:/var/hyperledger/orderer/tls
-        - orderer.ordererorg.example.com:/var/hyperledger/production/orderer
+        - ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/orderer/msp
+        - ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/:/var/hyperledger/orderer/tls
+        - orderer.example.com:/var/hyperledger/production/orderer
     ports:
       - 7050:7050
       - 7053:7053
@@ -58,8 +59,8 @@ services:
     networks:
       - test
 
-  peer0.central.example.com:
-    container_name: peer0.central.example.com
+  peer0.pboc.example.com:
+    container_name: peer0.pboc.example.com
     image: hyperledger/fabric-peer:latest
     labels:
       service: hyperledger-fabric
@@ -71,23 +72,23 @@ services:
       - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
       - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
-      - CORE_PEER_ID=peer0.central.example.com
-      - CORE_PEER_ADDRESS=peer0.central.example.com:7051
+      - CORE_PEER_ID=peer0.pboc.example.com
+      - CORE_PEER_ADDRESS=peer0.pboc.example.com:7051
       - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
-      - CORE_PEER_CHAINCODEADDRESS=peer0.central.example.com:7052
+      - CORE_PEER_CHAINCODEADDRESS=peer0.pboc.example.com:7052
       - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
-      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.central.example.com:7051
-      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.central.example.com:7051
-      - CORE_PEER_LOCALMSPID=CentralMSP
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.pboc.example.com:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.pboc.example.com:7051
+      - CORE_PEER_LOCALMSPID=PBOCMSP
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
-      - CORE_OPERATIONS_LISTENADDRESS=peer0.central.example.com:9444
+      - CORE_OPERATIONS_LISTENADDRESS=peer0.pboc.example.com:9444
       - CORE_METRICS_PROVIDER=prometheus
-      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0central"}
+      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0pboc"}
       - CORE_CHAINCODE_EXECUTETIMEOUT=300s
       - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabric_test
     volumes:
-      - ../organizations/peerOrganizations/central.example.com/peers/peer0.central.example.com:/etc/hyperledger/fabric
-      - peer0.central.example.com:/var/hyperledger/production
+      - ../organizations/peerOrganizations/pboc.example.com/peers/peer0.pboc.example.com:/etc/hyperledger/fabric
+      - peer0.pboc.example.com:/var/hyperledger/production
       - ../compose/docker/peercfg/core.yaml:/etc/hyperledger/peercfg/core.yaml
       - /var/run/docker.sock:/var/run/docker.sock
     working_dir: /root
@@ -98,8 +99,8 @@ services:
     networks:
       - test
 
-  peer0.a1.example.com:
-    container_name: peer0.a1.example.com
+  peer0.icbc.example.com:
+    container_name: peer0.icbc.example.com
     image: hyperledger/fabric-peer:latest
     labels:
       service: hyperledger-fabric
@@ -111,23 +112,23 @@ services:
       - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
       - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
-      - CORE_PEER_ID=peer0.a1.example.com
-      - CORE_PEER_ADDRESS=peer0.a1.example.com:8051
+      - CORE_PEER_ID=peer0.icbc.example.com
+      - CORE_PEER_ADDRESS=peer0.icbc.example.com:8051
       - CORE_PEER_LISTENADDRESS=0.0.0.0:8051
-      - CORE_PEER_CHAINCODEADDRESS=peer0.a1.example.com:8052
+      - CORE_PEER_CHAINCODEADDRESS=peer0.icbc.example.com:8052
       - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:8052
-      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.a1.example.com:8051
-      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.a1.example.com:8051
-      - CORE_PEER_LOCALMSPID=a1MSP
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.icbc.example.com:8051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.icbc.example.com:8051
+      - CORE_PEER_LOCALMSPID=ICBCMSP
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
-      - CORE_OPERATIONS_LISTENADDRESS=peer0.a1.example.com:9445
+      - CORE_OPERATIONS_LISTENADDRESS=peer0.icbc.example.com:9445
       - CORE_METRICS_PROVIDER=prometheus
-      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0a1"}
+      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0icbc"}
       - CORE_CHAINCODE_EXECUTETIMEOUT=300s
       - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabric_test
     volumes:
-      - ../organizations/peerOrganizations/a1.example.com/peers/peer0.a1.example.com:/etc/hyperledger/fabric
-      - peer0.a1.example.com:/var/hyperledger/production
+      - ../organizations/peerOrganizations/icbc.example.com/peers/peer0.icbc.example.com:/etc/hyperledger/fabric
+      - peer0.icbc.example.com:/var/hyperledger/production
       - ../compose/docker/peercfg/core.yaml:/etc/hyperledger/peercfg/core.yaml
       - /var/run/docker.sock:/var/run/docker.sock
     working_dir: /root
@@ -138,8 +139,8 @@ services:
     networks:
       - test
 
-  peer0.b1.example.com:
-    container_name: peer0.b1.example.com
+  peer0.abc.example.com:
+    container_name: peer0.abc.example.com
     image: hyperledger/fabric-peer:latest
     labels:
       service: hyperledger-fabric
@@ -151,23 +152,23 @@ services:
       - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
       - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
-      - CORE_PEER_ID=peer0.b1.example.com
-      - CORE_PEER_ADDRESS=peer0.b1.example.com:9051
+      - CORE_PEER_ID=peer0.abc.example.com
+      - CORE_PEER_ADDRESS=peer0.abc.example.com:9051
       - CORE_PEER_LISTENADDRESS=0.0.0.0:9051
-      - CORE_PEER_CHAINCODEADDRESS=peer0.b1.example.com:9052
+      - CORE_PEER_CHAINCODEADDRESS=peer0.abc.example.com:9052
       - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:9052
-      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.b1.example.com:9051
-      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.b1.example.com:9051
-      - CORE_PEER_LOCALMSPID=b1MSP
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.abc.example.com:9051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.abc.example.com:9051
+      - CORE_PEER_LOCALMSPID=ABCMSP
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
-      - CORE_OPERATIONS_LISTENADDRESS=peer0.b1.example.com:9446
+      - CORE_OPERATIONS_LISTENADDRESS=peer0.abc.example.com:9446
       - CORE_METRICS_PROVIDER=prometheus
-      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0b1"}
+      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0abc"}
       - CORE_CHAINCODE_EXECUTETIMEOUT=300s
       - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabric_test
     volumes:
-      - ../organizations/peerOrganizations/b1.example.com/peers/peer0.b1.example.com:/etc/hyperledger/fabric
-      - peer0.b1.example.com:/var/hyperledger/production
+      - ../organizations/peerOrganizations/abc.example.com/peers/peer0.abc.example.com:/etc/hyperledger/fabric
+      - peer0.abc.example.com:/var/hyperledger/production
       - ../compose/docker/peercfg/core.yaml:/etc/hyperledger/peercfg/core.yaml
       - /var/run/docker.sock:/var/run/docker.sock
     working_dir: /root
@@ -175,6 +176,46 @@ services:
     ports:
       - 9051:9051
       - 9446:9446
+    networks:
+      - test
+
+  peer0.boc.example.com:
+    container_name: peer0.boc.example.com
+    image: hyperledger/fabric-peer:latest
+    labels:
+      service: hyperledger-fabric
+    environment:
+      - FABRIC_CFG_PATH=/etc/hyperledger/peercfg
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_PROFILE_ENABLED=false
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+      - CORE_PEER_ID=peer0.boc.example.com
+      - CORE_PEER_ADDRESS=peer0.boc.example.com:10051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:10051
+      - CORE_PEER_CHAINCODEADDRESS=peer0.boc.example.com:10052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:10052
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.boc.example.com:10051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.boc.example.com:10051
+      - CORE_PEER_LOCALMSPID=BOCMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+      - CORE_OPERATIONS_LISTENADDRESS=peer0.boc.example.com:9447
+      - CORE_METRICS_PROVIDER=prometheus
+      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0boc"}
+      - CORE_CHAINCODE_EXECUTETIMEOUT=300s
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabric_test
+    volumes:
+      - ../organizations/peerOrganizations/boc.example.com/peers/peer0.boc.example.com:/etc/hyperledger/fabric
+      - peer0.boc.example.com:/var/hyperledger/production
+      - ../compose/docker/peercfg/core.yaml:/etc/hyperledger/peercfg/core.yaml
+      - /var/run/docker.sock:/var/run/docker.sock
+    working_dir: /root
+    command: peer node start
+    ports:
+      - 10051:10051
+      - 9447:9447
     networks:
       - test
 

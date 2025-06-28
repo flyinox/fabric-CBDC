@@ -758,7 +758,7 @@ function createOrgs() {
   fi
 
   infoln "Generating CCP (Connection Configuration Profile) files"
-  ./organizations/ccp-generate.sh
+  # ./organizations/ccp-generate.sh  # Skip CCP generation for now
 }
 
 # Once you create the organization crypto material, you need to create the
@@ -913,7 +913,10 @@ function listChaincode() {
 ## Call the script to invoke 
 function invokeChaincode() {
 
-  export FABRIC_CFG_PATH=${PWD}/../config
+  export FABRIC_CFG_PATH=${PWD}/compose/docker/peercfg
+  export CLI_DELAY=${CLI_DELAY:-3}
+  export MAX_RETRY=${MAX_RETRY:-5}
+  export DELAY=${CLI_DELAY}
 
   . scripts/envVar.sh
   . scripts/ccutils.sh
@@ -927,7 +930,10 @@ function invokeChaincode() {
 ## Call the script to query chaincode 
 function queryChaincode() {
 
-  export FABRIC_CFG_PATH=${PWD}/../config
+  export FABRIC_CFG_PATH=${PWD}/compose/docker/peercfg
+  export CLI_DELAY=${CLI_DELAY:-3}
+  export MAX_RETRY=${MAX_RETRY:-5}
+  export DELAY=${CLI_DELAY}
   
   . scripts/envVar.sh
   . scripts/ccutils.sh
@@ -1024,103 +1030,131 @@ function networkClean() {
   infoln "You can now run './network.sh up' for a fresh start."
 }
 
-# Setup network configuration interactively
+# Setup network configuration for CBDC
 function setupNetwork() {
   local config_file="network-config.json"
   local use_auto="${SETUP_AUTO:-false}"
   local load_from_file="${SETUP_CONFIG_FILE:-}"
+  local central_bank_name="${CENTRAL_BANK_NAME:-}"
+  local bank_names=("${BANK_NAMES[@]}")
   
-  infoln "🚀 Setting up Hyperledger Fabric Network Configuration"
+  infoln "🏦 设置央行数字货币（CBDC）网络配置"
   println
   
   # Check if using auto configuration
   if [ "$use_auto" == "true" ]; then
-    infoln "Using default configuration..."
-    generate_default_config
+    infoln "使用默认配置..."
+    generate_cbdc_default_config
     return 0
   fi
   
   # Check if loading from file
   if [ ! -z "$load_from_file" ] && [ -f "$load_from_file" ]; then
-    infoln "Loading configuration from file: $load_from_file"
+    infoln "从文件加载配置: $load_from_file"
     cp "$load_from_file" "$config_file"
     validate_config "$config_file"
     return 0
   fi
   
-  # Interactive setup
-  println "This will configure your Hyperledger Fabric network with custom organizations."
-  println "The configuration will be saved to 'network-config.json'"
-  println
-  
-  # Get channel name
-  local channel_name="$CHANNEL_NAME"
-  if [ -z "$channel_name" ]; then
-    printf "Enter channel name [mychannel]: "
-    read user_channel
-    channel_name=${user_channel:-mychannel}
+  # Check if central bank name and banks are provided via command line
+  if [ ! -z "$central_bank_name" ] && [ ${#bank_names[@]} -gt 0 ]; then
+    infoln "使用命令行参数配置网络..."
+    infoln "央行: $central_bank_name"
+    infoln "银行: ${bank_names[*]}"
+    
+    # Generate CBDC configuration with provided names
+    generate_cbdc_network_config "cbdc-channel" "$central_bank_name" "${bank_names[@]}"
+    
+    # Generate chaincode from template
+    generate_chaincode_from_template "$central_bank_name"
+    
+    successln "✅ CBDC 网络配置已生成完成"
+    return 0
   fi
   
-  # Get number of organizations
-  printf "How many peer organizations do you want? [2]: "
-  read org_count
-  org_count=${org_count:-2}
+  # Interactive setup for CBDC
+  println "这将配置您的央行数字货币 (CBDC) 网络。"
+  println "配置将保存到 'network-config.json'"
+  println
   
-  # Validate org count
-  if ! [[ "$org_count" =~ ^[0-9]+$ ]] || [ "$org_count" -lt 1 ] || [ "$org_count" -gt 10 ]; then
-    errorln "Invalid number of organizations. Must be between 1 and 10."
+  # Get central bank name
+  printf "请输入央行名称 [CentralBank]: "
+  read central_bank_input
+  central_bank_name=${central_bank_input:-CentralBank}
+  
+  # Validate central bank name
+  if ! [[ "$central_bank_name" =~ ^[a-zA-Z][a-zA-Z0-9]*$ ]]; then
+    errorln "无效的央行名称: $central_bank_name"
+    errorln "组织名称必须以字母开头，只能包含字母和数字。"
+    exit 1
+  fi
+  
+  # Get commercial banks
+  printf "请输入商业银行数量 [2]: "
+  read bank_count
+  bank_count=${bank_count:-2}
+  
+  # Validate bank count
+  if ! [[ "$bank_count" =~ ^[0-9]+$ ]] || [ "$bank_count" -lt 1 ] || [ "$bank_count" -gt 20 ]; then
+    errorln "无效的银行数量。必须在 1 到 20 之间。"
     exit 1
   fi
   
   println
-  infoln "Configuring $org_count peer organizations..."
+  infoln "配置 $bank_count 个商业银行..."
   println
   
-  # Get organization names
-  local orgs=()
-  for ((i=1; i<=org_count; i++)); do
-    local default_name="Org$i"
-    printf "Enter name for organization $i [$default_name]: "
-    read org_name
-    org_name=${org_name:-$default_name}
+  # Get bank names
+  local banks=()
+  for ((i=1; i<=bank_count; i++)); do
+    local default_name="Bank$i"
+    printf "请输入第 $i 个银行名称 [$default_name]: "
+    read bank_name
+    bank_name=${bank_name:-$default_name}
     
-    # Validate org name (alphanumeric only)
-    if ! [[ "$org_name" =~ ^[a-zA-Z][a-zA-Z0-9]*$ ]]; then
-      errorln "Invalid organization name: $org_name"
-      errorln "Organization names must start with a letter and contain only alphanumeric characters."
+    # Validate bank name
+    if ! [[ "$bank_name" =~ ^[a-zA-Z][a-zA-Z0-9]*$ ]]; then
+      errorln "无效的银行名称: $bank_name"
+      errorln "银行名称必须以字母开头，只能包含字母和数字。"
       exit 1
     fi
     
-    orgs+=("$org_name")
+    banks+=("$bank_name")
   done
   
-  # Get orderer organization name
-  printf "Enter orderer organization name [OrdererOrg]: "
-  read orderer_name
-  orderer_name=${orderer_name:-OrdererOrg}
-  
-  if ! [[ "$orderer_name" =~ ^[a-zA-Z][a-zA-Z0-9]*$ ]]; then
-    errorln "Invalid orderer organization name: $orderer_name"
-    exit 1
-  fi
-  
-  # Generate configuration
+  # Generate CBDC configuration
   println
-  infoln "Generating network configuration..."
+  infoln "生成 CBDC 网络配置..."
   
-  generate_network_config "$channel_name" "$orderer_name" "${orgs[@]}"
+  generate_cbdc_network_config "cbdc-channel" "$central_bank_name" "${banks[@]}"
   
-  successln "✅ Network configuration saved to: $config_file"
+  # Generate chaincode from template
+  generate_chaincode_from_template "$central_bank_name"
+  
+  successln "✅ CBDC 网络配置已保存到: $config_file"
   println
-  infoln "Configuration summary:"
-  println "  Channel: $channel_name"
-  println "  Orderer: $orderer_name"
-  println "  Peer Organizations: ${orgs[*]}"
+  infoln "配置摘要:"
+  println "  频道: cbdc-channel"
+  println "  央行: $central_bank_name"
+  println "  商业银行: ${banks[*]}"
   println
-  infoln "Next steps:"
-  println "  1. Run './network.sh up' to start the network"
-  println "  2. Run './network.sh createChannel' to create and join the channel"
-  println "  3. Deploy your chaincode with './network.sh deployCC'"
+  infoln "下一步:"
+  println "  1. 运行 './network.sh start' 启动完整的 CBDC 网络"
+  println "  2. 或者分别运行 './network.sh up'、'./network.sh createChannel'、'./network.sh deployCC'"
+}
+
+# Generate default CBDC configuration
+function generate_cbdc_default_config() {
+  local config_file="network-config.json"
+  local channel_name="cbdc-channel"
+  
+  generate_cbdc_network_config "$channel_name" "CentralBank" "Bank1" "Bank2"
+  
+  # Generate chaincode from template
+  generate_chaincode_from_template "CentralBank"
+  
+  successln "✅ 默认 CBDC 网络配置已保存到: $config_file"
+  infoln "使用默认配置: 央行 (CentralBank) + 2个银行 (Bank1, Bank2)，频道 '$channel_name'"
 }
 
 # Generate default network configuration
@@ -1132,6 +1166,82 @@ function generate_default_config() {
   
   successln "✅ Default network configuration saved to: $config_file"
   infoln "Using default configuration: 2 organizations (Org1, Org2) with channel '$channel_name'"
+}
+
+# Generate CBDC network configuration JSON
+function generate_cbdc_network_config() {
+  local channel_name="$1"
+  local central_bank_name="$2"
+  shift 2
+  local banks=("$@")
+  
+  local config_file="network-config.json"
+  local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+  
+  # All organizations (central bank + commercial banks)
+  local all_orgs=("$central_bank_name" "${banks[@]}")
+  
+  # Start JSON
+  cat > "$config_file" << EOF
+{
+  "_comment": "Generated by network.sh CBDC setup command",
+  "_generated_time": "$timestamp",
+  "_network_type": "CBDC",
+  "_central_bank": "$central_bank_name",
+  "_warning": "Do not edit this file manually. Use 'network.sh setup' to regenerate.",
+  "network": {
+    "channel_name": "$channel_name",
+    "orderer": {
+      "name": "OrdererOrg",
+      "msp_id": "OrdererMSP",
+      "domain": "example.com",
+      "port": 7050,
+      "operations_port": 9443
+    },
+    "organizations": [
+EOF
+
+  # Add organizations (central bank first, then commercial banks)
+  local org_count=${#all_orgs[@]}
+  for ((i=0; i<org_count; i++)); do
+    local org_name="${all_orgs[$i]}"
+    local org_lower=$(echo "$org_name" | tr '[:upper:]' '[:lower:]')
+    local peer_port=$((7051 + i * 1000))
+    local operations_port=$((9444 + i))
+    local couchdb_port=$((5984 + i * 1000))
+    
+    # Mark central bank
+    local org_type="commercial_bank"
+    if [ "$org_name" == "$central_bank_name" ]; then
+      org_type="central_bank"
+    fi
+    
+    cat >> "$config_file" << EOF
+      {
+        "name": "$org_name",
+        "msp_id": "${org_name}MSP",
+        "domain": "${org_lower}.example.com",
+        "type": "$org_type",
+        "peer": {
+          "port": $peer_port,
+          "operations_port": $operations_port,
+          "couchdb_port": $couchdb_port
+        }
+      }
+EOF
+    
+    if [ $i -lt $((org_count - 1)) ]; then
+      echo "," >> "$config_file"
+    fi
+  done
+  
+  # Close JSON
+  cat >> "$config_file" << EOF
+
+    ]
+  }
+}
+EOF
 }
 
 # Generate network configuration JSON
@@ -1240,6 +1350,1274 @@ function validate_config() {
   fi
 }
 
+# Generate chaincode from template with central bank MSP ID
+function generate_chaincode_from_template() {
+  local central_bank_name="$1"
+  local central_msp_id="${central_bank_name}MSP"
+  local template_file="chaincode/chaincode/token_contract.go.template"
+  local output_file="chaincode/chaincode/token_contract.go"
+  
+  if [ ! -f "$template_file" ]; then
+    errorln "Chaincode template not found: $template_file"
+    return 1
+  fi
+  
+  infoln "📝 从模板生成智能合约..."
+  infoln "   央行 MSP ID: $central_msp_id"
+  
+  # Replace template placeholder with actual central bank MSP ID
+  sed "s/{{CENTRAL_MSP_ID}}/$central_msp_id/g" "$template_file" > "$output_file"
+  
+  if [ $? -eq 0 ]; then
+    successln "✅ 智能合约已生成: $output_file"
+    infoln "   Mint 和 Burn 权限已设置为: $central_msp_id"
+  else
+    errorln "生成智能合约失败"
+    return 1
+  fi
+}
+
+# Start complete CBDC network (up + createChannel + deployCC)
+function startCBDCNetwork() {
+  local channel_name="cbdc-channel"
+  
+  infoln "🚀 启动完整的 CBDC 网络..."
+  println
+  
+  # Check if network configuration exists
+  if [ ! -f "network-config.json" ]; then
+    errorln "未找到网络配置文件。请先运行 './network.sh setup' 来配置网络。"
+    exit 1
+  fi
+  
+  # Override channel name with cbdc-channel
+  export CHANNEL_NAME="cbdc-channel"
+  
+  # Step 1: Bring up the network
+  infoln "📦 步骤 1/3: 启动网络节点..."
+  networkUp
+  if [ $? -ne 0 ]; then
+    fatalln "网络启动失败"
+  fi
+  successln "✅ 网络节点启动成功"
+  println
+  
+  # Step 2: Create channel
+  infoln "🌐 步骤 2/3: 创建和加入频道 ($channel_name)..."
+  scripts/createChannel.sh $channel_name $CLI_DELAY $MAX_RETRY $VERBOSE
+  if [ $? -ne 0 ]; then
+    fatalln "频道创建失败"
+  fi
+  successln "✅ 频道创建和加入成功"
+  println
+  
+  # Step 3: Deploy chaincode
+  infoln "⚡ 步骤 3/3: 部署 CBDC 智能合约..."
+  
+  # Set chaincode defaults for CBDC (explicitly override config defaults)
+  local cbdc_cc_name="cbdc"
+  local cbdc_cc_path="./chaincode/chaincode"
+  local cbdc_cc_language="go"
+  local cbdc_cc_version="1.0"
+  local cbdc_cc_sequence="1"
+  local cbdc_cc_init_fcn="NA"
+  
+  scripts/deployCC.sh $channel_name $cbdc_cc_name $cbdc_cc_path $cbdc_cc_language $cbdc_cc_version $cbdc_cc_sequence $cbdc_cc_init_fcn "$CC_END_POLICY" "$CC_COLL_CONFIG" $CLI_DELAY $MAX_RETRY $VERBOSE
+  if [ $? -ne 0 ]; then
+    fatalln "智能合约部署失败"
+  fi
+  successln "✅ CBDC 智能合约部署成功"
+  println
+  
+  successln "🎉 CBDC 网络启动完成！"
+  println
+  infoln "网络信息:"
+  println "  频道名称: $channel_name"
+  println "  智能合约: $CC_NAME"
+  println "  智能合约版本: $CC_VERSION"
+  println
+  infoln "下一步你可以:"
+  println "  - 使用 './network.sh cc invoke' 调用智能合约"
+  println "  - 使用 './network.sh cc query' 查询智能合约"
+  println "  - 使用 './network.sh down' 停止网络"
+}
+
+# CBDC Chaincode Management Functions
+# ===================================
+
+# Get available organizations for CBDC network
+function getCBDCOrganizations() {
+  if [ -f "network-config.json" ]; then
+    jq -r '.network.organizations[].name' network-config.json
+  else
+    echo "PBOC ICBC ABC BOC"
+  fi
+}
+
+# Get organization users (for now, we use admin and user1 as examples)
+function getOrgUsers() {
+  local org_name=$1
+  echo "admin user1"
+}
+
+# Interactive organization selection
+function selectOrganization() {
+  # Build organization array
+  local orgs=()
+  
+  if [ -f "network-config.json" ]; then
+    # Use temp file approach for compatibility
+    local temp_org_file=$(mktemp)
+    jq -r '.network.organizations[].name' network-config.json > "$temp_org_file"
+    while IFS= read -r org_line; do
+      if [ -n "$org_line" ]; then
+        orgs+=("$org_line")
+      fi
+    done < "$temp_org_file"
+    rm -f "$temp_org_file"
+  else
+    orgs=("PBOC" "ICBC" "ABC" "BOC")
+  fi
+  
+  if [ ${#orgs[@]} -eq 1 ]; then
+    echo "${orgs[0]}"
+    return 0
+  fi
+  
+  println "📋 可用组织："
+  for i in "${!orgs[@]}"; do
+    printf "  %d) %s\n" $((i+1)) "${orgs[$i]}"
+  done
+  
+  while true; do
+    printf "请选择组织 [1-${#orgs[@]}]: "
+    read -r selection
+    
+    if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#orgs[@]} ]; then
+      echo "${orgs[$((selection-1))]}"
+      return 0
+    else
+      errorln "无效选择，请输入 1-${#orgs[@]} 之间的数字"
+    fi
+  done
+}
+
+# Interactive user selection
+function selectUser() {
+  local org_name=$1
+  local users=($(getOrgUsers "$org_name"))
+  
+  if [ ${#users[@]} -eq 1 ]; then
+    echo "${users[0]}"
+    return 0
+  fi
+  
+  println "👤 ${org_name} 组织可用用户："
+  for i in "${!users[@]}"; do
+    printf "  %d) %s\n" $((i+1)) "${users[$i]}"
+  done
+  
+  while true; do
+    printf "请选择用户 [1-${#users[@]}]: "
+    read -r selection
+    
+    if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#users[@]} ]; then
+      echo "${users[$((selection-1))]}"
+      return 0
+    else
+      errorln "无效选择，请输入 1-${#users[@]} 之间的数字"
+    fi
+  done
+}
+
+# Get organization index for envVar.sh compatibility
+function getOrgIndex() {
+  local org_name=$1
+  
+  # Build organization array directly (no debug output to stdout)
+  local orgs=()
+  
+  if [ -f "network-config.json" ]; then
+    local temp_file=$(mktemp)
+    jq -r '.network.organizations[].name' network-config.json > "$temp_file" 2>/dev/null
+    while IFS= read -r line; do
+      if [ -n "$line" ]; then
+        orgs+=("$line")
+      fi
+    done < "$temp_file"
+    rm -f "$temp_file"
+  else
+    orgs=("PBOC" "ICBC" "ABC" "BOC")
+  fi
+  
+  for i in "${!orgs[@]}"; do
+    if [ "${orgs[$i]}" == "$org_name" ]; then
+      echo $((i+1))
+      return 0
+    fi
+  done
+  echo "1"  # Default to first organization
+}
+
+# Execute chaincode command with organization context
+function executeChaincodeCommand() {
+  local org_name=$1
+  local user_name=$2
+  local command_type=$3  # invoke or query
+  local function_name=$4
+  local args=$5
+  
+  local org_index=$(getOrgIndex "$org_name")
+  
+  infoln "🚀 执行智能合约命令..."
+  println "  组织: $org_name (索引: $org_index)"
+  println "  用户: $user_name"
+  println "  类型: $command_type"
+  println "  函数: $function_name"
+  println "  参数: $args"
+  println
+  
+  # Set proper environment
+  # Set proper environment (without debug output that might interfere)
+  export FABRIC_CFG_PATH=${PWD}/compose/docker/peercfg
+  export CHANNEL_NAME="cbdc-channel"
+  export CC_NAME="cbdc"
+  export CLI_DELAY=${CLI_DELAY:-3}
+  export MAX_RETRY=${MAX_RETRY:-5}
+  export DELAY=${CLI_DELAY}
+  
+  # Load scripts
+  . scripts/envVar.sh
+  . scripts/ccutils.sh
+  
+  # Set globals for the organization
+  setGlobals $org_index
+  
+  # Execute chaincode operation
+  if [ "$command_type" == "invoke" ]; then
+    chaincodeInvoke $org_index "cbdc-channel" "cbdc" "$args"
+  else
+    chaincodeQuery $org_index "cbdc-channel" "cbdc" "$args"
+  fi
+}
+
+# CBDC Initialize command
+function cbdcInitialize() {
+  local name=""
+  local symbol=""
+  local decimals=""
+  local org_name=""
+  local user_name=""
+  
+  # Parse command line arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -name)
+        name="$2"
+        shift 2
+        ;;
+      -symbol)
+        symbol="$2"
+        shift 2
+        ;;
+      -decimals)
+        decimals="$2"
+        shift 2
+        ;;
+      -org)
+        org_name="$2"
+        shift 2
+        ;;
+      -user)
+        user_name="$2"
+        shift 2
+        ;;
+      *)
+        errorln "未知参数: $1"
+        return 1
+        ;;
+    esac
+  done
+  
+  infoln "🏛️ 初始化 CBDC 代币..."
+  println
+  
+  # Interactive mode if parameters not provided
+  if [ -z "$name" ]; then
+    printf "请输入代币名称 [默认: Digital Yuan]: "
+    read -r name
+    name=${name:-"Digital Yuan"}
+  fi
+  
+  if [ -z "$symbol" ]; then
+    printf "请输入代币符号 [默认: DCEP]: "
+    read -r symbol
+    symbol=${symbol:-"DCEP"}
+  fi
+  
+  if [ -z "$decimals" ]; then
+    printf "请输入小数位数 [默认: 2]: "
+    read -r decimals
+    decimals=${decimals:-"2"}
+  fi
+  
+  if [ -z "$org_name" ]; then
+    # Inline organization selection (avoid function call issues)
+    local orgs=()
+    
+    if [ -f "network-config.json" ]; then
+      local temp_org_file=$(mktemp)
+      jq -r '.network.organizations[].name' network-config.json > "$temp_org_file"
+      while IFS= read -r org_line; do
+        if [ -n "$org_line" ]; then
+          orgs+=("$org_line")
+        fi
+      done < "$temp_org_file"
+      rm -f "$temp_org_file"
+    else
+      orgs=("PBOC" "ICBC" "ABC" "BOC")
+    fi
+    
+    if [ ${#orgs[@]} -eq 1 ]; then
+      org_name="${orgs[0]}"
+    else
+      println "📋 可用组织："
+      for i in "${!orgs[@]}"; do
+        printf "  %d) %s\n" $((i+1)) "${orgs[$i]}"
+      done
+      
+      while true; do
+        printf "请选择组织 [1-${#orgs[@]}]: "
+        read -r selection
+        
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#orgs[@]} ]; then
+          org_name="${orgs[$((selection-1))]}"
+          break
+        else
+          errorln "无效选择，请输入 1-${#orgs[@]} 之间的数字"
+        fi
+      done
+    fi
+  fi
+  
+  if [ -z "$user_name" ]; then
+    # Inline user selection (avoid function call issues)
+    local users=("admin" "user1")
+    
+    if [ ${#users[@]} -eq 1 ]; then
+      user_name="${users[0]}"
+    else
+      println "👤 ${org_name} 组织可用用户："
+      for i in "${!users[@]}"; do
+        printf "  %d) %s\n" $((i+1)) "${users[$i]}"
+      done
+      
+      while true; do
+        printf "请选择用户 [1-${#users[@]}]: "
+        read -r selection
+        
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#users[@]} ]; then
+          user_name="${users[$((selection-1))]}"
+          break
+        else
+          errorln "无效选择，请输入 1-${#users[@]} 之间的数字"
+        fi
+      done
+    fi
+  fi
+  
+  local args="{\"Args\":[\"Initialize\",\"$name\",\"$symbol\",\"$decimals\"]}"
+  
+  executeChaincodeCommand "$org_name" "$user_name" "invoke" "Initialize" "$args"
+}
+
+# CBDC Mint command
+function cbdcMint() {
+  local amount=""
+  local org_name=""
+  local user_name=""
+  
+  # Parse command line arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -amount)
+        amount="$2"
+        shift 2
+        ;;
+      -org)
+        org_name="$2"
+        shift 2
+        ;;
+      -user)
+        user_name="$2"
+        shift 2
+        ;;
+      *)
+        errorln "未知参数: $1"
+        return 1
+        ;;
+    esac
+  done
+  
+  infoln "💰 铸造 CBDC 代币..."
+  println
+  
+  # Interactive mode if parameters not provided
+  if [ -z "$amount" ]; then
+    printf "请输入铸造数量: "
+    read -r amount
+    if [[ ! "$amount" =~ ^[0-9]+$ ]] || [ "$amount" -le 0 ]; then
+      errorln "数量必须是正整数"
+      return 1
+    fi
+  fi
+  
+  if [ -z "$org_name" ]; then
+    # Inline organization selection (proven to work)
+    local orgs=()
+    
+    if [ -f "network-config.json" ]; then
+      local temp_org_file=$(mktemp)
+      jq -r '.network.organizations[].name' network-config.json > "$temp_org_file"
+      while IFS= read -r org_line; do
+        if [ -n "$org_line" ]; then
+          orgs+=("$org_line")
+        fi
+      done < "$temp_org_file"
+      rm -f "$temp_org_file"
+    else
+      orgs=("PBOC" "ICBC" "ABC" "BOC")
+    fi
+    
+    if [ ${#orgs[@]} -eq 1 ]; then
+      org_name="${orgs[0]}"
+    else
+      println "📋 可用组织："
+      for i in "${!orgs[@]}"; do
+        printf "  %d) %s\n" $((i+1)) "${orgs[$i]}"
+      done
+      
+      while true; do
+        printf "请选择组织 [1-${#orgs[@]}]: "
+        read -r selection
+        
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#orgs[@]} ]; then
+          org_name="${orgs[$((selection-1))]}"
+          break
+        else
+          errorln "无效选择，请输入 1-${#orgs[@]} 之间的数字"
+        fi
+      done
+    fi
+  fi
+  
+  if [ -z "$user_name" ]; then
+    # Inline user selection (proven to work)
+    local users=("admin" "user1")
+    
+    if [ ${#users[@]} -eq 1 ]; then
+      user_name="${users[0]}"
+    else
+      println "👤 ${org_name} 组织可用用户："
+      for i in "${!users[@]}"; do
+        printf "  %d) %s\n" $((i+1)) "${users[$i]}"
+      done
+      
+      while true; do
+        printf "请选择用户 [1-${#users[@]}]: "
+        read -r selection
+        
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#users[@]} ]; then
+          user_name="${users[$((selection-1))]}"
+          break
+        else
+          errorln "无效选择，请输入 1-${#users[@]} 之间的数字"
+        fi
+      done
+    fi
+  fi
+  
+  local args="{\"Args\":[\"Mint\",\"$amount\"]}"
+  
+  executeChaincodeCommand "$org_name" "$user_name" "invoke" "Mint" "$args"
+}
+
+# CBDC Burn command
+function cbdcBurn() {
+  local amount=""
+  local org_name=""
+  local user_name=""
+  
+  # Parse command line arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -amount)
+        amount="$2"
+        shift 2
+        ;;
+      -org)
+        org_name="$2"
+        shift 2
+        ;;
+      -user)
+        user_name="$2"
+        shift 2
+        ;;
+      *)
+        errorln "未知参数: $1"
+        return 1
+        ;;
+    esac
+  done
+  
+  infoln "🔥 销毁 CBDC 代币..."
+  println
+  
+  # Interactive mode if parameters not provided
+  if [ -z "$amount" ]; then
+    printf "请输入销毁数量: "
+    read -r amount
+    if [[ ! "$amount" =~ ^[0-9]+$ ]] || [ "$amount" -le 0 ]; then
+      errorln "数量必须是正整数"
+      return 1
+    fi
+  fi
+  
+  if [ -z "$org_name" ]; then
+    # Inline organization selection (avoid function call issues)
+    local orgs=()
+    
+    if [ -f "network-config.json" ]; then
+      local temp_org_file=$(mktemp)
+      jq -r '.network.organizations[].name' network-config.json > "$temp_org_file"
+      while IFS= read -r org_line; do
+        if [ -n "$org_line" ]; then
+          orgs+=("$org_line")
+        fi
+      done < "$temp_org_file"
+      rm -f "$temp_org_file"
+    else
+      orgs=("PBOC" "ICBC" "ABC" "BOC")
+    fi
+    
+    if [ ${#orgs[@]} -eq 1 ]; then
+      org_name="${orgs[0]}"
+    else
+      println "📋 可用组织："
+      for i in "${!orgs[@]}"; do
+        printf "  %d) %s\n" $((i+1)) "${orgs[$i]}"
+      done
+      
+      while true; do
+        printf "请选择组织 [1-${#orgs[@]}]: "
+        read -r selection
+        
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#orgs[@]} ]; then
+          org_name="${orgs[$((selection-1))]}"
+          break
+        else
+          errorln "无效选择，请输入 1-${#orgs[@]} 之间的数字"
+        fi
+      done
+    fi
+  fi
+  
+  if [ -z "$user_name" ]; then
+    # Inline user selection (avoid function call issues)
+    local users=("admin" "user1")
+    
+    if [ ${#users[@]} -eq 1 ]; then
+      user_name="${users[0]}"
+    else
+      println "👤 ${org_name} 组织可用用户："
+      for i in "${!users[@]}"; do
+        printf "  %d) %s\n" $((i+1)) "${users[$i]}"
+      done
+      
+      while true; do
+        printf "请选择用户 [1-${#users[@]}]: "
+        read -r selection
+        
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#users[@]} ]; then
+          user_name="${users[$((selection-1))]}"
+          break
+        else
+          errorln "无效选择，请输入 1-${#users[@]} 之间的数字"
+        fi
+      done
+    fi
+  fi
+  
+  local args="{\"Args\":[\"Burn\",\"$amount\"]}"
+  
+  executeChaincodeCommand "$org_name" "$user_name" "invoke" "Burn" "$args"
+}
+
+# CBDC Transfer command
+function cbdcTransfer() {
+  local recipient=""
+  local amount=""
+  local org_name=""
+  local user_name=""
+  
+  # Parse command line arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -to)
+        recipient="$2"
+        shift 2
+        ;;
+      -amount)
+        amount="$2"
+        shift 2
+        ;;
+      -org)
+        org_name="$2"
+        shift 2
+        ;;
+      -user)
+        user_name="$2"
+        shift 2
+        ;;
+      *)
+        errorln "未知参数: $1"
+        return 1
+        ;;
+    esac
+  done
+  
+  infoln "💸 转账 CBDC 代币..."
+  println
+  
+  # Interactive mode if parameters not provided
+  if [ -z "$recipient" ]; then
+    printf "请输入接收者地址: "
+    read -r recipient
+    if [ -z "$recipient" ]; then
+      errorln "接收者地址不能为空"
+      return 1
+    fi
+  fi
+  
+  if [ -z "$amount" ]; then
+    printf "请输入转账数量: "
+    read -r amount
+    if [[ ! "$amount" =~ ^[0-9]+$ ]] || [ "$amount" -le 0 ]; then
+      errorln "数量必须是正整数"
+      return 1
+    fi
+  fi
+  
+  if [ -z "$org_name" ]; then
+    # Inline organization selection (avoid function call issues)
+    local orgs=()
+    
+    if [ -f "network-config.json" ]; then
+      local temp_org_file=$(mktemp)
+      jq -r '.network.organizations[].name' network-config.json > "$temp_org_file"
+      while IFS= read -r org_line; do
+        if [ -n "$org_line" ]; then
+          orgs+=("$org_line")
+        fi
+      done < "$temp_org_file"
+      rm -f "$temp_org_file"
+    else
+      orgs=("PBOC" "ICBC" "ABC" "BOC")
+    fi
+    
+    if [ ${#orgs[@]} -eq 1 ]; then
+      org_name="${orgs[0]}"
+    else
+      println "📋 可用组织："
+      for i in "${!orgs[@]}"; do
+        printf "  %d) %s\n" $((i+1)) "${orgs[$i]}"
+      done
+      
+      while true; do
+        printf "请选择组织 [1-${#orgs[@]}]: "
+        read -r selection
+        
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#orgs[@]} ]; then
+          org_name="${orgs[$((selection-1))]}"
+          break
+        else
+          errorln "无效选择，请输入 1-${#orgs[@]} 之间的数字"
+        fi
+      done
+    fi
+  fi
+  
+  if [ -z "$user_name" ]; then
+    # Inline user selection (avoid function call issues)
+    local users=("admin" "user1")
+    
+    if [ ${#users[@]} -eq 1 ]; then
+      user_name="${users[0]}"
+    else
+      println "👤 ${org_name} 组织可用用户："
+      for i in "${!users[@]}"; do
+        printf "  %d) %s\n" $((i+1)) "${users[$i]}"
+      done
+      
+      while true; do
+        printf "请选择用户 [1-${#users[@]}]: "
+        read -r selection
+        
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#users[@]} ]; then
+          user_name="${users[$((selection-1))]}"
+          break
+        else
+          errorln "无效选择，请输入 1-${#users[@]} 之间的数字"
+        fi
+      done
+    fi
+  fi
+  
+  local args="{\"Args\":[\"Transfer\",\"$recipient\",\"$amount\"]}"
+  
+  executeChaincodeCommand "$org_name" "$user_name" "invoke" "Transfer" "$args"
+}
+
+# CBDC Balance query
+function cbdcBalance() {
+  local account=""
+  local org_name=""
+  local user_name=""
+  
+  # Parse command line arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -account)
+        account="$2"
+        shift 2
+        ;;
+      -org)
+        org_name="$2"
+        shift 2
+        ;;
+      -user)
+        user_name="$2"
+        shift 2
+        ;;
+      *)
+        errorln "未知参数: $1"
+        return 1
+        ;;
+    esac
+  done
+  
+  infoln "🔍 查询账户余额..."
+  println
+  
+  if [ -z "$org_name" ]; then
+    # Inline organization selection (avoid function call issues)
+    local orgs=()
+    
+    if [ -f "network-config.json" ]; then
+      local temp_org_file=$(mktemp)
+      jq -r '.network.organizations[].name' network-config.json > "$temp_org_file"
+      while IFS= read -r org_line; do
+        if [ -n "$org_line" ]; then
+          orgs+=("$org_line")
+        fi
+      done < "$temp_org_file"
+      rm -f "$temp_org_file"
+    else
+      orgs=("PBOC" "ICBC" "ABC" "BOC")
+    fi
+    
+    if [ ${#orgs[@]} -eq 1 ]; then
+      org_name="${orgs[0]}"
+    else
+      println "📋 可用组织："
+      for i in "${!orgs[@]}"; do
+        printf "  %d) %s\n" $((i+1)) "${orgs[$i]}"
+      done
+      
+      while true; do
+        printf "请选择组织 [1-${#orgs[@]}]: "
+        read -r selection
+        
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#orgs[@]} ]; then
+          org_name="${orgs[$((selection-1))]}"
+          break
+        else
+          errorln "无效选择，请输入 1-${#orgs[@]} 之间的数字"
+        fi
+      done
+    fi
+  fi
+  
+  if [ -z "$user_name" ]; then
+    # Inline user selection (avoid function call issues)
+    local users=("admin" "user1")
+    
+    if [ ${#users[@]} -eq 1 ]; then
+      user_name="${users[0]}"
+    else
+      println "👤 ${org_name} 组织可用用户："
+      for i in "${!users[@]}"; do
+        printf "  %d) %s\n" $((i+1)) "${users[$i]}"
+      done
+      
+      while true; do
+        printf "请选择用户 [1-${#users[@]}]: "
+        read -r selection
+        
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#users[@]} ]; then
+          user_name="${users[$((selection-1))]}"
+          break
+        else
+          errorln "无效选择，请输入 1-${#users[@]} 之间的数字"
+        fi
+      done
+    fi
+  fi
+  
+  if [ -z "$account" ]; then
+    printf "是否查询当前客户端余额？[Y/n]: "
+    read -r response
+    case "$response" in
+      [nN][oO]|[nN])
+        printf "请输入要查询的账户地址: "
+        read -r account
+        local args="{\"Args\":[\"BalanceOf\",\"$account\"]}"
+        executeChaincodeCommand "$org_name" "$user_name" "query" "BalanceOf" "$args"
+        ;;
+      *)
+        local args="{\"Args\":[\"ClientAccountBalance\"]}"
+        executeChaincodeCommand "$org_name" "$user_name" "query" "ClientAccountBalance" "$args"
+        ;;
+    esac
+  else
+    local args="{\"Args\":[\"BalanceOf\",\"$account\"]}"
+    executeChaincodeCommand "$org_name" "$user_name" "query" "BalanceOf" "$args"
+  fi
+}
+
+# CBDC Total Supply query
+function cbdcTotalSupply() {
+  local org_name=""
+  local user_name=""
+  
+  # Parse command line arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -org)
+        org_name="$2"
+        shift 2
+        ;;
+      -user)
+        user_name="$2"
+        shift 2
+        ;;
+      *)
+        errorln "未知参数: $1"
+        return 1
+        ;;
+    esac
+  done
+  
+  infoln "📊 查询代币总供应量..."
+  println
+  
+  if [ -z "$org_name" ]; then
+    # Inline organization selection (avoid function call issues)
+    local orgs=()
+    
+    if [ -f "network-config.json" ]; then
+      local temp_org_file=$(mktemp)
+      jq -r '.network.organizations[].name' network-config.json > "$temp_org_file"
+      while IFS= read -r org_line; do
+        if [ -n "$org_line" ]; then
+          orgs+=("$org_line")
+        fi
+      done < "$temp_org_file"
+      rm -f "$temp_org_file"
+    else
+      orgs=("PBOC" "ICBC" "ABC" "BOC")
+    fi
+    
+    if [ ${#orgs[@]} -eq 1 ]; then
+      org_name="${orgs[0]}"
+    else
+      println "📋 可用组织："
+      for i in "${!orgs[@]}"; do
+        printf "  %d) %s\n" $((i+1)) "${orgs[$i]}"
+      done
+      
+      while true; do
+        printf "请选择组织 [1-${#orgs[@]}]: "
+        read -r selection
+        
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#orgs[@]} ]; then
+          org_name="${orgs[$((selection-1))]}"
+          break
+        else
+          errorln "无效选择，请输入 1-${#orgs[@]} 之间的数字"
+        fi
+      done
+    fi
+  fi
+  
+  if [ -z "$user_name" ]; then
+    # Inline user selection (avoid function call issues)
+    local users=("admin" "user1")
+    
+    if [ ${#users[@]} -eq 1 ]; then
+      user_name="${users[0]}"
+    else
+      println "👤 ${org_name} 组织可用用户："
+      for i in "${!users[@]}"; do
+        printf "  %d) %s\n" $((i+1)) "${users[$i]}"
+      done
+      
+      while true; do
+        printf "请选择用户 [1-${#users[@]}]: "
+        read -r selection
+        
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#users[@]} ]; then
+          user_name="${users[$((selection-1))]}"
+          break
+        else
+          errorln "无效选择，请输入 1-${#users[@]} 之间的数字"
+        fi
+      done
+    fi
+  fi
+  
+  local args="{\"Args\":[\"TotalSupply\"]}"
+  
+  executeChaincodeCommand "$org_name" "$user_name" "query" "TotalSupply" "$args"
+}
+
+
+
+# CBDC Approve command
+function cbdcApprove() {
+  local spender=""
+  local amount=""
+  local org_name=""
+  local user_name=""
+  
+  # Parse command line arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -spender)
+        spender="$2"
+        shift 2
+        ;;
+      -amount)
+        amount="$2"
+        shift 2
+        ;;
+      -org)
+        org_name="$2"
+        shift 2
+        ;;
+      -user)
+        user_name="$2"
+        shift 2
+        ;;
+      *)
+        errorln "未知参数: $1"
+        return 1
+        ;;
+    esac
+  done
+  
+  infoln "✅ 批准代币授权..."
+  println
+  
+  # Interactive mode if parameters not provided
+  if [ -z "$spender" ]; then
+    printf "请输入被授权者地址: "
+    read -r spender
+    if [ -z "$spender" ]; then
+      errorln "被授权者地址不能为空"
+      return 1
+    fi
+  fi
+  
+  if [ -z "$amount" ]; then
+    printf "请输入授权金额: "
+    read -r amount
+    if [[ ! "$amount" =~ ^[0-9]+$ ]] || [ "$amount" -lt 0 ]; then
+      errorln "数量必须是非负整数"
+      return 1
+    fi
+  fi
+  
+  if [ -z "$org_name" ]; then
+    # Inline organization selection (avoid function call issues)
+    local orgs=()
+    
+    if [ -f "network-config.json" ]; then
+      local temp_org_file=$(mktemp)
+      jq -r '.network.organizations[].name' network-config.json > "$temp_org_file"
+      while IFS= read -r org_line; do
+        if [ -n "$org_line" ]; then
+          orgs+=("$org_line")
+        fi
+      done < "$temp_org_file"
+      rm -f "$temp_org_file"
+    else
+      orgs=("PBOC" "ICBC" "ABC" "BOC")
+    fi
+    
+    if [ ${#orgs[@]} -eq 1 ]; then
+      org_name="${orgs[0]}"
+    else
+      println "📋 可用组织："
+      for i in "${!orgs[@]}"; do
+        printf "  %d) %s\n" $((i+1)) "${orgs[$i]}"
+      done
+      
+      while true; do
+        printf "请选择组织 [1-${#orgs[@]}]: "
+        read -r selection
+        
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#orgs[@]} ]; then
+          org_name="${orgs[$((selection-1))]}"
+          break
+        else
+          errorln "无效选择，请输入 1-${#orgs[@]} 之间的数字"
+        fi
+      done
+    fi
+  fi
+  
+  if [ -z "$user_name" ]; then
+    # Inline user selection (avoid function call issues)
+    local users=("admin" "user1")
+    
+    if [ ${#users[@]} -eq 1 ]; then
+      user_name="${users[0]}"
+    else
+      println "👤 ${org_name} 组织可用用户："
+      for i in "${!users[@]}"; do
+        printf "  %d) %s\n" $((i+1)) "${users[$i]}"
+      done
+      
+      while true; do
+        printf "请选择用户 [1-${#users[@]}]: "
+        read -r selection
+        
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#users[@]} ]; then
+          user_name="${users[$((selection-1))]}"
+          break
+        else
+          errorln "无效选择，请输入 1-${#users[@]} 之间的数字"
+        fi
+      done
+    fi
+  fi
+  
+  local args="{\"Args\":[\"Approve\",\"$spender\",\"$amount\"]}"
+  
+  executeChaincodeCommand "$org_name" "$user_name" "invoke" "Approve" "$args"
+}
+
+# CBDC Allowance query
+function cbdcAllowance() {
+  local owner=""
+  local spender=""
+  local org_name=""
+  local user_name=""
+  
+  # Parse command line arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -owner)
+        owner="$2"
+        shift 2
+        ;;
+      -spender)
+        spender="$2"
+        shift 2
+        ;;
+      -org)
+        org_name="$2"
+        shift 2
+        ;;
+      -user)
+        user_name="$2"
+        shift 2
+        ;;
+      *)
+        errorln "未知参数: $1"
+        return 1
+        ;;
+    esac
+  done
+  
+  infoln "🔍 查询代币授权额度..."
+  println
+  
+  # Interactive mode if parameters not provided
+  if [ -z "$owner" ]; then
+    printf "请输入授权者地址: "
+    read -r owner
+    if [ -z "$owner" ]; then
+      errorln "授权者地址不能为空"
+      return 1
+    fi
+  fi
+  
+  if [ -z "$spender" ]; then
+    printf "请输入被授权者地址: "
+    read -r spender
+    if [ -z "$spender" ]; then
+      errorln "被授权者地址不能为空"
+      return 1
+    fi
+  fi
+  
+  if [ -z "$org_name" ]; then
+    # Inline organization selection (avoid function call issues)
+    local orgs=()
+    
+    if [ -f "network-config.json" ]; then
+      local temp_org_file=$(mktemp)
+      jq -r '.network.organizations[].name' network-config.json > "$temp_org_file"
+      while IFS= read -r org_line; do
+        if [ -n "$org_line" ]; then
+          orgs+=("$org_line")
+        fi
+      done < "$temp_org_file"
+      rm -f "$temp_org_file"
+    else
+      orgs=("PBOC" "ICBC" "ABC" "BOC")
+    fi
+    
+    if [ ${#orgs[@]} -eq 1 ]; then
+      org_name="${orgs[0]}"
+    else
+      println "📋 可用组织："
+      for i in "${!orgs[@]}"; do
+        printf "  %d) %s\n" $((i+1)) "${orgs[$i]}"
+      done
+      
+      while true; do
+        printf "请选择组织 [1-${#orgs[@]}]: "
+        read -r selection
+        
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#orgs[@]} ]; then
+          org_name="${orgs[$((selection-1))]}"
+          break
+        else
+          errorln "无效选择，请输入 1-${#orgs[@]} 之间的数字"
+        fi
+      done
+    fi
+  fi
+  
+  if [ -z "$user_name" ]; then
+    # Inline user selection (avoid function call issues)
+    local users=("admin" "user1")
+    
+    if [ ${#users[@]} -eq 1 ]; then
+      user_name="${users[0]}"
+    else
+      println "👤 ${org_name} 组织可用用户："
+      for i in "${!users[@]}"; do
+        printf "  %d) %s\n" $((i+1)) "${users[$i]}"
+      done
+      
+      while true; do
+        printf "请选择用户 [1-${#users[@]}]: "
+        read -r selection
+        
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#users[@]} ]; then
+          user_name="${users[$((selection-1))]}"
+          break
+        else
+          errorln "无效选择，请输入 1-${#users[@]} 之间的数字"
+        fi
+      done
+    fi
+  fi
+  
+  local args="{\"Args\":[\"Allowance\",\"$owner\",\"$spender\"]}"
+  
+  executeChaincodeCommand "$org_name" "$user_name" "query" "Allowance" "$args"
+}
+
+# CBDC main command handler
+function cbdcChaincode() {
+  local subcommand="$1"
+  shift
+  
+  case "$subcommand" in
+    init)
+      cbdcInitialize "$@"
+      ;;
+    mint)
+      cbdcMint "$@"
+      ;;
+    burn)
+      cbdcBurn "$@"
+      ;;
+    transfer)
+      cbdcTransfer "$@"
+      ;;
+    balance)
+      cbdcBalance "$@"
+      ;;
+    supply)
+      cbdcTotalSupply "$@"
+      ;;
+    approve)
+      cbdcApprove "$@"
+      ;;
+    allowance)
+      cbdcAllowance "$@"
+      ;;
+    help)
+      printCBDCHelp
+      ;;
+    *)
+      errorln "未知的 CBDC 子命令: $subcommand"
+      printCBDCHelp
+      exit 1
+      ;;
+  esac
+}
+
+# Print CBDC help information
+function printCBDCHelp() {
+  println "🏛️ CBDC 智能合约管理工具"
+  println
+  println "用法: $0 ccc <子命令> [选项]"
+  println
+  println "子命令:"
+  println "  init       - 初始化 CBDC 代币"
+  println "  mint       - 铸造新代币 (仅央行)"
+  println "  burn       - 销毁代币 (仅央行)"
+  println "  transfer   - 转账代币"
+  println "  balance    - 查询账户余额"
+  println "  supply     - 查询代币总供应量"
+  println "  approve    - 批准代币授权"
+  println "  allowance  - 查询授权额度"
+  println "  help       - 显示此帮助信息"
+  println
+  println "通用选项:"
+  println "  -org <组织名>   - 指定执行操作的组织"
+  println "  -user <用户名>  - 指定执行操作的用户"
+  println
+  println "示例:"
+  println "  $0 ccc init -name \"Digital Yuan\" -symbol \"DCEP\" -decimals \"2\""
+  println "  $0 ccc mint -amount 10000 -org PBOC -user admin"
+  println "  $0 ccc transfer -to <地址> -amount 100"
+  println "  $0 ccc balance -account <地址>"
+  println "  $0 ccc supply"
+  println
+  println "注意:"
+  println "  - 如果不提供选项，系统将进入交互模式"
+  println "  - mint 和 burn 操作仅限央行 (PBOCMSP) 执行"
+  println "  - 其他操作可由任何组织执行"
+}
+
 . ./network.config
 
 # use this as the default docker-compose yaml definition
@@ -1264,9 +2642,12 @@ else
   shift
 fi
 
-## if no parameters are passed, show the help for cc
+## if no parameters are passed, show the help for cc or ccc
 if [ "$MODE" == "cc" ] && [[ $# -lt 1 ]]; then
   printHelp $MODE
+  exit 0
+elif [ "$MODE" == "ccc" ] && [[ $# -lt 1 ]]; then
+  printCBDCHelp
   exit 0
 fi
 
@@ -1281,6 +2662,12 @@ if [[ $# -ge 1 ]] ; then
   elif [[ "$MODE" == "cc" ]]; then
     if [ "$1" != "-h" ]; then
       export SUBCOMMAND=$key
+      shift
+    fi
+  # check for the ccc command
+  elif [[ "$MODE" == "ccc" ]]; then
+    if [ "$1" != "-h" ]; then
+      export CCC_SUBCOMMAND=$key
       shift
     fi
   fi
@@ -1380,8 +2767,30 @@ while [[ $# -ge 1 ]] ; do
   -f )
     SETUP_CONFIG_FILE="$2"
     shift
+    ;;
+  -central )
+    CENTRAL_BANK_NAME="$2"
+    shift
+    ;;
+  -banks )
+    # Read all remaining arguments as bank names
+    shift
+    BANK_NAMES=()
+    while [[ $# -gt 0 ]] && [[ "$1" != -* ]]; do
+      BANK_NAMES+=("$1")
+      shift
+    done
+    # We need to step back one since the main loop will shift again
+    if [[ $# -gt 0 ]]; then
+      set -- "$1" "${@:2}"
+    fi
+    continue
     ;;    
   * )
+    # Skip unknown flags for ccc command, they will be handled by cbdcChaincode function
+    if [ "$MODE" == "ccc" ]; then
+      break
+    fi
     errorln "Unknown flag: $key"
     printHelp
     exit 1
@@ -1434,7 +2843,16 @@ elif [ "$MODE" == "cc" ] && [ "$SUBCOMMAND" == "query" ]; then
   queryChaincode
 elif [ "$MODE" == "setup" ]; then
   setupNetwork
+elif [ "$MODE" == "start" ]; then
+  infoln "启动完整的 CBDC 网络（包含网络启动、频道创建和智能合约部署）"
+  startCBDCNetwork
+elif [ "$MODE" == "ccc" ]; then
+  # Rebuild the argument list for ccc command
+  set -- "$CCC_SUBCOMMAND" "$@"
+  cbdcChaincode "$@"
 else
   printHelp
   exit 1
 fi
+
+

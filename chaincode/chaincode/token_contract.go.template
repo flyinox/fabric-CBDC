@@ -56,12 +56,12 @@ func (s *SmartContract) Mint(ctx contractapi.TransactionContextInterface, amount
 		return errors.New("Contract options need to be set before calling any function, call Initialize() to initialize contract")
 	}
 
-	// 检查铸币者授权 - 仅有PBOCMSP可以铸造新代币
+	// 检查铸币者授权 - 仅有{{CENTRAL_MSP_ID}}可以铸造新代币
 	clientMSPID, err := ctx.GetClientIdentity().GetMSPID()
 	if err != nil {
 		return fmt.Errorf("failed to get MSPID: %v", err)
 	}
-	if clientMSPID != "PBOCMSP" {
+	if clientMSPID != "{{CENTRAL_MSP_ID}}" {
 		return errors.New("client is not authorized to mint new tokens")
 	}
 
@@ -153,12 +153,12 @@ func (s *SmartContract) Burn(ctx contractapi.TransactionContextInterface, amount
 	if !initialized {
 		return errors.New("Contract options need to be set before calling any function, call Initialize() to initialize contract")
 	}
-	// 检查铸币者授权 - 仅有PBOCMSP可以销毁代币
+	// 检查铸币者授权 - 仅有{{CENTRAL_MSP_ID}}可以销毁代币
 	clientMSPID, err := ctx.GetClientIdentity().GetMSPID()
 	if err != nil {
 		return fmt.Errorf("failed to get MSPID: %v", err)
 	}
-	if clientMSPID != "PBOCMSP" {
+	if clientMSPID != "{{CENTRAL_MSP_ID}}" {
 		return errors.New("client is not authorized to burn tokens")
 	}
 
