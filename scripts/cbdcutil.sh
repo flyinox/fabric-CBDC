@@ -45,23 +45,26 @@ function getOrgUsers() {
   local users_dir="organizations/peerOrganizations/${org_domain}/users"
   
   if [ -d "$users_dir" ]; then
-    # Extract user names from directory structure
+    # Extract user names from directory structure and convert to simple names
+    local found_users=()
     for user_dir in "$users_dir"/*; do
       if [ -d "$user_dir" ]; then
         local user_name=$(basename "$user_dir")
         # Convert from User1@domain format to just user1, or admin for Admin@domain
         if [[ "$user_name" == Admin@* ]]; then
-          echo "admin"
+          found_users+=("admin")
         elif [[ "$user_name" == User*@* ]]; then
           # Convert User1@domain to user1, User2@domain to user2, etc.
           local user_num=$(echo "$user_name" | sed 's/User\([0-9]*\)@.*/\1/')
-          echo "user$user_num"
+          found_users+=("user$user_num")
         fi
       fi
     done
-  else
-    # Fallback to default users if directory doesn't exist
-    echo "admin user1"
+    
+    # Output all found users
+    for user in "${found_users[@]}"; do
+      echo "$user"
+    done
   fi
 }
 
@@ -212,8 +215,6 @@ function selectOrgAndUser() {
   local current_org_name=${!org_name_var}
   local current_user_name=${!user_name_var}
   
-
-  
   # Organization selection
   if [ -z "$current_org_name" ]; then
     local orgs=()
@@ -255,7 +256,12 @@ function selectOrgAndUser() {
   
   # User selection
   if [ -z "$current_user_name" ]; then
-    local users=("admin" "user1")
+    local users=($(getOrgUsers "$current_org_name"))
+    
+    if [ ${#users[@]} -eq 0 ]; then
+      errorln "组织 $current_org_name 没有可用用户"
+      return 1
+    fi
     
     if [ ${#users[@]} -eq 1 ]; then
       current_user_name="${users[0]}"
@@ -755,10 +761,8 @@ function cbdcGetUserInfo() {
   local org_name=""
   local user_name=""
   
-
-  
   # Parse command line arguments
-    while [[ $# -gt 0 ]]; do
+  while [[ $# -gt 0 ]]; do
     case $1 in
       -org)
         org_name="$2"
@@ -777,8 +781,6 @@ function cbdcGetUserInfo() {
   
   infoln "👤 获取用户基本信息..."
   println
-  
-
   
   # Use inline selection to avoid function call issues
   selectOrgAndUser org_name user_name

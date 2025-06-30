@@ -259,25 +259,37 @@ function print_parsed_args() {
 # 简化版选择组织函数
 function selectOrganization() {
     local org_name_var=$1
-    local orgs="CentralBank a1 b1"
+    local orgs=()
+    
+    # 从 network-config.json 获取组织列表
+    if [ -f "network-config.json" ]; then
+        local temp_org_file=$(mktemp)
+        jq -r '.network.organizations[].name' network-config.json > "$temp_org_file" 2>/dev/null
+        while IFS= read -r org_line; do
+            if [ -n "$org_line" ]; then
+                orgs+=("$org_line")
+            fi
+        done < "$temp_org_file"
+        rm -f "$temp_org_file"
+    else
+        orgs=("CentralBank" "a1" "b1")
+    fi
     
     println "📋 可用组织："
-    local i=1
-    for org in $orgs; do
-        printf "  %d) %s\n" $i "$org"
-        i=$((i+1))
+    for i in "${!orgs[@]}"; do
+        printf "  %d) %s\n" $((i+1)) "${orgs[$i]}"
     done
     
     while true; do
-        printf "请选择组织 [1-3]: "
+        printf "请选择组织 [1-${#orgs[@]}]: "
         read -r selection
         
-        case "$selection" in
-            1) eval "$org_name_var='CentralBank'"; break ;;
-            2) eval "$org_name_var='a1'"; break ;;
-            3) eval "$org_name_var='b1'"; break ;;
-            *) errorln "无效选择，请输入 1-3 之间的数字" ;;
-        esac
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#orgs[@]} ]; then
+            eval "$org_name_var='${orgs[$((selection-1))]}'"
+            break
+        else
+            errorln "无效选择，请输入 1-${#orgs[@]} 之间的数字"
+        fi
     done
 }
 
