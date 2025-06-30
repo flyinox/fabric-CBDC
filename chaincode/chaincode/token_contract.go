@@ -11,11 +11,13 @@ SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 
 	"github.com/hyperledger/fabric-contract-api-go/v2/contractapi"
 )
@@ -382,28 +384,70 @@ func (s *SmartContract) GetUserInfo(ctx contractapi.TransactionContextInterface)
 		return "", fmt.Errorf("failed to get client MSPID: %v", err)
 	}
 
-	// 构建调试信息结构
-	debugInfo := struct {
-		ClientID  string `json:"clientId"`
-		MSPID     string `json:"mspId"`
-		TxID      string `json:"txId"`
-		ChannelID string `json:"channelId"`
+	// 解析 clientID 获取明文信息
+	var userName, orgName, orgUnit, decodedClientID string
+
+	// 尝试解码 base64 编码的 clientID
+	if decodedBytes, err := base64.StdEncoding.DecodeString(clientID); err == nil {
+		decodedClientID = string(decodedBytes)
+
+		// 解析 X.509 格式：x509::CN=User1@domain.com,OU=client,...::...
+		if strings.HasPrefix(decodedClientID, "x509::") {
+			parts := strings.Split(decodedClientID, "::")
+			if len(parts) >= 2 {
+				subjectPart := parts[1]
+
+				// 解析 CN (Common Name)
+				if cnMatch := strings.Split(subjectPart, "CN="); len(cnMatch) > 1 {
+					cnPart := strings.Split(cnMatch[1], ",")[0]
+					if strings.Contains(cnPart, "@") {
+						userName = strings.Split(cnPart, "@")[0]
+						orgName = strings.Split(cnPart, "@")[1]
+					} else {
+						userName = cnPart
+					}
+				}
+
+				// 解析 OU (Organizational Unit)
+				if ouMatch := strings.Split(subjectPart, "OU="); len(ouMatch) > 1 {
+					orgUnit = strings.Split(ouMatch[1], ",")[0]
+				}
+			}
+		}
+	} else {
+		decodedClientID = "Failed to decode: " + err.Error()
+	}
+
+	// 构建用户信息结构
+	userInfo := struct {
+		ClientID        string `json:"clientId"`
+		DecodedClientID string `json:"decodedClientId"`
+		UserName        string `json:"userName"`
+		OrgName         string `json:"orgName"`
+		OrgUnit         string `json:"orgUnit"`
+		MSPID           string `json:"mspId"`
+		TxID            string `json:"txId"`
+		ChannelID       string `json:"channelId"`
 	}{
-		ClientID:  clientID,
-		MSPID:     mspID,
-		TxID:      ctx.GetStub().GetTxID(),
-		ChannelID: ctx.GetStub().GetChannelID(),
+		ClientID:        clientID,
+		DecodedClientID: decodedClientID,
+		UserName:        userName,
+		OrgName:         orgName,
+		OrgUnit:         orgUnit,
+		MSPID:           mspID,
+		TxID:            ctx.GetStub().GetTxID(),
+		ChannelID:       ctx.GetStub().GetChannelID(),
 	}
 
-	// 将调试信息转换为JSON格式
-	debugInfoJSON, err := json.Marshal(debugInfo)
+	// 将用户信息转换为JSON格式
+	userInfoJSON, err := json.Marshal(userInfo)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal debug info: %v", err)
+		return "", fmt.Errorf("failed to marshal user info: %v", err)
 	}
 
-	log.Printf("User info: %s", string(debugInfoJSON))
+	log.Printf("User info: %s", string(userInfoJSON))
 
-	return string(debugInfoJSON), nil
+	return string(userInfoJSON), nil
 }
 
 // TotalSupply 返回代币的总供应量

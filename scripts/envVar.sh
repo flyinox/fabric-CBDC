@@ -84,12 +84,20 @@ loadNetworkConfig
 # Set environment variables for the peer org
 setGlobals() {
   local USING_ORG=""
+  local USING_USER="admin"  # 默认使用admin用户
+  
   if [ -z "$OVERRIDE_ORG" ]; then
     USING_ORG=$1
   else
     USING_ORG="${OVERRIDE_ORG}"
   fi
-  infoln "Using organization ${USING_ORG}"
+  
+  # 如果提供了第二个参数，则使用指定的用户
+  if [ -n "$2" ]; then
+    USING_USER=$2
+  fi
+  
+  infoln "Using organization ${USING_ORG} with user ${USING_USER}"
   
   # 查找组织索引
   local org_index=-1
@@ -134,8 +142,23 @@ setGlobals() {
   local org_domain="${NETWORK_ORG_DOMAINS[$org_index]}"
   local org_port="${NETWORK_ORG_PORTS[$org_index]}"
   
+  # 根据用户选择动态设置证书路径
+  local cert_user=""
+  case "${USING_USER}" in
+    "admin")
+      cert_user="Admin"
+      ;;
+    "user1")
+      cert_user="User1"
+      ;;
+    *)
+      cert_user="Admin"  # 默认使用Admin
+      warnln "Unknown user: ${USING_USER}, using Admin as default"
+      ;;
+  esac
+  
   export CORE_PEER_LOCALMSPID="$org_msp"
-  export CORE_PEER_MSPCONFIGPATH="${TEST_NETWORK_HOME}/organizations/peerOrganizations/${org_domain}/users/Admin@${org_domain}/msp"
+  export CORE_PEER_MSPCONFIGPATH="${TEST_NETWORK_HOME}/organizations/peerOrganizations/${org_domain}/users/${cert_user}@${org_domain}/msp"
   export CORE_PEER_ADDRESS="localhost:${org_port}"
   
   # 设置TLS根证书文件

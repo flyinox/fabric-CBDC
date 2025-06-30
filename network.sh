@@ -1595,8 +1595,14 @@ while [[ $# -ge 1 ]] ; do
     VERBOSE=true
     ;;
   -org )
-    ORG="$2"
-    shift
+    # Only process -org for non-ccc commands
+    if [ "$MODE" != "ccc" ]; then
+      ORG="$2"
+      shift
+    else
+      # For ccc commands, keep the -org parameter for cbdcChaincode function
+      break
+    fi
     ;;
   -i )
     IMAGETAG="$2"

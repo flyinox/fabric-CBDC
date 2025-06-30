@@ -153,8 +153,8 @@ function executeChaincodeCommand() {
   . scripts/envVar.sh
   . scripts/ccutils.sh
   
-  # Set globals for the organization
-  setGlobals $org_index
+  # Set globals for the organization and user
+  setGlobals $org_index "$user_name"
   
   # Execute chaincode operation
   if [ "$command_type" == "invoke" ]; then
@@ -170,6 +170,8 @@ function selectOrgAndUser() {
   local user_name_var=$2
   local current_org_name=${!org_name_var}
   local current_user_name=${!user_name_var}
+  
+
   
   # Organization selection
   if [ -z "$current_org_name" ]; then
@@ -712,8 +714,10 @@ function cbdcGetUserInfo() {
   local org_name=""
   local user_name=""
   
+
+  
   # Parse command line arguments
-  while [[ $# -gt 0 ]]; do
+    while [[ $# -gt 0 ]]; do
     case $1 in
       -org)
         org_name="$2"
@@ -732,6 +736,8 @@ function cbdcGetUserInfo() {
   
   infoln "👤 获取用户基本信息..."
   println
+  
+
   
   # Use inline selection to avoid function call issues
   selectOrgAndUser org_name user_name
