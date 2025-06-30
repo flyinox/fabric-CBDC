@@ -158,9 +158,9 @@ function executeChaincodeCommand() {
   
   # Execute chaincode operation
   if [ "$command_type" == "invoke" ]; then
-    chaincodeInvoke $org_index "cbdc-channel" "cbdc" "$args"
+    chaincodeInvoke $org_index "cbdc-channel" "cbdc" "${args}"
   else
-    chaincodeQuery $org_index "cbdc-channel" "cbdc" "$args"
+    chaincodeQuery $org_index "cbdc-channel" "cbdc" "${args}"
   fi
 }
 
@@ -307,7 +307,12 @@ function cbdcInitialize() {
   # Use inline selection to avoid function call issues
   selectOrgAndUser org_name user_name
   
-  local args="{\"Args\":[\"Initialize\",\"$name\",\"$symbol\",\"$decimals\"]}"
+  # Properly escape JSON arguments to handle spaces and special characters
+  local escaped_name=$(printf '%s' "$name" | sed 's/"/\\"/g')
+  local escaped_symbol=$(printf '%s' "$symbol" | sed 's/"/\\"/g')
+  local escaped_decimals=$(printf '%s' "$decimals" | sed 's/"/\\"/g')
+  
+  local args="{\"Args\":[\"Initialize\",\"$escaped_name\",\"$escaped_symbol\",\"$escaped_decimals\"]}"
   
   executeChaincodeCommand "$org_name" "$user_name" "invoke" "Initialize" "$args"
 }
@@ -468,7 +473,10 @@ function cbdcTransfer() {
   # Use inline selection to avoid function call issues
   selectOrgAndUser org_name user_name
   
-  local args="{\"Args\":[\"Transfer\",\"$recipient\",\"$amount\"]}"
+  # Properly escape JSON arguments to handle spaces and special characters
+  local escaped_recipient=$(printf '%s' "$recipient" | sed 's/"/\\"/g')
+  
+  local args="{\"Args\":[\"Transfer\",\"$escaped_recipient\",\"$amount\"]}"
   
   executeChaincodeCommand "$org_name" "$user_name" "invoke" "Transfer" "$args"
 }
@@ -514,7 +522,9 @@ function cbdcBalance() {
       [nN][oO]|[nN])
         printf "请输入要查询的账户地址: "
         read -r account
-        local args="{\"Args\":[\"BalanceOf\",\"$account\"]}"
+        # Properly escape JSON arguments to handle spaces and special characters
+        local escaped_account=$(printf '%s' "$account" | sed 's/"/\\"/g')
+        local args="{\"Args\":[\"BalanceOf\",\"$escaped_account\"]}"
         executeChaincodeCommand "$org_name" "$user_name" "query" "BalanceOf" "$args"
         ;;
       *)
@@ -523,7 +533,9 @@ function cbdcBalance() {
         ;;
     esac
   else
-    local args="{\"Args\":[\"BalanceOf\",\"$account\"]}"
+    # Properly escape JSON arguments to handle spaces and special characters
+    local escaped_account=$(printf '%s' "$account" | sed 's/"/\\"/g')
+    local args="{\"Args\":[\"BalanceOf\",\"$escaped_account\"]}"
     executeChaincodeCommand "$org_name" "$user_name" "query" "BalanceOf" "$args"
   fi
 }
@@ -620,7 +632,10 @@ function cbdcApprove() {
   # Use inline selection to avoid function call issues
   selectOrgAndUser org_name user_name
   
-  local args="{\"Args\":[\"Approve\",\"$spender\",\"$amount\"]}"
+  # Properly escape JSON arguments to handle spaces and special characters
+  local escaped_spender=$(printf '%s' "$spender" | sed 's/"/\\"/g')
+  
+  local args="{\"Args\":[\"Approve\",\"$escaped_spender\",\"$amount\"]}"
   
   executeChaincodeCommand "$org_name" "$user_name" "invoke" "Approve" "$args"
 }
@@ -683,9 +698,47 @@ function cbdcAllowance() {
   # Use inline selection to avoid function call issues
   selectOrgAndUser org_name user_name
   
-  local args="{\"Args\":[\"Allowance\",\"$owner\",\"$spender\"]}"
+  # Properly escape JSON arguments to handle spaces and special characters
+  local escaped_owner=$(printf '%s' "$owner" | sed 's/"/\\"/g')
+  local escaped_spender=$(printf '%s' "$spender" | sed 's/"/\\"/g')
+  
+  local args="{\"Args\":[\"Allowance\",\"$escaped_owner\",\"$escaped_spender\"]}"
   
   executeChaincodeCommand "$org_name" "$user_name" "query" "Allowance" "$args"
+}
+
+# CBDC Get user info query
+function cbdcGetUserInfo() {
+  local org_name=""
+  local user_name=""
+  
+  # Parse command line arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -org)
+        org_name="$2"
+        shift 2
+        ;;
+      -user)
+        user_name="$2"
+        shift 2
+        ;;
+      *)
+        errorln "未知参数: $1"
+        return 1
+        ;;
+    esac
+  done
+  
+  infoln "👤 获取用户基本信息..."
+  println
+  
+  # Use inline selection to avoid function call issues
+  selectOrgAndUser org_name user_name
+  
+  local args="{\"Args\":[\"GetUserInfo\"]}"
+  
+  executeChaincodeCommand "$org_name" "$user_name" "query" "GetUserInfo" "$args"
 }
 
 # CBDC main command handler
@@ -718,6 +771,12 @@ function cbdcChaincode() {
     allowance)
       cbdcAllowance "$@"
       ;;
+    userinfo)
+      cbdcGetUserInfo "$@"
+      ;;
+    user)
+      cbdcGetUserInfo "$@"
+      ;;
     help)
       printCBDCHelp
       ;;
@@ -744,6 +803,8 @@ function printCBDCHelp() {
   println "  supply     - 查询代币总供应量"
   println "  approve    - 批准代币授权"
   println "  allowance  - 查询授权额度"
+  println "  userinfo   - 获取用户基本信息"
+  println "  user       - 获取用户基本信息 (userinfo的简写)"
   println "  help       - 显示此帮助信息"
   println
   println "通用选项:"
@@ -756,6 +817,7 @@ function printCBDCHelp() {
   println "  $0 ccc transfer -to <地址> -amount 100"
   println "  $0 ccc balance -account <地址>"
   println "  $0 ccc supply"
+  println "  $0 ccc userinfo -org CentralBank -user admin"
   println
   println "注意:"
   println "  - 如果不提供选项，系统将进入交互模式"

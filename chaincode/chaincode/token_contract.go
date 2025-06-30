@@ -56,12 +56,12 @@ func (s *SmartContract) Mint(ctx contractapi.TransactionContextInterface, amount
 		return errors.New("Contract options need to be set before calling any function, call Initialize() to initialize contract")
 	}
 
-	// 检查铸币者授权 - 仅有PBOCMSP可以铸造新代币
+	// 检查铸币者授权 - 仅有CentralBankMSP可以铸造新代币
 	clientMSPID, err := ctx.GetClientIdentity().GetMSPID()
 	if err != nil {
 		return fmt.Errorf("failed to get MSPID: %v", err)
 	}
-	if clientMSPID != "PBOCMSP" {
+	if clientMSPID != "CentralBankMSP" {
 		return errors.New("client is not authorized to mint new tokens")
 	}
 
@@ -153,12 +153,12 @@ func (s *SmartContract) Burn(ctx contractapi.TransactionContextInterface, amount
 	if !initialized {
 		return errors.New("Contract options need to be set before calling any function, call Initialize() to initialize contract")
 	}
-	// 检查铸币者授权 - 仅有PBOCMSP可以销毁代币
+	// 检查铸币者授权 - 仅有CentralBankMSP可以销毁代币
 	clientMSPID, err := ctx.GetClientIdentity().GetMSPID()
 	if err != nil {
 		return fmt.Errorf("failed to get MSPID: %v", err)
 	}
-	if clientMSPID != "PBOCMSP" {
+	if clientMSPID != "CentralBankMSP" {
 		return errors.New("client is not authorized to burn tokens")
 	}
 
@@ -352,6 +352,58 @@ func (s *SmartContract) ClientAccountID(ctx contractapi.TransactionContextInterf
 	}
 
 	return clientAccountID, nil
+}
+
+// GetUserInfo 返回调用客户端的基本身份信息
+// 包含客户端ID、MSPID等信息，用于获取用户基本信息
+func (s *SmartContract) GetUserInfo(ctx contractapi.TransactionContextInterface) (string, error) {
+
+	// 首先检查合约是否已初始化
+	initialized, err := checkInitialized(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to check if contract is already initialized: %v", err)
+	}
+	if !initialized {
+		return "", fmt.Errorf("Contract options need to be set before calling any function, call Initialize() to initialize contract")
+	}
+
+	// 获取客户端身份信息
+	clientIdentity := ctx.GetClientIdentity()
+
+	// 获取客户端ID
+	clientID, err := clientIdentity.GetID()
+	if err != nil {
+		return "", fmt.Errorf("failed to get client id: %v", err)
+	}
+
+	// 获取客户端MSPID
+	mspID, err := clientIdentity.GetMSPID()
+	if err != nil {
+		return "", fmt.Errorf("failed to get client MSPID: %v", err)
+	}
+
+	// 构建调试信息结构
+	debugInfo := struct {
+		ClientID  string `json:"clientId"`
+		MSPID     string `json:"mspId"`
+		TxID      string `json:"txId"`
+		ChannelID string `json:"channelId"`
+	}{
+		ClientID:  clientID,
+		MSPID:     mspID,
+		TxID:      ctx.GetStub().GetTxID(),
+		ChannelID: ctx.GetStub().GetChannelID(),
+	}
+
+	// 将调试信息转换为JSON格式
+	debugInfoJSON, err := json.Marshal(debugInfo)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal debug info: %v", err)
+	}
+
+	log.Printf("User info: %s", string(debugInfoJSON))
+
+	return string(debugInfoJSON), nil
 }
 
 // TotalSupply 返回代币的总供应量
@@ -725,4 +777,4 @@ func sub(b int, q int) (int, error) {
 	}
 
 	return diff, nil
-} 
+}

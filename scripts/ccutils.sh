@@ -200,7 +200,7 @@ function chaincodeInvokeInit() {
     # it using the "-o" option
     set -x
     infoln "invoke fcn call:${fcn_call}"
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride $orderer_hostname --tls --cafile "$ORDERER_CA" -C $CHANNEL_NAME -n ${CC_NAME} "${PEER_CONN_PARMS[@]}" --isInit -c ${fcn_call} >&log.txt
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride $orderer_hostname --tls --cafile "$ORDERER_CA" -C $CHANNEL_NAME -n ${CC_NAME} "${PEER_CONN_PARMS[@]}" --isInit -c "${fcn_call}" >&log.txt
     res=$?
     { set +x; } 2>/dev/null
     let rc=$res
@@ -379,7 +379,7 @@ chaincodeInvoke() {
     done
     
     set -x
-    peer chaincode invoke -o localhost:7050 -C $CHANNEL -n ${CC_NAME_LOCAL} -c ${CC_INVOKE_CONSTRUCTOR} --tls --cafile $ORDERER_CA $peer_conn_params >&log.txt
+    peer chaincode invoke -o localhost:7050 -C $CHANNEL -n ${CC_NAME_LOCAL} -c "${CC_INVOKE_CONSTRUCTOR}" --tls --cafile $ORDERER_CA $peer_conn_params >&log.txt
     res=$?
     { set +x; } 2>/dev/null
     rc=$res
@@ -409,7 +409,7 @@ chaincodeQuery() {
     sleep $DELAY
     infoln "Attempting to Query peer0.${org_name}, Retry after $DELAY seconds."
     set -x
-    peer chaincode query -C $CHANNEL -n ${CC_NAME_LOCAL} -c ${CC_QUERY_CONSTRUCTOR} >&log.txt
+    peer chaincode query -C $CHANNEL -n ${CC_NAME_LOCAL} -c "${CC_QUERY_CONSTRUCTOR}" >&log.txt
     res=$?
     { set +x; } 2>/dev/null
     rc=$res
