@@ -386,17 +386,17 @@ func (s *SmartContract) GetUserInfo(ctx contractapi.TransactionContextInterface)
 
 	// 解析 clientID 获取明文信息
 	var userName, orgName, orgUnit, decodedClientID string
-
+	
 	// 尝试解码 base64 编码的 clientID
 	if decodedBytes, err := base64.StdEncoding.DecodeString(clientID); err == nil {
 		decodedClientID = string(decodedBytes)
-
+		
 		// 解析 X.509 格式：x509::CN=User1@domain.com,OU=client,...::...
 		if strings.HasPrefix(decodedClientID, "x509::") {
 			parts := strings.Split(decodedClientID, "::")
 			if len(parts) >= 2 {
 				subjectPart := parts[1]
-
+				
 				// 解析 CN (Common Name)
 				if cnMatch := strings.Split(subjectPart, "CN="); len(cnMatch) > 1 {
 					cnPart := strings.Split(cnMatch[1], ",")[0]
@@ -407,7 +407,7 @@ func (s *SmartContract) GetUserInfo(ctx contractapi.TransactionContextInterface)
 						userName = cnPart
 					}
 				}
-
+				
 				// 解析 OU (Organizational Unit)
 				if ouMatch := strings.Split(subjectPart, "OU="); len(ouMatch) > 1 {
 					orgUnit = strings.Split(ouMatch[1], ",")[0]
@@ -417,26 +417,26 @@ func (s *SmartContract) GetUserInfo(ctx contractapi.TransactionContextInterface)
 	} else {
 		decodedClientID = "Failed to decode: " + err.Error()
 	}
-
+	
 	// 构建用户信息结构
 	userInfo := struct {
-		ClientID        string `json:"clientId"`
-		DecodedClientID string `json:"decodedClientId"`
-		UserName        string `json:"userName"`
-		OrgName         string `json:"orgName"`
-		OrgUnit         string `json:"orgUnit"`
-		MSPID           string `json:"mspId"`
-		TxID            string `json:"txId"`
-		ChannelID       string `json:"channelId"`
+		ClientID         string `json:"clientId"`
+		DecodedClientID  string `json:"decodedClientId"`
+		UserName         string `json:"userName"`
+		OrgName          string `json:"orgName"`
+		OrgUnit          string `json:"orgUnit"`
+		MSPID            string `json:"mspId"`
+		TxID             string `json:"txId"`
+		ChannelID        string `json:"channelId"`
 	}{
-		ClientID:        clientID,
-		DecodedClientID: decodedClientID,
-		UserName:        userName,
-		OrgName:         orgName,
-		OrgUnit:         orgUnit,
-		MSPID:           mspID,
-		TxID:            ctx.GetStub().GetTxID(),
-		ChannelID:       ctx.GetStub().GetChannelID(),
+		ClientID:         clientID,
+		DecodedClientID:  decodedClientID,
+		UserName:         userName,
+		OrgName:          orgName,
+		OrgUnit:          orgUnit,
+		MSPID:            mspID,
+		TxID:             ctx.GetStub().GetTxID(),
+		ChannelID:        ctx.GetStub().GetChannelID(),
 	}
 
 	// 将用户信息转换为JSON格式
@@ -821,4 +821,4 @@ func sub(b int, q int) (int, error) {
 	}
 
 	return diff, nil
-}
+} 
