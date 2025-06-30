@@ -171,15 +171,12 @@ for i in "${!NETWORK_ORGS[@]}"; do
   approveForMyOrg $org_index
 done
 
-## check commit readiness after all approvals
+## check commit readiness after all approvals - 只检查一次即可，无需对每个组织都检查
 msp_args=($(generateMspCheckArgs $((${#NETWORK_ORGS[@]}-1))))
-infoln "Checking commit readiness after all approvals..."
+infoln "Checking commit readiness after all approvals (checking on first organization only)..."
 
-# 检查所有组织的commit readiness
-for i in "${!NETWORK_ORGS[@]}"; do
-  org_index=$((i+1))
-  checkCommitReadiness $org_index "${msp_args[@]}"
-done
+# 只在第一个组织上检查一次即可，因为所有组织都已经approve了
+checkCommitReadiness 1 "${msp_args[@]}"
 
 ## now that we know for sure all orgs have approved, commit the definition
 infoln "Committing chaincode definition..."
@@ -189,11 +186,9 @@ for i in "${!NETWORK_ORGS[@]}"; do
 done
 commitChaincodeDefinition $org_indices
 
-## query on all orgs to see that the definition committed successfully
-for i in "${!NETWORK_ORGS[@]}"; do
-  org_index=$((i+1))
-  queryCommitted $org_index
-done
+## query on first org to see that the definition committed successfully - 只查询一次即可
+infoln "Verifying chaincode definition commit (checking on first organization only)..."
+queryCommitted 1
 
 ## Invoke the chaincode - this does require that the chaincode have the 'initLedger'
 ## method defined

@@ -25,6 +25,9 @@ export VERBOSE=false
 # Load CBDC utility functions
 . scripts/cbdcutil.sh
 
+# Load user management functions
+. scripts/userManagement.sh
+
 # Global variables for network configuration
 NETWORK_CONFIG_LOADED=false
 NETWORK_CHANNEL_NAME=""
@@ -985,13 +988,15 @@ function networkDown() {
     #Cleanup images
     removeUnwantedImages
     # remove orderer block and other channel configuration transactions and certs
-    ${CONTAINER_CLI} run --rm -v "$(pwd):/data" busybox sh -c 'cd /data && rm -rf system-genesis-block/*.block organizations/peerOrganizations organizations/ordererOrganizations'
+    infoln "🧹 Cleaning up artifacts and certificates..."
+    rm -rf system-genesis-block/*.block organizations/peerOrganizations organizations/ordererOrganizations 2>/dev/null || true
     ## remove fabric ca artifacts
-    ${CONTAINER_CLI} run --rm -v "$(pwd):/data" busybox sh -c 'cd /data && rm -rf organizations/fabric-ca/org1/msp organizations/fabric-ca/org1/tls-cert.pem organizations/fabric-ca/org1/ca-cert.pem organizations/fabric-ca/org1/IssuerPublicKey organizations/fabric-ca/org1/IssuerRevocationPublicKey organizations/fabric-ca/org1/fabric-ca-server.db'
-    ${CONTAINER_CLI} run --rm -v "$(pwd):/data" busybox sh -c 'cd /data && rm -rf organizations/fabric-ca/org2/msp organizations/fabric-ca/org2/tls-cert.pem organizations/fabric-ca/org2/ca-cert.pem organizations/fabric-ca/org2/IssuerPublicKey organizations/fabric-ca/org2/IssuerRevocationPublicKey organizations/fabric-ca/org2/fabric-ca-server.db'
-    ${CONTAINER_CLI} run --rm -v "$(pwd):/data" busybox sh -c 'cd /data && rm -rf organizations/fabric-ca/ordererOrg/msp organizations/fabric-ca/ordererOrg/tls-cert.pem organizations/fabric-ca/ordererOrg/ca-cert.pem organizations/fabric-ca/ordererOrg/IssuerPublicKey organizations/fabric-ca/ordererOrg/IssuerRevocationPublicKey organizations/fabric-ca/ordererOrg/fabric-ca-server.db'
+    rm -rf organizations/fabric-ca/org1/msp organizations/fabric-ca/org1/tls-cert.pem organizations/fabric-ca/org1/ca-cert.pem organizations/fabric-ca/org1/IssuerPublicKey organizations/fabric-ca/org1/IssuerRevocationPublicKey organizations/fabric-ca/org1/fabric-ca-server.db 2>/dev/null || true
+    rm -rf organizations/fabric-ca/org2/msp organizations/fabric-ca/org2/tls-cert.pem organizations/fabric-ca/org2/ca-cert.pem organizations/fabric-ca/org2/IssuerPublicKey organizations/fabric-ca/org2/IssuerRevocationPublicKey organizations/fabric-ca/org2/fabric-ca-server.db 2>/dev/null || true
+    rm -rf organizations/fabric-ca/ordererOrg/msp organizations/fabric-ca/ordererOrg/tls-cert.pem organizations/fabric-ca/ordererOrg/ca-cert.pem organizations/fabric-ca/ordererOrg/IssuerPublicKey organizations/fabric-ca/ordererOrg/IssuerRevocationPublicKey organizations/fabric-ca/ordererOrg/fabric-ca-server.db 2>/dev/null || true
     # remove channel and script artifacts
-    ${CONTAINER_CLI} run --rm -v "$(pwd):/data" busybox sh -c 'cd /data && rm -rf channel-artifacts log.txt *.tar.gz'
+    rm -rf channel-artifacts log.txt *.tar.gz 2>/dev/null || true
+    successln "✅ Artifacts and certificates cleaned"
   fi
 }
 
@@ -1495,12 +1500,15 @@ else
   shift
 fi
 
-## if no parameters are passed, show the help for cc or ccc
+## if no parameters are passed, show the help for cc, ccc, or adduser
 if [ "$MODE" == "cc" ] && [[ $# -lt 1 ]]; then
   printHelp $MODE
   exit 0
 elif [ "$MODE" == "ccc" ] && [[ $# -lt 1 ]]; then
   printCBDCHelp
+  exit 0
+elif [ "$MODE" == "adduser" ] && [[ $# -lt 1 ]]; then
+  printUserManagementHelp
   exit 0
 fi
 
@@ -1521,6 +1529,12 @@ if [[ $# -ge 1 ]] ; then
   elif [[ "$MODE" == "ccc" ]]; then
     if [ "$1" != "-h" ]; then
       export CCC_SUBCOMMAND=$key
+      shift
+    fi
+  # check for the adduser command
+  elif [[ "$MODE" == "adduser" ]]; then
+    if [ "$1" != "-h" ]; then
+      export ADDUSER_SUBCOMMAND=$key
       shift
     fi
   fi
@@ -1646,8 +1660,8 @@ while [[ $# -ge 1 ]] ; do
     continue
     ;;    
   * )
-    # Skip unknown flags for ccc command, they will be handled by cbdcChaincode function
-    if [ "$MODE" == "ccc" ]; then
+    # Skip unknown flags for ccc and adduser commands, they will be handled by respective functions
+    if [ "$MODE" == "ccc" ] || [ "$MODE" == "adduser" ]; then
       break
     fi
     errorln "Unknown flag: $key"
@@ -1709,6 +1723,10 @@ elif [ "$MODE" == "ccc" ]; then
   # Rebuild the argument list for ccc command
   set -- "$CCC_SUBCOMMAND" "$@"
   cbdcChaincode "$@"
+elif [ "$MODE" == "adduser" ]; then
+  # Rebuild the argument list for adduser command
+  set -- "$ADDUSER_SUBCOMMAND" "$@"
+  userManagement "$@"
 else
   printHelp
   exit 1

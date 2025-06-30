@@ -110,9 +110,12 @@ function checkCommitReadiness() {
   local COUNTER=1
   # continue to poll
   # we either get a successful response, or reach MAX RETRY
-  while [ $rc -ne 0 -a $COUNTER -lt $MAX_RETRY ]; do
-    sleep $DELAY
-    infoln "Attempting to check the commit readiness of the chaincode definition on peer0.${org_name}, Retry after $DELAY seconds."
+  while [ $rc -ne 0 -a $COUNTER -le $MAX_RETRY ]; do
+    # 第一次不需要等待
+    if [ $COUNTER -gt 1 ]; then
+      sleep $DELAY
+      infoln "Attempting to check the commit readiness of the chaincode definition on peer0.${org_name}, Retry after $DELAY seconds."
+    fi
     set -x
     peer lifecycle chaincode checkcommitreadiness --channelID $CHANNEL_NAME --name ${CC_NAME} --version ${CC_VERSION} --sequence ${CC_SEQUENCE} ${INIT_REQUIRED} ${CC_END_POLICY} ${CC_COLL_CONFIG} --output json >&log.txt
     res=$?
@@ -121,6 +124,10 @@ function checkCommitReadiness() {
     for var in "$@"; do
       grep "$var" log.txt &>/dev/null || let rc=1
     done
+    # 如果成功，立即退出循环
+    if [ $rc -eq 0 ]; then
+      break
+    fi
     COUNTER=$(expr $COUNTER + 1)
   done
   cat log.txt
@@ -163,15 +170,22 @@ function queryCommitted() {
   local COUNTER=1
   # continue to poll
   # we either get a successful response, or reach MAX RETRY
-  while [ $rc -ne 0 -a $COUNTER -lt $MAX_RETRY ]; do
-    sleep $DELAY
-    infoln "Attempting to Query committed status on peer0.${org_name}, Retry after $DELAY seconds."
+  while [ $rc -ne 0 -a $COUNTER -le $MAX_RETRY ]; do
+    # 第一次不需要等待
+    if [ $COUNTER -gt 1 ]; then
+      sleep $DELAY
+      infoln "Attempting to Query committed status on peer0.${org_name}, Retry after $DELAY seconds."
+    fi
     set -x
     peer lifecycle chaincode querycommitted --channelID $CHANNEL_NAME --name ${CC_NAME} >&log.txt
     res=$?
     { set +x; } 2>/dev/null
     test $res -eq 0 && VALUE=$(cat log.txt | grep -o '^Version: '$CC_VERSION', Sequence: [0-9]*, Endorsement Plugin: escc, Validation Plugin: vscc')
     test "$VALUE" = "$EXPECTED_RESULT" && let rc=0
+    # 如果成功，立即退出循环
+    if [ $rc -eq 0 ]; then
+      break
+    fi
     COUNTER=$(expr $COUNTER + 1)
   done
   cat log.txt

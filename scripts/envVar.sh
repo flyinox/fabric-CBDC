@@ -148,8 +148,10 @@ setGlobals() {
     "admin")
       cert_user="Admin"
       ;;
-    "user1")
-      cert_user="User1"
+    user[0-9]*)
+      # 动态处理用户，如 user1 -> User1, user2 -> User2
+      local user_num="${USING_USER#user}"
+      cert_user="User${user_num}"
       ;;
     *)
       cert_user="Admin"  # 默认使用Admin

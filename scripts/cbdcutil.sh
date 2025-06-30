@@ -21,7 +21,48 @@ function getCBDCOrganizations() {
 # Get organization users (for now, we use admin and user1 as examples)
 function getOrgUsers() {
   local org_name=$1
-  echo "admin user1"
+  local org_domain=""
+  
+  # Get organization domain from network config
+  if [ -f "network-config.json" ]; then
+    org_domain=$(jq -r ".network.organizations[] | select(.name == \"$org_name\") | .domain" network-config.json 2>/dev/null)
+  fi
+  
+  # If not found in config, use default mapping
+  if [ -z "$org_domain" ] || [ "$org_domain" = "null" ]; then
+    case "$org_name" in
+      "CentralBank") org_domain="centralbank.example.com" ;;
+      "a1") org_domain="a1.example.com" ;;
+      "b1") org_domain="b1.example.com" ;;
+      "PBOC") org_domain="pboc.example.com" ;;
+      "ICBC") org_domain="icbc.example.com" ;;
+      "ABC") org_domain="abc.example.com" ;;
+      "BOC") org_domain="boc.example.com" ;;
+      *) org_domain="$org_name.example.com" ;;
+    esac
+  fi
+  
+  local users_dir="organizations/peerOrganizations/${org_domain}/users"
+  
+  if [ -d "$users_dir" ]; then
+    # Extract user names from directory structure
+    for user_dir in "$users_dir"/*; do
+      if [ -d "$user_dir" ]; then
+        local user_name=$(basename "$user_dir")
+        # Convert from User1@domain format to just user1, or admin for Admin@domain
+        if [[ "$user_name" == Admin@* ]]; then
+          echo "admin"
+        elif [[ "$user_name" == User*@* ]]; then
+          # Convert User1@domain to user1, User2@domain to user2, etc.
+          local user_num=$(echo "$user_name" | sed 's/User\([0-9]*\)@.*/\1/')
+          echo "user$user_num"
+        fi
+      fi
+    done
+  else
+    # Fallback to default users if directory doesn't exist
+    echo "admin user1"
+  fi
 }
 
 # Interactive organization selection
