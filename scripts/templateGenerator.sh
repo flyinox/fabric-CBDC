@@ -582,8 +582,66 @@ function generate_chaincode_from_template() {
   if [ $? -eq 0 ]; then
     successln "✅ 智能合约已生成: $output_file"
     infoln "   Mint 和 Burn 权限已设置为: $central_msp_id"
+    
+    # Generate collection configuration
+    generate_collection_config "$central_msp_id"
   else
     errorln "生成智能合约失败"
+    return 1
+  fi
+}
+
+# Generate collection configuration for private data
+function generate_collection_config() {
+  local central_msp_id="$1"
+  local template_file="chaincode/collections_config.json"
+  local output_file="chaincode/collections_config_generated.json"
+  local network_config_file="network-config.json"
+  
+  if [ ! -f "$template_file" ]; then
+    errorln "Collection template not found: $template_file"
+    return 1
+  fi
+  
+  if [ ! -f "$network_config_file" ]; then
+    errorln "Network configuration not found: $network_config_file"
+    return 1
+  fi
+  
+  infoln "🔒 生成私有数据集合配置..."
+  infoln "   央行 MSP ID: $central_msp_id"
+  
+  # Extract bank MSP IDs from network configuration
+  local bank_msp_members=""
+  if command -v jq &> /dev/null; then
+    # Use jq to extract bank MSP IDs as array
+    while IFS= read -r msp; do
+      if [ -n "$msp" ]; then
+        bank_msp_members="${bank_msp_members}, '$msp.member'"
+      fi
+    done < <(jq -r '.network.organizations[] | select(.type == "commercial_bank") | .msp_id' "$network_config_file" 2>/dev/null)
+  else
+    # Fallback: parse manually if jq is not available
+    while IFS= read -r msp; do
+      if [ -n "$msp" ]; then
+        bank_msp_members="${bank_msp_members}, '$msp.member'"
+      fi
+    done < <(grep -o '"msp_id": "[^"]*"' "$network_config_file" | grep -v "CentralBankMSP\|OrdererMSP" | sed 's/"msp_id": "\([^"]*\)"/\1/g')
+  fi
+  
+  infoln "   银行 MSP IDs: $bank_msp_members"
+  
+  # Replace template placeholders
+  sed -e "s/{{CENTRAL_MSP_ID}}/$central_msp_id/g" \
+      -e "s/{{BANK_MSP_MEMBERS}}/$bank_msp_members/g" \
+      "$template_file" > "$output_file"
+  
+  if [ $? -eq 0 ]; then
+    successln "✅ 私有数据集合配置已生成: $output_file"
+    infoln "   央行完整数据存储已配置"
+    infoln "   银行hash记录存储已配置"
+  else
+    errorln "生成集合配置失败"
     return 1
   fi
 }

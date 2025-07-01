@@ -384,13 +384,26 @@ chaincodeInvoke() {
     
     # 动态构建peer连接参数
     local peer_conn_params=""
-    for i in "${!NETWORK_ORGS[@]}"; do
-      local org_port="${NETWORK_ORG_PORTS[$i]}"
-      local org_domain="${NETWORK_ORG_DOMAINS[$i]}"
+    
+    # 检查是否是CBDC链码，如果是则只使用央行peer
+    if [[ "${CC_NAME_LOCAL}" == "cbdc" ]]; then
+      # 只使用央行peer进行背书
+      local central_org_index=0  # CentralBank通常是第一个组织
+      local org_port="${NETWORK_ORG_PORTS[$central_org_index]}"
+      local org_domain="${NETWORK_ORG_DOMAINS[$central_org_index]}"
       local ca_path="${TEST_NETWORK_HOME}/organizations/peerOrganizations/${org_domain}/tlsca/tlsca.${org_domain}-cert.pem"
       
-      peer_conn_params="$peer_conn_params --peerAddresses localhost:${org_port} --tlsRootCertFiles $ca_path"
-    done
+      peer_conn_params="--peerAddresses localhost:${org_port} --tlsRootCertFiles $ca_path"
+    else
+      # 其他链码使用所有peer
+      for i in "${!NETWORK_ORGS[@]}"; do
+        local org_port="${NETWORK_ORG_PORTS[$i]}"
+        local org_domain="${NETWORK_ORG_DOMAINS[$i]}"
+        local ca_path="${TEST_NETWORK_HOME}/organizations/peerOrganizations/${org_domain}/tlsca/tlsca.${org_domain}-cert.pem"
+        
+        peer_conn_params="$peer_conn_params --peerAddresses localhost:${org_port} --tlsRootCertFiles $ca_path"
+      done
+    fi
     
     set -x
     peer chaincode invoke -o localhost:7050 -C $CHANNEL -n ${CC_NAME_LOCAL} -c "${CC_INVOKE_CONSTRUCTOR}" --tls --cafile $ORDERER_CA $peer_conn_params >&log.txt

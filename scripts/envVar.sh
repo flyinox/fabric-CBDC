@@ -38,7 +38,6 @@ function loadNetworkConfig() {
     NETWORK_ORG_MSPS=($(jq -r '.network.organizations[].msp_id' "$config_file"))
     NETWORK_ORG_DOMAINS=($(jq -r '.network.organizations[].domain' "$config_file"))
     NETWORK_ORG_PORTS=($(jq -r '.network.organizations[].peer.port' "$config_file"))
-    NETWORK_ORG_CA_PORTS=($(jq -r '.network.organizations[].ca_port' "$config_file"))
     
     # 设置orderer CA
     export ORDERER_CA=${TEST_NETWORK_HOME}/organizations/ordererOrganizations/${ORDERER_DOMAIN}/tlsca/tlsca.${ORDERER_DOMAIN}-cert.pem
@@ -71,7 +70,6 @@ function loadNetworkConfig() {
     NETWORK_ORG_MSPS=("Org1MSP" "Org2MSP")
     NETWORK_ORG_DOMAINS=("org1.example.com" "org2.example.com")
     NETWORK_ORG_PORTS=("7051" "9051")
-    NETWORK_ORG_CA_PORTS=("7054" "8054")
     ORDERER_DOMAIN="example.com"
     
     return 1

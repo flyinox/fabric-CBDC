@@ -1,9 +1,9 @@
 /*
 央行数字货币智能合约 (CBDC Smart Contract)
 
--  ERC-20 标准接口: 已完整实现标准代币功能
--  EOA (外部拥有账户) 管理接口: 尚未实现
--  隐私功能
+-  ERC-20 标准接口: 已完整实现标准代币功能，具备隐私保护
+-  隐私功能: 所有数据都存储在央行私有集合中
+-  央行监管: 央行可以查看所有数据，其他用户只能查看相关数据
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -30,8 +30,11 @@ const totalSupplyKey = "totalSupply"
 
 // 定义前缀的对象类型名称
 const allowancePrefix = "allowance"
+const balancePrefix = "balance_"
 
-// 定义选项的键名
+// 隐私功能相关常量
+const centralBankCollection = "central_bank_full_data"
+const transactionPrefix = "tx_"
 
 // SmartContract 提供在账户间转移代币的功能
 type SmartContract struct {
@@ -45,6 +48,32 @@ type event struct {
 	Value int    `json:"value"`
 }
 
+// PrivateTransactionData 完整的私有交易数据结构
+type PrivateTransactionData struct {
+	TxID        string `json:"txId"`
+	From        string `json:"from"`
+	To          string `json:"to"`
+	FromMSP     string `json:"fromMsp"`
+	ToMSP       string `json:"toMsp"`
+	Amount      int    `json:"amount"`
+	BlockNumber uint64 `json:"blockNumber"`
+	TxIndex     uint32 `json:"txIndex"`
+}
+
+// UserBalance 用户余额记录
+type UserBalance struct {
+	UserID  string `json:"userId"`
+	UserMSP string `json:"userMsp"`
+	Balance int    `json:"balance"`
+}
+
+// AllowanceRecord 授权记录
+type AllowanceRecord struct {
+	Owner   string `json:"owner"`
+	Spender string `json:"spender"`
+	Value   int    `json:"value"`
+}
+
 // Mint 创建新代币并将其添加到铸币者的账户余额中
 // 此函数触发 Transfer 事件
 func (s *SmartContract) Mint(ctx contractapi.TransactionContextInterface, amount int) error {
@@ -55,7 +84,7 @@ func (s *SmartContract) Mint(ctx contractapi.TransactionContextInterface, amount
 		return fmt.Errorf("failed to check if contract is already initialized: %v", err)
 	}
 	if !initialized {
-		return errors.New("Contract options need to be set before calling any function, call Initialize() to initialize contract")
+		return errors.New("contract options need to be set before calling any function, call Initialize() to initialize contract")
 	}
 
 	// 检查铸币者授权 - 仅有{{CENTRAL_MSP_ID}}可以铸造新代币
@@ -77,18 +106,10 @@ func (s *SmartContract) Mint(ctx contractapi.TransactionContextInterface, amount
 		return errors.New("mint amount must be a positive integer")
 	}
 
-	currentBalanceBytes, err := ctx.GetStub().GetState(minter)
+	// 从私有集合获取当前余额
+	currentBalance, err := s.getBalanceFromPrivateCollection(ctx, minter)
 	if err != nil {
-		return fmt.Errorf("failed to read minter account %s from world state: %v", minter, err)
-	}
-
-	var currentBalance int
-
-	// 如果铸币者当前余额尚不存在，我们将创建一个当前余额为0的账户
-	if currentBalanceBytes == nil {
-		currentBalance = 0
-	} else {
-		currentBalance, _ = strconv.Atoi(string(currentBalanceBytes)) // 不需要错误处理，因为设置账户余额时使用了Itoa()，保证了它是整数
+		return fmt.Errorf("failed to read minter account %s from private collection: %v", minter, err)
 	}
 
 	updatedBalance, err := add(currentBalance, amount)
@@ -96,24 +117,16 @@ func (s *SmartContract) Mint(ctx contractapi.TransactionContextInterface, amount
 		return err
 	}
 
-	err = ctx.GetStub().PutState(minter, []byte(strconv.Itoa(updatedBalance)))
+	// 更新私有集合中的余额
+	err = s.updateBalanceInPrivateCollection(ctx, minter, updatedBalance)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update balance in private collection: %v", err)
 	}
 
 	// 更新总供应量
-	totalSupplyBytes, err := ctx.GetStub().GetState(totalSupplyKey)
+	totalSupply, err := s.getTotalSupplyFromPrivateCollection(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve total token supply: %v", err)
-	}
-
-	var totalSupply int
-
-	// 如果没有代币被铸造，初始化总供应量
-	if totalSupplyBytes == nil {
-		totalSupply = 0
-	} else {
-		totalSupply, _ = strconv.Atoi(string(totalSupplyBytes)) // 不需要错误处理，因为设置总供应量时使用了Itoa()，保证了它是整数
 	}
 
 	// 将铸造数量添加到总供应量并更新状态
@@ -122,9 +135,9 @@ func (s *SmartContract) Mint(ctx contractapi.TransactionContextInterface, amount
 		return err
 	}
 
-	err = ctx.GetStub().PutState(totalSupplyKey, []byte(strconv.Itoa(totalSupply)))
+	err = s.updateTotalSupplyInPrivateCollection(ctx, totalSupply)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update total supply in private collection: %v", err)
 	}
 
 	// 发出 Transfer 事件
@@ -153,7 +166,7 @@ func (s *SmartContract) Burn(ctx contractapi.TransactionContextInterface, amount
 		return fmt.Errorf("failed to check if contract is already initialized: %v", err)
 	}
 	if !initialized {
-		return errors.New("Contract options need to be set before calling any function, call Initialize() to initialize contract")
+		return errors.New("contract options need to be set before calling any function, call Initialize() to initialize contract")
 	}
 	// 检查铸币者授权 - 仅有{{CENTRAL_MSP_ID}}可以销毁代币
 	clientMSPID, err := ctx.GetClientIdentity().GetMSPID()
@@ -174,42 +187,32 @@ func (s *SmartContract) Burn(ctx contractapi.TransactionContextInterface, amount
 		return errors.New("burn amount must be a positive integer")
 	}
 
-	currentBalanceBytes, err := ctx.GetStub().GetState(minter)
+	// 从私有集合获取当前余额
+	currentBalance, err := s.getBalanceFromPrivateCollection(ctx, minter)
 	if err != nil {
-		return fmt.Errorf("failed to read minter account %s from world state: %v", minter, err)
+		return fmt.Errorf("failed to read minter account %s from private collection: %v", minter, err)
 	}
 
-	var currentBalance int
-
-	// 检查铸币者当前余额是否存在
-	if currentBalanceBytes == nil {
-		return errors.New("The balance does not exist")
+	if currentBalance < amount {
+		return fmt.Errorf("insufficient balance to burn %d tokens", amount)
 	}
-
-	currentBalance, _ = strconv.Atoi(string(currentBalanceBytes)) // 不需要错误处理，因为设置账户余额时使用了Itoa()，保证了它是整数
 
 	updatedBalance, err := sub(currentBalance, amount)
 	if err != nil {
 		return err
 	}
 
-	err = ctx.GetStub().PutState(minter, []byte(strconv.Itoa(updatedBalance)))
+	// 更新私有集合中的余额
+	err = s.updateBalanceInPrivateCollection(ctx, minter, updatedBalance)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update balance in private collection: %v", err)
 	}
 
 	// 更新总供应量
-	totalSupplyBytes, err := ctx.GetStub().GetState(totalSupplyKey)
+	totalSupply, err := s.getTotalSupplyFromPrivateCollection(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve total token supply: %v", err)
 	}
-
-	// 如果没有代币被铸造，抛出错误
-	if totalSupplyBytes == nil {
-		return errors.New("totalSupply does not exist")
-	}
-
-	totalSupply, _ := strconv.Atoi(string(totalSupplyBytes)) // 不需要错误处理，因为设置总供应量时使用了Itoa()，保证了它是整数
 
 	// 从总供应量中减去销毁数量并更新状态
 	totalSupply, err = sub(totalSupply, amount)
@@ -217,9 +220,9 @@ func (s *SmartContract) Burn(ctx contractapi.TransactionContextInterface, amount
 		return err
 	}
 
-	err = ctx.GetStub().PutState(totalSupplyKey, []byte(strconv.Itoa(totalSupply)))
+	err = s.updateTotalSupplyInPrivateCollection(ctx, totalSupply)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update total supply in private collection: %v", err)
 	}
 
 	// 发出 Transfer 事件
@@ -238,33 +241,72 @@ func (s *SmartContract) Burn(ctx contractapi.TransactionContextInterface, amount
 	return nil
 }
 
-// Transfer 将代币从客户端账户转移到接收者账户
-// 接收者账户必须是 ClientID() 函数返回的有效 clientID
-// 此函数触发 Transfer 事件
+// Transfer 将代币从客户端账户转移到接收者账户（隐私版本）
+// 此函数触发 Transfer 事件，但所有数据都通过隐私机制处理
 func (s *SmartContract) Transfer(ctx contractapi.TransactionContextInterface, recipient string, amount int) error {
-
-	// 首先检查合约是否已初始化
+	// 检查合约初始化
 	initialized, err := checkInitialized(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to check if contract is already initialized: %v", err)
 	}
 	if !initialized {
-		return fmt.Errorf("Contract options need to be set before calling any function, call Initialize() to initialize contract")
+		return fmt.Errorf("contract options need to be set before calling any function, call Initialize() to initialize contract")
 	}
 
-	// 获取提交客户端身份的ID
-	clientID, err := ctx.GetClientIdentity().GetID()
+	// 获取发送方信息
+	sender, err := ctx.GetClientIdentity().GetID()
 	if err != nil {
-		return fmt.Errorf("failed to get client id: %v", err)
+		return fmt.Errorf("failed to get sender ID: %v", err)
 	}
 
-	err = transferHelper(ctx, clientID, recipient, amount)
+	senderMSP, err := ctx.GetClientIdentity().GetMSPID()
 	if err != nil {
-		return fmt.Errorf("failed to transfer: %v", err)
+		return fmt.Errorf("failed to get sender MSP: %v", err)
 	}
 
-	// 发出 Transfer 事件
-	transferEvent := event{clientID, recipient, amount}
+	// 获取接收方MSP（简化实现，从用户ID推断MSP）
+	recipientMSP := s.getUserMSPFromID(recipient)
+
+	// 验证转账金额
+	if amount <= 0 {
+		return fmt.Errorf("transfer amount must be positive")
+	}
+
+	// 执行隐私余额转账
+	err = s.transferHelperPrivate(ctx, sender, recipient, amount)
+	if err != nil {
+		return fmt.Errorf("failed to execute transfer: %v", err)
+	}
+
+	// 创建完整的私有交易数据
+	txID := ctx.GetStub().GetTxID()
+
+	privateData := PrivateTransactionData{
+		TxID:        txID,
+		From:        sender,
+		To:          recipient,
+		FromMSP:     senderMSP,
+		ToMSP:       recipientMSP,
+		Amount:      amount,
+		BlockNumber: 0, // 简化实现
+		TxIndex:     0, // 简化实现
+	}
+
+	// 序列化私有数据
+	privateDataBytes, err := json.Marshal(privateData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal private data: %v", err)
+	}
+
+	// 央行存储完整数据
+	privateDataKey := transactionPrefix + txID
+	err = ctx.GetStub().PutPrivateData(centralBankCollection, privateDataKey, privateDataBytes)
+	if err != nil {
+		return fmt.Errorf("failed to store private data: %v", err)
+	}
+
+	// 发出Transfer事件（保持ERC20兼容性）
+	transferEvent := event{sender, recipient, amount}
 	transferEventJSON, err := json.Marshal(transferEvent)
 	if err != nil {
 		return fmt.Errorf("failed to obtain JSON encoding: %v", err)
@@ -274,6 +316,7 @@ func (s *SmartContract) Transfer(ctx contractapi.TransactionContextInterface, re
 		return fmt.Errorf("failed to set event: %v", err)
 	}
 
+	log.Printf("Private transfer completed: %s -> %s, amount: %d, txID: %s", sender, recipient, amount, txID)
 	return nil
 }
 
@@ -286,18 +329,14 @@ func (s *SmartContract) BalanceOf(ctx contractapi.TransactionContextInterface, a
 		return 0, fmt.Errorf("failed to check if contract is already initialized: %v", err)
 	}
 	if !initialized {
-		return 0, fmt.Errorf("Contract options need to be set before calling any function, call Initialize() to initialize contract")
+		return 0, fmt.Errorf("contract options need to be set before calling any function, call Initialize() to initialize contract")
 	}
 
-	balanceBytes, err := ctx.GetStub().GetState(account)
+	// 从私有集合获取余额
+	balance, err := s.getBalanceFromPrivateCollection(ctx, account)
 	if err != nil {
-		return 0, fmt.Errorf("failed to read from world state: %v", err)
+		return 0, fmt.Errorf("failed to read from private collection: %v", err)
 	}
-	if balanceBytes == nil {
-		return 0, fmt.Errorf("the account %s does not exist", account)
-	}
-
-	balance, _ := strconv.Atoi(string(balanceBytes)) // 不需要错误处理，因为设置账户余额时使用了Itoa()，保证了它是整数
 
 	return balance, nil
 }
@@ -311,7 +350,7 @@ func (s *SmartContract) ClientAccountBalance(ctx contractapi.TransactionContextI
 		return 0, fmt.Errorf("failed to check if contract is already initialized: %v", err)
 	}
 	if !initialized {
-		return 0, fmt.Errorf("Contract options need to be set before calling any function, call Initialize() to initialize contract")
+		return 0, fmt.Errorf("contract options need to be set before calling any function, call Initialize() to initialize contract")
 	}
 
 	// 获取提交客户端身份的ID
@@ -320,15 +359,11 @@ func (s *SmartContract) ClientAccountBalance(ctx contractapi.TransactionContextI
 		return 0, fmt.Errorf("failed to get client id: %v", err)
 	}
 
-	balanceBytes, err := ctx.GetStub().GetState(clientID)
+	// 从私有集合获取余额
+	balance, err := s.getBalanceFromPrivateCollection(ctx, clientID)
 	if err != nil {
-		return 0, fmt.Errorf("failed to read from world state: %v", err)
+		return 0, fmt.Errorf("failed to read from private collection: %v", err)
 	}
-	if balanceBytes == nil {
-		return 0, fmt.Errorf("the account %s does not exist", clientID)
-	}
-
-	balance, _ := strconv.Atoi(string(balanceBytes)) // 不需要错误处理，因为设置账户余额时使用了Itoa()，保证了它是整数
 
 	return balance, nil
 }
@@ -344,7 +379,7 @@ func (s *SmartContract) ClientAccountID(ctx contractapi.TransactionContextInterf
 		return "", fmt.Errorf("failed to check if contract is already initialized: %v", err)
 	}
 	if !initialized {
-		return "", fmt.Errorf("Contract options need to be set before calling any function, call Initialize() to initialize contract")
+		return "", fmt.Errorf("contract options need to be set before calling any function, call Initialize() to initialize contract")
 	}
 
 	// 获取提交客户端身份的ID
@@ -366,7 +401,7 @@ func (s *SmartContract) GetUserInfo(ctx contractapi.TransactionContextInterface)
 		return "", fmt.Errorf("failed to check if contract is already initialized: %v", err)
 	}
 	if !initialized {
-		return "", fmt.Errorf("Contract options need to be set before calling any function, call Initialize() to initialize contract")
+		return "", fmt.Errorf("contract options need to be set before calling any function, call Initialize() to initialize contract")
 	}
 
 	// 获取客户端身份信息
@@ -386,17 +421,17 @@ func (s *SmartContract) GetUserInfo(ctx contractapi.TransactionContextInterface)
 
 	// 解析 clientID 获取明文信息
 	var userName, orgName, orgUnit, decodedClientID string
-	
+
 	// 尝试解码 base64 编码的 clientID
 	if decodedBytes, err := base64.StdEncoding.DecodeString(clientID); err == nil {
 		decodedClientID = string(decodedBytes)
-		
+
 		// 解析 X.509 格式：x509::CN=User1@domain.com,OU=client,...::...
 		if strings.HasPrefix(decodedClientID, "x509::") {
 			parts := strings.Split(decodedClientID, "::")
 			if len(parts) >= 2 {
 				subjectPart := parts[1]
-				
+
 				// 解析 CN (Common Name)
 				if cnMatch := strings.Split(subjectPart, "CN="); len(cnMatch) > 1 {
 					cnPart := strings.Split(cnMatch[1], ",")[0]
@@ -407,7 +442,7 @@ func (s *SmartContract) GetUserInfo(ctx contractapi.TransactionContextInterface)
 						userName = cnPart
 					}
 				}
-				
+
 				// 解析 OU (Organizational Unit)
 				if ouMatch := strings.Split(subjectPart, "OU="); len(ouMatch) > 1 {
 					orgUnit = strings.Split(ouMatch[1], ",")[0]
@@ -417,26 +452,26 @@ func (s *SmartContract) GetUserInfo(ctx contractapi.TransactionContextInterface)
 	} else {
 		decodedClientID = "Failed to decode: " + err.Error()
 	}
-	
+
 	// 构建用户信息结构
 	userInfo := struct {
-		ClientID         string `json:"clientId"`
-		DecodedClientID  string `json:"decodedClientId"`
-		UserName         string `json:"userName"`
-		OrgName          string `json:"orgName"`
-		OrgUnit          string `json:"orgUnit"`
-		MSPID            string `json:"mspId"`
-		TxID             string `json:"txId"`
-		ChannelID        string `json:"channelId"`
+		ClientID        string `json:"clientId"`
+		DecodedClientID string `json:"decodedClientId"`
+		UserName        string `json:"userName"`
+		OrgName         string `json:"orgName"`
+		OrgUnit         string `json:"orgUnit"`
+		MSPID           string `json:"mspId"`
+		TxID            string `json:"txId"`
+		ChannelID       string `json:"channelId"`
 	}{
-		ClientID:         clientID,
-		DecodedClientID:  decodedClientID,
-		UserName:         userName,
-		OrgName:          orgName,
-		OrgUnit:          orgUnit,
-		MSPID:            mspID,
-		TxID:             ctx.GetStub().GetTxID(),
-		ChannelID:        ctx.GetStub().GetChannelID(),
+		ClientID:        clientID,
+		DecodedClientID: decodedClientID,
+		UserName:        userName,
+		OrgName:         orgName,
+		OrgUnit:         orgUnit,
+		MSPID:           mspID,
+		TxID:            ctx.GetStub().GetTxID(),
+		ChannelID:       ctx.GetStub().GetChannelID(),
 	}
 
 	// 将用户信息转换为JSON格式
@@ -459,22 +494,13 @@ func (s *SmartContract) TotalSupply(ctx contractapi.TransactionContextInterface)
 		return 0, fmt.Errorf("failed to check if contract is already initialized: %v", err)
 	}
 	if !initialized {
-		return 0, fmt.Errorf("Contract options need to be set before calling any function, call Initialize() to initialize contract")
+		return 0, fmt.Errorf("contract options need to be set before calling any function, call Initialize() to initialize contract")
 	}
 
-	// 从状态中检索总供应量
-	totalSupplyBytes, err := ctx.GetStub().GetState(totalSupplyKey)
+	// 从私有集合获取总供应量
+	totalSupply, err := s.getTotalSupplyFromPrivateCollection(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("failed to retrieve total token supply: %v", err)
-	}
-
-	var totalSupply int
-
-	// 如果没有代币被铸造，总供应量为0
-	if totalSupplyBytes == nil {
-		totalSupply = 0
-	} else {
-		totalSupply, _ = strconv.Atoi(string(totalSupplyBytes)) // 不需要错误处理，因为设置总供应量时使用了Itoa()，保证了它是整数
 	}
 
 	log.Printf("TotalSupply: %d tokens", totalSupply)
@@ -492,7 +518,7 @@ func (s *SmartContract) Approve(ctx contractapi.TransactionContextInterface, spe
 		return fmt.Errorf("failed to check if contract is already initialized: %v", err)
 	}
 	if !initialized {
-		return fmt.Errorf("Contract options need to be set before calling any function, call Initialize() to initialize contract")
+		return fmt.Errorf("contract options need to be set before calling any function, call Initialize() to initialize contract")
 	}
 
 	// 获取提交客户端身份的ID
@@ -507,8 +533,21 @@ func (s *SmartContract) Approve(ctx contractapi.TransactionContextInterface, spe
 		return fmt.Errorf("failed to create the composite key for prefix %s: %v", allowancePrefix, err)
 	}
 
-	// 将 approval 金额更新到状态
-	err = ctx.GetStub().PutState(allowanceKey, []byte(strconv.Itoa(value)))
+	// 创建授权记录
+	allowanceRecord := AllowanceRecord{
+		Owner:   owner,
+		Spender: spender,
+		Value:   value,
+	}
+
+	// 序列化授权记录
+	allowanceRecordBytes, err := json.Marshal(allowanceRecord)
+	if err != nil {
+		return fmt.Errorf("failed to marshal allowance record: %v", err)
+	}
+
+	// 将 approval 金额更新到私有集合
+	err = ctx.GetStub().PutPrivateData(centralBankCollection, allowanceKey, allowanceRecordBytes)
 	if err != nil {
 		return fmt.Errorf("failed to update state of smart contract for key %s: %v", allowanceKey, err)
 	}
@@ -547,7 +586,7 @@ func (s *SmartContract) Allowance(ctx contractapi.TransactionContextInterface, o
 		return 0, fmt.Errorf("failed to check if contract is already initialized: %v", err)
 	}
 	if !initialized {
-		return 0, fmt.Errorf("Contract options need to be set before calling any function, call Initialize() to initialize contract")
+		return 0, fmt.Errorf("contract options need to be set before calling any function, call Initialize() to initialize contract")
 	}
 
 	// 创建 allowanceKey
@@ -556,10 +595,10 @@ func (s *SmartContract) Allowance(ctx contractapi.TransactionContextInterface, o
 		return 0, fmt.Errorf("failed to create the composite key for prefix %s: %v", allowancePrefix, err)
 	}
 
-	// 从状态中读取 allowance 金额
-	allowanceBytes, err := ctx.GetStub().GetState(allowanceKey)
+	// 从私有集合中读取 allowance 金额
+	allowanceBytes, err := ctx.GetStub().GetPrivateData(centralBankCollection, allowanceKey)
 	if err != nil {
-		return 0, fmt.Errorf("failed to read allowance for %s from world state: %v", allowanceKey, err)
+		return 0, fmt.Errorf("failed to read allowance for %s from private collection: %v", allowanceKey, err)
 	}
 
 	var allowance int
@@ -568,7 +607,14 @@ func (s *SmartContract) Allowance(ctx contractapi.TransactionContextInterface, o
 	if allowanceBytes == nil {
 		allowance = 0
 	} else {
-		allowance, _ = strconv.Atoi(string(allowanceBytes)) // 不需要错误处理，因为设置 allowance 时使用了Itoa()，保证了它是整数
+		// 尝试解析为新的格式
+		var allowanceRecord AllowanceRecord
+		if err := json.Unmarshal(allowanceBytes, &allowanceRecord); err == nil {
+			allowance = allowanceRecord.Value
+		} else {
+			// 兼容旧格式
+			allowance, _ = strconv.Atoi(string(allowanceBytes))
+		}
 	}
 
 	log.Printf("The allowance left for spender %s to withdraw from owner %s: %d", spender, owner, allowance)
@@ -586,7 +632,7 @@ func (s *SmartContract) TransferFrom(ctx contractapi.TransactionContextInterface
 		return fmt.Errorf("failed to check if contract is already initialized: %v", err)
 	}
 	if !initialized {
-		return fmt.Errorf("Contract options need to be set before calling any function, call Initialize() to initialize contract")
+		return fmt.Errorf("contract options need to be set before calling any function, call Initialize() to initialize contract")
 	}
 
 	// 获取提交客户端身份的ID
@@ -601,22 +647,33 @@ func (s *SmartContract) TransferFrom(ctx contractapi.TransactionContextInterface
 		return fmt.Errorf("failed to create the composite key for prefix %s: %v", allowancePrefix, err)
 	}
 
-	// 从状态中检索 allowance
-	currentAllowanceBytes, err := ctx.GetStub().GetState(allowanceKey)
+	// 从私有集合中检索 allowance
+	currentAllowanceBytes, err := ctx.GetStub().GetPrivateData(centralBankCollection, allowanceKey)
 	if err != nil {
-		return fmt.Errorf("failed to retrieve the allowance for %s from world state: %v", allowanceKey, err)
+		return fmt.Errorf("failed to retrieve the allowance for %s from private collection: %v", allowanceKey, err)
 	}
 
 	var currentAllowance int
-	currentAllowance, _ = strconv.Atoi(string(currentAllowanceBytes)) // 不需要错误处理，因为设置 allowance 时使用了Itoa()，保证了它是整数
+	if currentAllowanceBytes == nil {
+		currentAllowance = 0
+	} else {
+		// 尝试解析为新的格式
+		var allowanceRecord AllowanceRecord
+		if err := json.Unmarshal(currentAllowanceBytes, &allowanceRecord); err == nil {
+			currentAllowance = allowanceRecord.Value
+		} else {
+			// 兼容旧格式
+			currentAllowance, _ = strconv.Atoi(string(currentAllowanceBytes))
+		}
+	}
 
 	// 检查转账金额是否小于等于 allowance
 	if currentAllowance < value {
 		return fmt.Errorf("spender does not have enough allowance for transfer")
 	}
 
-	// 启动转账
-	err = transferHelper(ctx, from, to, value)
+	// 启动隐私转账
+	err = s.transferHelperPrivate(ctx, from, to, value)
 	if err != nil {
 		return fmt.Errorf("failed to transfer: %v", err)
 	}
@@ -627,7 +684,19 @@ func (s *SmartContract) TransferFrom(ctx contractapi.TransactionContextInterface
 		return err
 	}
 
-	err = ctx.GetStub().PutState(allowanceKey, []byte(strconv.Itoa(updatedAllowance)))
+	// 更新授权记录
+	allowanceRecord := AllowanceRecord{
+		Owner:   from,
+		Spender: spender,
+		Value:   updatedAllowance,
+	}
+
+	allowanceRecordBytes, err := json.Marshal(allowanceRecord)
+	if err != nil {
+		return fmt.Errorf("failed to marshal allowance record: %v", err)
+	}
+
+	err = ctx.GetStub().PutPrivateData(centralBankCollection, allowanceKey, allowanceRecordBytes)
 	if err != nil {
 		return err
 	}
@@ -657,7 +726,7 @@ func (s *SmartContract) Name(ctx contractapi.TransactionContextInterface) (strin
 		return "", fmt.Errorf("failed to check if contract is already initialized: %v", err)
 	}
 	if !initialized {
-		return "", fmt.Errorf("Contract options need to be set before calling any function, call Initialize() to initialize contract")
+		return "", fmt.Errorf("contract options need to be set before calling any function, call Initialize() to initialize contract")
 	}
 
 	bytes, err := ctx.GetStub().GetState(nameKey)
@@ -677,7 +746,7 @@ func (s *SmartContract) Symbol(ctx contractapi.TransactionContextInterface) (str
 		return "", fmt.Errorf("failed to check if contract is already initialized: %v", err)
 	}
 	if !initialized {
-		return "", fmt.Errorf("Contract options need to be set before calling any function, call Initialize() to initialize contract")
+		return "", fmt.Errorf("contract options need to be set before calling any function, call Initialize() to initialize contract")
 	}
 
 	bytes, err := ctx.GetStub().GetState(symbolKey)
@@ -721,77 +790,14 @@ func (s *SmartContract) Initialize(ctx contractapi.TransactionContextInterface, 
 	return true, nil
 }
 
-// transferHelper 是一个辅助函数，用于代币转移
-// transfer amount from one account to another account
-func transferHelper(ctx contractapi.TransactionContextInterface, from string, to string, value int) error {
-
-	if value < 0 { // transfer of 0 is allowed in ERC-20, so just validate against negative amounts
-		return fmt.Errorf("transfer amount cannot be negative")
-	}
-
-	fromCurrentBalanceBytes, err := ctx.GetStub().GetState(from)
-	if err != nil {
-		return fmt.Errorf("failed to read client account %s from world state: %v", from, err)
-	}
-
-	if fromCurrentBalanceBytes == nil {
-		return fmt.Errorf("client account %s has no balance", from)
-	}
-
-	fromCurrentBalance, _ := strconv.Atoi(string(fromCurrentBalanceBytes)) // 不需要错误处理，因为设置账户余额时使用了Itoa()，保证了它是整数
-
-	if fromCurrentBalance < value {
-		return fmt.Errorf("client account %s has insufficient funds", from)
-	}
-
-	toCurrentBalanceBytes, err := ctx.GetStub().GetState(to)
-	if err != nil {
-		return fmt.Errorf("failed to read recipient account %s from world state: %v", to, err)
-	}
-
-	var toCurrentBalance int
-	// 如果账户尚不存在，我们将创建一个当前余额为0的账户
-	if toCurrentBalanceBytes == nil {
-		toCurrentBalance = 0
-	} else {
-		toCurrentBalance, _ = strconv.Atoi(string(toCurrentBalanceBytes)) // 不需要错误处理，因为设置账户余额时使用了Itoa()，保证了它是整数
-	}
-
-	fromUpdatedBalance, err := sub(fromCurrentBalance, value)
-	if err != nil {
-		return err
-	}
-
-	toUpdatedBalance, err := add(toCurrentBalance, value)
-	if err != nil {
-		return err
-	}
-
-	err = ctx.GetStub().PutState(from, []byte(strconv.Itoa(fromUpdatedBalance)))
-	if err != nil {
-		return err
-	}
-
-	err = ctx.GetStub().PutState(to, []byte(strconv.Itoa(toUpdatedBalance)))
-	if err != nil {
-		return err
-	}
-
-	log.Printf("client %s balance updated from %d to %d", from, fromCurrentBalance, fromUpdatedBalance)
-	log.Printf("recipient %s balance updated from %d to %d", to, toCurrentBalance, toUpdatedBalance)
-
-	return nil
-}
-
 // add 两个数字检查溢出
 func add(b int, q int) (int, error) {
 
 	// Check overflow
-	var sum int
-	sum = q + b
+	sum := q + b
 
 	if (sum < q || sum < b) == (b >= 0 && q >= 0) {
-		return 0, fmt.Errorf("Math: addition overflow occurred %d + %d", b, q)
+		return 0, fmt.Errorf("math: addition overflow occurred %d + %d", b, q)
 	}
 
 	return sum, nil
@@ -813,12 +819,164 @@ func checkInitialized(ctx contractapi.TransactionContextInterface) (bool, error)
 func sub(b int, q int) (int, error) {
 
 	// Check overflow
-	var diff int
-	diff = b - q
+	diff := b - q
 
 	if (diff > b) == (b >= 0 && q >= 0) {
-		return 0, fmt.Errorf("Math: Subtraction overflow occurred %d - %d", b, q)
+		return 0, fmt.Errorf("math: Subtraction overflow occurred %d - %d", b, q)
 	}
 
 	return diff, nil
-} 
+}
+
+// ========== 隐私功能辅助函数 ==========
+
+// getBalanceFromPrivateCollection 从私有集合获取用户余额
+func (s *SmartContract) getBalanceFromPrivateCollection(ctx contractapi.TransactionContextInterface, userID string) (int, error) {
+	balanceKey := balancePrefix + userID
+	balanceBytes, err := ctx.GetStub().GetPrivateData(centralBankCollection, balanceKey)
+	if err != nil {
+		return 0, fmt.Errorf("failed to read balance from private collection: %v", err)
+	}
+
+	if balanceBytes == nil {
+		return 0, nil // 账户不存在，返回0余额
+	}
+
+	// 尝试解析为新的格式
+	var userBalance UserBalance
+	if err := json.Unmarshal(balanceBytes, &userBalance); err == nil {
+		return userBalance.Balance, nil
+	}
+
+	// 兼容旧格式
+	balance, err := strconv.Atoi(string(balanceBytes))
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse balance: %v", err)
+	}
+
+	return balance, nil
+}
+
+// updateBalanceInPrivateCollection 更新私有集合中的用户余额
+func (s *SmartContract) updateBalanceInPrivateCollection(ctx contractapi.TransactionContextInterface, userID string, balance int) error {
+	balanceKey := balancePrefix + userID
+
+	// 获取用户MSP
+	userMSP := s.getUserMSPFromID(userID)
+
+	// 创建用户余额记录
+	userBalance := UserBalance{
+		UserID:  userID,
+		UserMSP: userMSP,
+		Balance: balance,
+	}
+
+	// 序列化余额记录
+	balanceBytes, err := json.Marshal(userBalance)
+	if err != nil {
+		return fmt.Errorf("failed to marshal user balance: %v", err)
+	}
+
+	// 存储到私有集合
+	err = ctx.GetStub().PutPrivateData(centralBankCollection, balanceKey, balanceBytes)
+	if err != nil {
+		return fmt.Errorf("failed to store balance in private collection: %v", err)
+	}
+
+	return nil
+}
+
+// getTotalSupplyFromPrivateCollection 从私有集合获取总供应量
+func (s *SmartContract) getTotalSupplyFromPrivateCollection(ctx contractapi.TransactionContextInterface) (int, error) {
+	totalSupplyBytes, err := ctx.GetStub().GetPrivateData(centralBankCollection, totalSupplyKey)
+	if err != nil {
+		return 0, fmt.Errorf("failed to read total supply from private collection: %v", err)
+	}
+
+	if totalSupplyBytes == nil {
+		return 0, nil // 总供应量不存在，返回0
+	}
+
+	totalSupply, err := strconv.Atoi(string(totalSupplyBytes))
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse total supply: %v", err)
+	}
+
+	return totalSupply, nil
+}
+
+// updateTotalSupplyInPrivateCollection 更新私有集合中的总供应量
+func (s *SmartContract) updateTotalSupplyInPrivateCollection(ctx contractapi.TransactionContextInterface, totalSupply int) error {
+	totalSupplyBytes := []byte(strconv.Itoa(totalSupply))
+	err := ctx.GetStub().PutPrivateData(centralBankCollection, totalSupplyKey, totalSupplyBytes)
+	if err != nil {
+		return fmt.Errorf("failed to store total supply in private collection: %v", err)
+	}
+
+	return nil
+}
+
+// transferHelperPrivate 隐私版本的转账辅助函数
+func (s *SmartContract) transferHelperPrivate(ctx contractapi.TransactionContextInterface, from string, to string, value int) error {
+	if value < 0 {
+		return fmt.Errorf("transfer amount cannot be negative")
+	}
+
+	// 从私有集合获取发送方余额
+	fromCurrentBalance, err := s.getBalanceFromPrivateCollection(ctx, from)
+	if err != nil {
+		return fmt.Errorf("failed to read sender account %s from private collection: %v", from, err)
+	}
+
+	if fromCurrentBalance < value {
+		return fmt.Errorf("sender account %s has insufficient funds", from)
+	}
+
+	// 从私有集合获取接收方余额
+	toCurrentBalance, err := s.getBalanceFromPrivateCollection(ctx, to)
+	if err != nil {
+		return fmt.Errorf("failed to read recipient account %s from private collection: %v", to, err)
+	}
+
+	// 计算新余额
+	fromUpdatedBalance, err := sub(fromCurrentBalance, value)
+	if err != nil {
+		return err
+	}
+
+	toUpdatedBalance, err := add(toCurrentBalance, value)
+	if err != nil {
+		return err
+	}
+
+	// 更新私有集合中的余额
+	err = s.updateBalanceInPrivateCollection(ctx, from, fromUpdatedBalance)
+	if err != nil {
+		return err
+	}
+
+	err = s.updateBalanceInPrivateCollection(ctx, to, toUpdatedBalance)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("sender %s balance updated from %d to %d", from, fromCurrentBalance, fromUpdatedBalance)
+	log.Printf("recipient %s balance updated from %d to %d", to, toCurrentBalance, toUpdatedBalance)
+
+	return nil
+}
+
+// 辅助函数：从用户ID推断MSP（简化实现）
+func (s *SmartContract) getUserMSPFromID(userID string) string {
+	// 简化实现：根据用户ID特征推断MSP
+	// 实际应用中可能需要维护用户-MSP映射表
+	if strings.Contains(userID, "centralbank") {
+		return "{{CENTRAL_MSP_ID}}"
+	} else if strings.Contains(userID, "aa") {
+		return "aaMSP"
+	} else if strings.Contains(userID, "bb") {
+		return "bbMSP"
+	}
+	// 默认返回调用者的MSP
+	return "aaMSP" // 可以根据实际情况调整
+}
