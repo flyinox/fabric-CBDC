@@ -8,8 +8,8 @@ version: '3.7'
 volumes:
   orderer.example.com:
   peer0.centralbank.example.com:
-  peer0.a2.example.com:
-  peer0.b2.example.com:
+  peer0.a1.example.com:
+  peer0.b1.example.com:
 
 networks:
   test:
@@ -98,8 +98,8 @@ services:
     networks:
       - test
 
-  peer0.a2.example.com:
-    container_name: peer0.a2.example.com
+  peer0.a1.example.com:
+    container_name: peer0.a1.example.com
     image: hyperledger/fabric-peer:latest
     labels:
       service: hyperledger-fabric
@@ -111,23 +111,23 @@ services:
       - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
       - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
-      - CORE_PEER_ID=peer0.a2.example.com
-      - CORE_PEER_ADDRESS=peer0.a2.example.com:8051
+      - CORE_PEER_ID=peer0.a1.example.com
+      - CORE_PEER_ADDRESS=peer0.a1.example.com:8051
       - CORE_PEER_LISTENADDRESS=0.0.0.0:8051
-      - CORE_PEER_CHAINCODEADDRESS=peer0.a2.example.com:8052
+      - CORE_PEER_CHAINCODEADDRESS=peer0.a1.example.com:8052
       - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:8052
-      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.a2.example.com:8051
-      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.a2.example.com:8051
-      - CORE_PEER_LOCALMSPID=a2MSP
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.a1.example.com:8051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.a1.example.com:8051
+      - CORE_PEER_LOCALMSPID=a1MSP
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
-      - CORE_OPERATIONS_LISTENADDRESS=peer0.a2.example.com:9445
+      - CORE_OPERATIONS_LISTENADDRESS=peer0.a1.example.com:9445
       - CORE_METRICS_PROVIDER=prometheus
-      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0a2"}
+      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0a1"}
       - CORE_CHAINCODE_EXECUTETIMEOUT=300s
       - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabric_test
     volumes:
-      - ../organizations/peerOrganizations/a2.example.com/peers/peer0.a2.example.com:/etc/hyperledger/fabric
-      - peer0.a2.example.com:/var/hyperledger/production
+      - ../organizations/peerOrganizations/a1.example.com/peers/peer0.a1.example.com:/etc/hyperledger/fabric
+      - peer0.a1.example.com:/var/hyperledger/production
       - ../compose/docker/peercfg/core.yaml:/etc/hyperledger/peercfg/core.yaml
       - /var/run/docker.sock:/var/run/docker.sock
     working_dir: /root
@@ -138,8 +138,8 @@ services:
     networks:
       - test
 
-  peer0.b2.example.com:
-    container_name: peer0.b2.example.com
+  peer0.b1.example.com:
+    container_name: peer0.b1.example.com
     image: hyperledger/fabric-peer:latest
     labels:
       service: hyperledger-fabric
@@ -151,23 +151,23 @@ services:
       - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
       - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
-      - CORE_PEER_ID=peer0.b2.example.com
-      - CORE_PEER_ADDRESS=peer0.b2.example.com:9051
+      - CORE_PEER_ID=peer0.b1.example.com
+      - CORE_PEER_ADDRESS=peer0.b1.example.com:9051
       - CORE_PEER_LISTENADDRESS=0.0.0.0:9051
-      - CORE_PEER_CHAINCODEADDRESS=peer0.b2.example.com:9052
+      - CORE_PEER_CHAINCODEADDRESS=peer0.b1.example.com:9052
       - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:9052
-      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.b2.example.com:9051
-      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.b2.example.com:9051
-      - CORE_PEER_LOCALMSPID=b2MSP
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.b1.example.com:9051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.b1.example.com:9051
+      - CORE_PEER_LOCALMSPID=b1MSP
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
-      - CORE_OPERATIONS_LISTENADDRESS=peer0.b2.example.com:9446
+      - CORE_OPERATIONS_LISTENADDRESS=peer0.b1.example.com:9446
       - CORE_METRICS_PROVIDER=prometheus
-      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0b2"}
+      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0b1"}
       - CORE_CHAINCODE_EXECUTETIMEOUT=300s
       - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabric_test
     volumes:
-      - ../organizations/peerOrganizations/b2.example.com/peers/peer0.b2.example.com:/etc/hyperledger/fabric
-      - peer0.b2.example.com:/var/hyperledger/production
+      - ../organizations/peerOrganizations/b1.example.com/peers/peer0.b1.example.com:/etc/hyperledger/fabric
+      - peer0.b1.example.com:/var/hyperledger/production
       - ../compose/docker/peercfg/core.yaml:/etc/hyperledger/peercfg/core.yaml
       - /var/run/docker.sock:/var/run/docker.sock
     working_dir: /root

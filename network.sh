@@ -649,6 +649,15 @@ function setupNetwork() {
   infoln "🏦 设置央行数字货币（CBDC）网络配置"
   println
   
+  # 预置 organizations 目录结构
+  infoln "🏦 创建必要的目录结构..."
+  mkdir -p organizations/cryptogen
+  mkdir -p organizations/ordererOrganizations
+  mkdir -p organizations/peerOrganizations
+  mkdir -p organizations/fabric-ca
+  successln "✅ 目录结构创建完成"
+  println
+  
   # Check if using auto configuration
   if [ "$use_auto" == "true" ]; then
     infoln "使用默认配置..."
