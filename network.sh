@@ -652,9 +652,8 @@ function setupNetwork() {
   # 预置 organizations 目录结构
   infoln "🏦 创建必要的目录结构..."
   mkdir -p organizations/cryptogen
-  mkdir -p organizations/ordererOrganizations
-  mkdir -p organizations/peerOrganizations
   mkdir -p organizations/fabric-ca
+  # 不创建 peerOrganizations 和 ordererOrganizations，让 createOrgs 来创建
   successln "✅ 目录结构创建完成"
   println
   
