@@ -63,7 +63,6 @@ type PrivateTransactionData struct {
 // UserBalance 用户余额记录
 type UserBalance struct {
 	UserID  string `json:"userId"`
-	UserMSP string `json:"userMsp"`
 	Balance int    `json:"balance"`
 }
 
@@ -264,9 +263,6 @@ func (s *SmartContract) Transfer(ctx contractapi.TransactionContextInterface, re
 		return fmt.Errorf("failed to get sender MSP: %v", err)
 	}
 
-	// 获取接收方MSP（简化实现，从用户ID推断MSP）
-	recipientMSP := s.getUserMSPFromID(recipient)
-
 	// 验证转账金额
 	if amount <= 0 {
 		return fmt.Errorf("transfer amount must be positive")
@@ -286,7 +282,6 @@ func (s *SmartContract) Transfer(ctx contractapi.TransactionContextInterface, re
 		From:        sender,
 		To:          recipient,
 		FromMSP:     senderMSP,
-		ToMSP:       recipientMSP,
 		Amount:      amount,
 		BlockNumber: 0, // 简化实现
 		TxIndex:     0, // 简化实现
@@ -861,13 +856,9 @@ func (s *SmartContract) getBalanceFromPrivateCollection(ctx contractapi.Transact
 func (s *SmartContract) updateBalanceInPrivateCollection(ctx contractapi.TransactionContextInterface, userID string, balance int) error {
 	balanceKey := balancePrefix + userID
 
-	// 获取用户MSP
-	userMSP := s.getUserMSPFromID(userID)
-
 	// 创建用户余额记录
 	userBalance := UserBalance{
 		UserID:  userID,
-		UserMSP: userMSP,
 		Balance: balance,
 	}
 
@@ -964,19 +955,4 @@ func (s *SmartContract) transferHelperPrivate(ctx contractapi.TransactionContext
 	log.Printf("recipient %s balance updated from %d to %d", to, toCurrentBalance, toUpdatedBalance)
 
 	return nil
-}
-
-// 辅助函数：从用户ID推断MSP（简化实现）
-func (s *SmartContract) getUserMSPFromID(userID string) string {
-	// 简化实现：根据用户ID特征推断MSP
-	// 实际应用中可能需要维护用户-MSP映射表
-	if strings.Contains(userID, "centralbank") {
-		return "{{CENTRAL_MSP_ID}}"
-	} else if strings.Contains(userID, "aa") {
-		return "aaMSP"
-	} else if strings.Contains(userID, "bb") {
-		return "bbMSP"
-	}
-	// 默认返回调用者的MSP
-	return "aaMSP" // 可以根据实际情况调整
 }

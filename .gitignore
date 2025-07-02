@@ -90,6 +90,8 @@ chaincode/vendor
 /channel-artifacts/*.json
 /channel-artifacts/*.pb
 /org3-artifacts/crypto-config/*
+chaincode/chaincode/token_contract.go
+network-config.json
 organizations/fabric-ca/*
 addOrg3/fabric-ca/org3/*
 organizations/ordererOrganizations/*
