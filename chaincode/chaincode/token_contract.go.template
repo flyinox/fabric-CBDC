@@ -64,6 +64,7 @@ type PrivateTransactionData struct {
 type UserBalance struct {
 	UserID  string `json:"userId"`
 	Balance int    `json:"balance"`
+	OrgMSP  string `json:"orgMsp"` // 新增：用户所属的组织MSP
 }
 
 // AllowanceRecord 授权记录
@@ -480,6 +481,68 @@ func (s *SmartContract) GetUserInfo(ctx contractapi.TransactionContextInterface)
 	return string(userInfoJSON), nil
 }
 
+// GetUserAccountInfo 返回指定用户的完整账户信息
+func (s *SmartContract) GetUserAccountInfo(ctx contractapi.TransactionContextInterface, userID string) (string, error) {
+	// 首先检查合约是否已初始化
+	initialized, err := checkInitialized(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to check if contract is already initialized: %v", err)
+	}
+	if !initialized {
+		return "", fmt.Errorf("contract options need to be set before calling any function, call Initialize() to initialize contract")
+	}
+
+	// 获取用户账户信息
+	userBalance, err := s.getUserAccountInfo(ctx, userID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get user account info: %v", err)
+	}
+
+	// 将用户账户信息转换为JSON格式
+	userAccountJSON, err := json.Marshal(userBalance)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal user account info: %v", err)
+	}
+
+	log.Printf("User account info: %s", string(userAccountJSON))
+
+	return string(userAccountJSON), nil
+}
+
+// GetClientAccountInfo 返回当前调用客户端的完整账户信息
+func (s *SmartContract) GetClientAccountInfo(ctx contractapi.TransactionContextInterface) (string, error) {
+	// 首先检查合约是否已初始化
+	initialized, err := checkInitialized(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to check if contract is already initialized: %v", err)
+	}
+	if !initialized {
+		return "", fmt.Errorf("contract options need to be set before calling any function, call Initialize() to initialize contract")
+	}
+
+	// 获取提交客户端身份的ID
+	clientID, err := ctx.GetClientIdentity().GetID()
+	if err != nil {
+		return "", fmt.Errorf("failed to get client id: %v", err)
+	}
+
+	// 获取用户账户信息
+	userBalance, err := s.getUserAccountInfo(ctx, clientID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get client account info: %v", err)
+	}
+
+	// 将用户账户信息转换为JSON格式
+	userAccountJSON, err := json.Marshal(userBalance)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal client account info: %v", err)
+	}
+
+	log.Printf("Client account info: %s", string(userAccountJSON))
+
+	return string(userAccountJSON), nil
+}
+
 // TotalSupply 返回代币的总供应量
 func (s *SmartContract) TotalSupply(ctx contractapi.TransactionContextInterface) (int, error) {
 
@@ -823,46 +886,113 @@ func sub(b int, q int) (int, error) {
 	return diff, nil
 }
 
-// ========== 隐私功能辅助函数 ==========
+// ========== 内部辅助方法 ==========
 
-// getBalanceFromPrivateCollection 从私有集合获取用户余额
-func (s *SmartContract) getBalanceFromPrivateCollection(ctx contractapi.TransactionContextInterface, userID string) (int, error) {
+// extractOrgMSPFromClientID 从clientID中提取组织MSP信息
+// 这个方法解析X.509证书格式的clientID，提取组织信息
+func (s *SmartContract) extractOrgMSPFromClientID(clientID string) (string, error) {
+	// 尝试解码 base64 编码的 clientID
+	decodedBytes, err := base64.StdEncoding.DecodeString(clientID)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode clientID: %v", err)
+	}
+
+	decodedClientID := string(decodedBytes)
+
+	// 解析 X.509 格式：x509::CN=User1@domain.com,OU=client,O=Org1,ST=State,C=Country::...
+	if strings.HasPrefix(decodedClientID, "x509::") {
+		parts := strings.Split(decodedClientID, "::")
+		if len(parts) >= 2 {
+			subjectPart := parts[1]
+
+			// 解析 O (Organization) - 这是组织名称
+			if orgMatch := strings.Split(subjectPart, "O="); len(orgMatch) > 1 {
+				orgPart := strings.Split(orgMatch[1], ",")[0]
+				return orgPart, nil
+			}
+
+			// 如果没有O字段，尝试从CN中提取组织信息
+			if cnMatch := strings.Split(subjectPart, "CN="); len(cnMatch) > 1 {
+				cnPart := strings.Split(cnMatch[1], ",")[0]
+				if strings.Contains(cnPart, "@") {
+					parts := strings.Split(cnPart, "@")
+					if len(parts) > 1 {
+						return parts[1], nil
+					}
+				}
+			}
+		}
+	}
+
+	return "", fmt.Errorf("unable to extract organization from clientID: %s", clientID)
+}
+
+// getUserAccountInfo 获取用户账户信息，包括余额和组织MSP
+func (s *SmartContract) getUserAccountInfo(ctx contractapi.TransactionContextInterface, userID string) (*UserBalance, error) {
 	balanceKey := balancePrefix + userID
 	balanceBytes, err := ctx.GetStub().GetPrivateData(centralBankCollection, balanceKey)
 	if err != nil {
-		return 0, fmt.Errorf("failed to read balance from private collection: %v", err)
+		return nil, fmt.Errorf("failed to read balance from private collection: %v", err)
 	}
 
-	if balanceBytes == nil {
-		return 0, nil // 账户不存在，返回0余额
+	userBalance := &UserBalance{
+		UserID:  userID,
+		Balance: 0,
+		OrgMSP:  "",
 	}
 
-	// 尝试解析为新的格式
-	var userBalance UserBalance
-	if err := json.Unmarshal(balanceBytes, &userBalance); err == nil {
-		return userBalance.Balance, nil
+	if balanceBytes != nil {
+		// 尝试解析为新的格式
+		if err := json.Unmarshal(balanceBytes, userBalance); err == nil {
+			// 如果成功解析，检查是否需要更新orgMSP
+			if userBalance.OrgMSP == "" {
+				// 提取并更新orgMSP
+				orgMSP, err := s.extractOrgMSPFromClientID(userID)
+				if err == nil {
+					userBalance.OrgMSP = orgMSP
+					// 更新存储的账户信息
+					err = s.updateUserAccountInPrivateCollection(ctx, userBalance)
+					if err != nil {
+						log.Printf("Warning: failed to update user account with orgMSP: %v", err)
+					}
+				}
+			}
+			return userBalance, nil
+		}
+
+		// 兼容旧格式 - 只有余额信息
+		balance, err := strconv.Atoi(string(balanceBytes))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse balance: %v", err)
+		}
+		userBalance.Balance = balance
+
+		// 为旧格式数据提取orgMSP
+		orgMSP, err := s.extractOrgMSPFromClientID(userID)
+		if err == nil {
+			userBalance.OrgMSP = orgMSP
+			// 更新存储的账户信息
+			err = s.updateUserAccountInPrivateCollection(ctx, userBalance)
+			if err != nil {
+				log.Printf("Warning: failed to update user account with orgMSP: %v", err)
+			}
+		}
+	} else {
+		// 账户不存在，尝试提取orgMSP用于新账户创建
+		orgMSP, err := s.extractOrgMSPFromClientID(userID)
+		if err == nil {
+			userBalance.OrgMSP = orgMSP
+		}
 	}
 
-	// 兼容旧格式
-	balance, err := strconv.Atoi(string(balanceBytes))
-	if err != nil {
-		return 0, fmt.Errorf("failed to parse balance: %v", err)
-	}
-
-	return balance, nil
+	return userBalance, nil
 }
 
-// updateBalanceInPrivateCollection 更新私有集合中的用户余额
-func (s *SmartContract) updateBalanceInPrivateCollection(ctx contractapi.TransactionContextInterface, userID string, balance int) error {
-	balanceKey := balancePrefix + userID
+// updateUserAccountInPrivateCollection 更新私有集合中的用户账户信息
+func (s *SmartContract) updateUserAccountInPrivateCollection(ctx contractapi.TransactionContextInterface, userBalance *UserBalance) error {
+	balanceKey := balancePrefix + userBalance.UserID
 
-	// 创建用户余额记录
-	userBalance := UserBalance{
-		UserID:  userID,
-		Balance: balance,
-	}
-
-	// 序列化余额记录
+	// 序列化用户账户信息
 	balanceBytes, err := json.Marshal(userBalance)
 	if err != nil {
 		return fmt.Errorf("failed to marshal user balance: %v", err)
@@ -875,6 +1005,42 @@ func (s *SmartContract) updateBalanceInPrivateCollection(ctx contractapi.Transac
 	}
 
 	return nil
+}
+
+// ========== 隐私功能辅助函数 ==========
+
+// getBalanceFromPrivateCollection 从私有集合获取用户余额
+func (s *SmartContract) getBalanceFromPrivateCollection(ctx contractapi.TransactionContextInterface, userID string) (int, error) {
+	userBalance, err := s.getUserAccountInfo(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+	return userBalance.Balance, nil
+}
+
+// updateBalanceInPrivateCollection 更新私有集合中的用户余额
+func (s *SmartContract) updateBalanceInPrivateCollection(ctx contractapi.TransactionContextInterface, userID string, balance int) error {
+	// 获取现有账户信息
+	userBalance, err := s.getUserAccountInfo(ctx, userID)
+	if err != nil {
+		// 如果获取失败，创建新的账户信息
+		userBalance = &UserBalance{
+			UserID:  userID,
+			Balance: 0,
+			OrgMSP:  "",
+		}
+		// 尝试提取orgMSP
+		orgMSP, extractErr := s.extractOrgMSPFromClientID(userID)
+		if extractErr == nil {
+			userBalance.OrgMSP = orgMSP
+		}
+	}
+
+	// 更新余额
+	userBalance.Balance = balance
+
+	// 更新账户信息
+	return s.updateUserAccountInPrivateCollection(ctx, userBalance)
 }
 
 // getTotalSupplyFromPrivateCollection 从私有集合获取总供应量

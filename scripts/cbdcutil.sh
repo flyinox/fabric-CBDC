@@ -790,6 +790,103 @@ function cbdcGetUserInfo() {
   executeChaincodeCommand "$org_name" "$user_name" "query" "GetUserInfo" "$args"
 }
 
+# CBDC Get user account info query
+function cbdcGetUserAccountInfo() {
+  local user_id=""
+  local org_name=""
+  local user_name=""
+  
+  # Parse command line arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -userid)
+        user_id="$2"
+        shift 2
+        ;;
+      -org)
+        org_name="$2"
+        shift 2
+        ;;
+      -user)
+        user_name="$2"
+        shift 2
+        ;;
+      *)
+        errorln "未知参数: $1"
+        return 1
+        ;;
+    esac
+  done
+  
+  infoln "👤 获取用户账户信息..."
+  println
+  
+  # Use inline selection to avoid function call issues
+  selectOrgAndUser org_name user_name
+  
+  if [ -z "$user_id" ]; then
+    printf "是否查询当前客户端账户信息？[Y/n]: "
+    read -r response
+    case "$response" in
+      [nN][oO]|[nN])
+        printf "请输入要查询的用户ID: "
+        read -r user_id
+        if [ -z "$user_id" ]; then
+          errorln "用户ID不能为空"
+          return 1
+        fi
+        # Properly escape JSON arguments to handle spaces and special characters
+        local escaped_user_id=$(printf '%s' "$user_id" | sed 's/"/\\"/g')
+        local args="{\"Args\":[\"GetUserAccountInfo\",\"$escaped_user_id\"]}"
+        executeChaincodeCommand "$org_name" "$user_name" "query" "GetUserAccountInfo" "$args"
+        ;;
+      *)
+        local args="{\"Args\":[\"GetClientAccountInfo\"]}"
+        executeChaincodeCommand "$org_name" "$user_name" "query" "GetClientAccountInfo" "$args"
+        ;;
+    esac
+  else
+    # Properly escape JSON arguments to handle spaces and special characters
+    local escaped_user_id=$(printf '%s' "$user_id" | sed 's/"/\\"/g')
+    local args="{\"Args\":[\"GetUserAccountInfo\",\"$escaped_user_id\"]}"
+    executeChaincodeCommand "$org_name" "$user_name" "query" "GetUserAccountInfo" "$args"
+  fi
+}
+
+# CBDC Get client account info query
+function cbdcGetClientAccountInfo() {
+  local org_name=""
+  local user_name=""
+  
+  # Parse command line arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -org)
+        org_name="$2"
+        shift 2
+        ;;
+      -user)
+        user_name="$2"
+        shift 2
+        ;;
+      *)
+        errorln "未知参数: $1"
+        return 1
+        ;;
+    esac
+  done
+  
+  infoln "👤 获取当前客户端账户信息..."
+  println
+  
+  # Use inline selection to avoid function call issues
+  selectOrgAndUser org_name user_name
+  
+  local args="{\"Args\":[\"GetClientAccountInfo\"]}"
+  
+  executeChaincodeCommand "$org_name" "$user_name" "query" "GetClientAccountInfo" "$args"
+}
+
 # CBDC main command handler
 function cbdcChaincode() {
   local subcommand="$1"
@@ -826,6 +923,15 @@ function cbdcChaincode() {
     user)
       cbdcGetUserInfo "$@"
       ;;
+    accountinfo)
+      cbdcGetUserAccountInfo "$@"
+      ;;
+    account)
+      cbdcGetUserAccountInfo "$@"
+      ;;
+    clientaccount)
+      cbdcGetClientAccountInfo "$@"
+      ;;
     help)
       printCBDCHelp
       ;;
@@ -854,6 +960,9 @@ function printCBDCHelp() {
   println "  allowance  - 查询授权额度"
   println "  userinfo   - 获取用户基本信息"
   println "  user       - 获取用户基本信息 (userinfo的简写)"
+  println "  accountinfo - 获取用户账户信息 (包含余额和组织MSP)"
+  println "  account    - 获取用户账户信息 (accountinfo的简写)"
+  println "  clientaccount - 获取当前客户端账户信息"
   println "  help       - 显示此帮助信息"
   println
   println "通用选项:"
@@ -867,6 +976,9 @@ function printCBDCHelp() {
   println "  $0 ccc balance -account <地址>"
   println "  $0 ccc supply"
   println "  $0 ccc userinfo -org CentralBank -user admin"
+  println "  $0 ccc accountinfo -userid <用户ID>"
+  println "  $0 ccc accountinfo"
+  println "  $0 ccc clientaccount -org PBOC -user admin"
   println
   println "注意:"
   println "  - 如果不提供选项，系统将进入交互模式"
