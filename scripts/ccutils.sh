@@ -430,24 +430,48 @@ chaincodeQuery() {
   CHANNEL=$2
   CC_NAME_LOCAL=$3
   CC_QUERY_CONSTRUCTOR=$4
+  USER_NAME=${5:-"admin"}  # 可选的用户参数，默认为admin
   local org_name=$(getOrgName $ORG)
 
   # 保存当前环境变量
   local current_org=$ORG
   local current_org_name=$org_name
+  local original_user=$USER_NAME
   
   # 强制使用央行peer（通常是第一个组织）
   # 由于setGlobals函数期望从1开始的索引，我们需要传入1
   local central_org_index=1
   local central_org_name=$(getOrgName 0)  # 从0开始的索引获取名称
   
+  # 获取正确的原始组织名称（ORG是从1开始的索引，需要转换为从0开始的索引）
+  local actual_org_index=$((ORG - 1))
+  local actual_org_name=$(getOrgName $actual_org_index)
+  
   infoln "查询操作：使用央行peer (${central_org_name}) 进行查询..."
-  infoln "原始请求组织: ${org_name}"
+  infoln "原始请求组织: ${actual_org_name}"
   
-  # 设置央行环境变量
-  setGlobals $central_org_index
+  # 先设置原始组织环境（获取用户身份）
+  setGlobals $current_org $original_user
   
-  infoln "Querying on peer0.${central_org_name} on channel '$CHANNEL'..."
+  # 保存用户身份相关的环境变量
+  local original_mspid=$CORE_PEER_LOCALMSPID
+  local original_mspconfigpath=$CORE_PEER_MSPCONFIGPATH
+  
+  # 设置央行peer连接信息，但保持原始用户身份
+  local central_org_domain="${NETWORK_ORG_DOMAINS[0]}"
+  local central_org_port="${NETWORK_ORG_PORTS[0]}"
+  local central_org_name_upper=$(echo "${central_org_name}" | tr '[:lower:]' '[:upper:]')
+  local central_ca_var_name="PEER0_${central_org_name_upper}_CA"
+  
+  # 更新peer连接信息为央行peer，但保持原始用户身份
+  export CORE_PEER_ADDRESS="localhost:${central_org_port}"
+  if [[ -n "${!central_ca_var_name}" ]]; then
+    export CORE_PEER_TLS_ROOTCERT_FILE="${!central_ca_var_name}"
+  else
+    export CORE_PEER_TLS_ROOTCERT_FILE="${TEST_NETWORK_HOME}/organizations/peerOrganizations/${central_org_domain}/tlsca/tlsca.${central_org_domain}-cert.pem"
+  fi
+  
+  infoln "Querying on peer0.${central_org_name} on channel '$CHANNEL' with user identity from ${actual_org_name}..."
   local rc=1
   local COUNTER=1
   # continue to poll
@@ -470,5 +494,5 @@ chaincodeQuery() {
   fi
   
   # 恢复原始环境变量
-  setGlobals $current_org
+  setGlobals $current_org $original_user
 }

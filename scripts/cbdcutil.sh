@@ -158,12 +158,48 @@ function getOrgIndex() {
     orgs=("PBOC" "ICBC" "ABC" "BOC")
   fi
   
+  # 进行大小写不敏感的匹配
   for i in "${!orgs[@]}"; do
-    if [ "${orgs[$i]}" == "$org_name" ]; then
+    local org_lower=$(echo "${orgs[$i]}" | tr '[:upper:]' '[:lower:]')
+    local input_lower=$(echo "$org_name" | tr '[:upper:]' '[:lower:]')
+    if [[ "$org_lower" == "$input_lower" ]]; then
       echo $((i+1))
       return 0
     fi
   done
+  
+  # 如果没找到，尝试一些常见的别名映射
+  local input_lower=$(echo "$org_name" | tr '[:upper:]' '[:lower:]')
+  case "$input_lower" in
+    "bank1"|"org1"|"a1") 
+      # 查找 Bank1
+      for i in "${!orgs[@]}"; do
+        if [[ "${orgs[$i]}" == "Bank1" ]]; then
+          echo $((i+1))
+          return 0
+        fi
+      done
+      ;;
+    "bank2"|"org2"|"b1") 
+      # 查找 Bank2
+      for i in "${!orgs[@]}"; do
+        if [[ "${orgs[$i]}" == "Bank2" ]]; then
+          echo $((i+1))
+          return 0
+        fi
+      done
+      ;;
+    "c1"|"central"|"centralbank"|"pboc") 
+      # 查找 c1
+      for i in "${!orgs[@]}"; do
+        if [[ "${orgs[$i]}" == "c1" ]]; then
+          echo $((i+1))
+          return 0
+        fi
+      done
+      ;;
+  esac
+  
   echo "1"  # Default to first organization
 }
 
@@ -204,7 +240,7 @@ function executeChaincodeCommand() {
   if [ "$command_type" == "invoke" ]; then
     chaincodeInvoke $org_index "cbdc-channel" "cbdc" "${args}"
   else
-    chaincodeQuery $org_index "cbdc-channel" "cbdc" "${args}"
+    chaincodeQuery $org_index "cbdc-channel" "cbdc" "${args}" "$user_name"
   fi
 }
 
