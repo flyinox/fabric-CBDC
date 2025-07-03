@@ -395,7 +395,6 @@ function createOrgs() {
 
 # Bring up the peer and orderer nodes using docker compose.
 function networkUp() {
-
   checkPrereqs
 
   # generate artifacts if they don't exist
@@ -409,11 +408,8 @@ function networkUp() {
   # Check if we have dynamic network configuration
   if [[ "$NETWORK_CONFIG_LOADED" == "true" ]]; then
     # Use only dynamic compose files when network config is loaded
+    # The dynamic compose file already includes CouchDB configuration
     COMPOSE_FILES="-f compose/${COMPOSE_FILE_BASE}"
-    
-    if [ "${DATABASE}" == "couchdb" ]; then
-      COMPOSE_FILES="${COMPOSE_FILES} -f compose/${COMPOSE_FILE_COUCH}"
-    fi
     
     infoln "🔄 Using dynamic compose configuration (network-config.json loaded)"
   else
@@ -681,8 +677,8 @@ function setupNetwork() {
     # Generate CBDC configuration with provided names
     generate_cbdc_network_config "cbdc-channel" "$central_bank_name" "${bank_names[@]}"
     
-    # Generate chaincode from template
-    generate_chaincode_from_template "$central_bank_name"
+    # Generate configuration from template
+    generate_config_from_template "$central_bank_name"
     
     successln "✅ CBDC 网络配置已生成完成"
     return 0
@@ -744,8 +740,8 @@ function setupNetwork() {
   
   generate_cbdc_network_config "cbdc-channel" "$central_bank_name" "${banks[@]}"
   
-  # Generate chaincode from template
-  generate_chaincode_from_template "$central_bank_name"
+  # Generate configuration from template
+  generate_config_from_template "$central_bank_name"
   
   successln "✅ CBDC 网络配置已保存到: $config_file"
   println
@@ -882,6 +878,46 @@ if [[ $# -lt 1 ]] ; then
 else
   MODE=$1
   shift
+fi
+
+# 添加 CouchDB 支持
+if [ "$MODE" == "up-couchdb" ]; then
+  export DATABASE="couchdb"
+  MODE="up"
+fi
+
+# 添加 CouchDB 支持
+if [ "$MODE" == "start-couchdb" ]; then
+  export DATABASE="couchdb"
+  MODE="start"
+fi
+
+# Parse acreateChannel subcommand if MODE = "createChannel"
+if [[ $# -ge 1 ]] && [[ "$MODE" == "createChannel" ]]; then
+  subcommand=$1
+  shift
+  if [[ "$subcommand" == "create" ]]; then
+    if [[ $# -lt 1 ]]; then
+      printUsage
+      exit 0
+    fi
+    CHANNEL_NAME=$1
+    shift
+  fi
+fi
+
+# Parse acreateChannel subcommand if MODE = "createChannel"
+if [[ $# -ge 1 ]] && [[ "$MODE" == "createChannel" ]]; then
+  subcommand=$1
+  shift
+  if [[ "$subcommand" == "create" ]]; then
+    if [[ $# -lt 1 ]]; then
+      printUsage
+      exit 0
+    fi
+    CHANNEL_NAME=$1
+    shift
+  fi
 fi
 
 ## if no parameters are passed, show the help for cc, ccc, or adduser

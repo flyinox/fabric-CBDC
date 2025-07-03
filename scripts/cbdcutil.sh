@@ -1008,6 +1008,12 @@ function cbdcChaincode() {
     clientaccount)
       cbdcGetClientAccountInfo "$@"
       ;;
+    querytx)
+      cbdcQueryUserTransactions "$@"
+      ;;
+    txhistory)
+      cbdcGetUserTransactionHistory "$@"
+      ;;
     help)
       printCBDCHelp
       ;;
@@ -1041,6 +1047,8 @@ function printCBDCHelp() {
   println "  accountinfo - 获取用户账户信息 (包含余额和组织MSP)"
   println "  account    - 获取用户账户信息 (accountinfo的简写)"
   println "  clientaccount - 获取当前客户端账户信息"
+  println "  querytx    - 查询用户交易记录（富查询，支持多条件筛选）"
+  println "  txhistory  - 获取用户交易历史（简化版本）"
   println "  help       - 显示此帮助信息"
   println
   println "通用选项:"
@@ -1057,9 +1065,189 @@ function printCBDCHelp() {
   println "  $0 ccc accountinfo -userid <用户ID>"
   println "  $0 ccc accountinfo"
   println "  $0 ccc clientaccount -org PBOC -user admin"
+  println "  $0 ccc querytx -userid <用户ID> -minamount 100 -maxamount 1000 -type transfer"
+  println "  $0 ccc querytx -userid <用户ID> -counterparty <对手方ID>"
+  println "  $0 ccc txhistory -userid <用户ID> -limit 100"
   println
   println "注意:"
   println "  - 如果不提供选项，系统将进入交互模式"
-  println "  - mint 和 burn 操作仅限央行 (PBOCMSP) 执行"
+  println "  - mint 和 burn 操作仅限央行执行"
   println "  - 其他操作可由任何组织执行"
+  println "  - 富查询功能需要 CouchDB 支持"
+}
+
+# CBDC Query user transactions with rich query support
+function cbdcQueryUserTransactions() {
+  local org_name=""
+  local user_name=""
+  local user_id=""
+  local min_amount=""
+  local max_amount=""
+  local transaction_type=""
+  local counterparty=""
+  
+  # Parse command line arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -org)
+        org_name="$2"
+        shift 2
+        ;;
+      -user)
+        user_name="$2"
+        shift 2
+        ;;
+      -userid)
+        user_id="$2"
+        shift 2
+        ;;
+      -minamount)
+        min_amount="$2"
+        shift 2
+        ;;
+      -maxamount)
+        max_amount="$2"
+        shift 2
+        ;;
+      -type)
+        transaction_type="$2"
+        shift 2
+        ;;
+      -counterparty)
+        counterparty="$2"
+        shift 2
+        ;;
+      *)
+        errorln "未知参数: $1"
+        return 1
+        ;;
+    esac
+  done
+  
+  infoln "🔍 查询用户交易记录（富查询）..."
+  println
+  
+  # Use inline selection to avoid function call issues
+  selectOrgAndUser org_name user_name
+  
+  # Interactive input for user_id if not provided
+  if [ -z "$user_id" ]; then
+    printf "请输入要查询的用户ID: "
+    read -r user_id
+    if [ -z "$user_id" ]; then
+      errorln "用户ID不能为空"
+      return 1
+    fi
+  fi
+  
+  # Interactive input for other parameters if not provided
+  if [ -z "$min_amount" ]; then
+    printf "请输入最小金额 (可选，直接回车跳过): "
+    read -r min_amount
+  fi
+  
+  if [ -z "$max_amount" ]; then
+    printf "请输入最大金额 (可选，直接回车跳过): "
+    read -r max_amount
+  fi
+  
+  if [ -z "$transaction_type" ]; then
+    printf "请输入交易类型 (可选，直接回车跳过): "
+    read -r transaction_type
+  fi
+  
+  if [ -z "$counterparty" ]; then
+    printf "请输入交易对手方 (可选，直接回车跳过): "
+    read -r counterparty
+  fi
+  
+  # Set default values for empty parameters
+  if [ -z "$min_amount" ]; then
+    min_amount="0"
+  fi
+  
+  if [ -z "$max_amount" ]; then
+    max_amount="0"
+  fi
+  
+  # Properly escape JSON arguments to handle spaces and special characters
+  local escaped_user_id=$(printf '%s' "$user_id" | sed 's/"/\\"/g')
+  local escaped_transaction_type=$(printf '%s' "$transaction_type" | sed 's/"/\\"/g')
+  local escaped_counterparty=$(printf '%s' "$counterparty" | sed 's/"/\\"/g')
+  
+  local args="{\"Args\":[\"QueryUserTransactions\",\"$escaped_user_id\",\"$min_amount\",\"$max_amount\",\"$escaped_transaction_type\",\"$escaped_counterparty\"]}"
+  
+  executeChaincodeCommand "$org_name" "$user_name" "query" "QueryUserTransactions" "$args"
+}
+
+# CBDC Get user transaction history
+function cbdcGetUserTransactionHistory() {
+  local org_name=""
+  local user_name=""
+  local user_id=""
+  local limit=""
+  
+  # Parse command line arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -org)
+        org_name="$2"
+        shift 2
+        ;;
+      -user)
+        user_name="$2"
+        shift 2
+        ;;
+      -userid)
+        user_id="$2"
+        shift 2
+        ;;
+      -limit)
+        limit="$2"
+        shift 2
+        ;;
+      *)
+        errorln "未知参数: $1"
+        return 1
+        ;;
+    esac
+  done
+  
+  infoln "📜 获取用户交易历史..."
+  println
+  
+  # Use inline selection to avoid function call issues
+  selectOrgAndUser org_name user_name
+  
+  # Interactive input for user_id if not provided
+  if [ -z "$user_id" ]; then
+    printf "请输入要查询的用户ID: "
+    read -r user_id
+    if [ -z "$user_id" ]; then
+      errorln "用户ID不能为空"
+      return 1
+    fi
+  fi
+  
+  # Interactive input for limit if not provided
+  if [ -z "$limit" ]; then
+    printf "请输入查询限制数量 (默认50，最大1000): "
+    read -r limit
+    if [ -z "$limit" ]; then
+      limit="50"
+    fi
+  fi
+  
+  # Validate limit
+  if ! [[ "$limit" =~ ^[0-9]+$ ]] || [ "$limit" -lt 1 ] || [ "$limit" -gt 1000 ]; then
+    errorln "限制数量必须是1-1000之间的整数"
+    return 1
+  fi
+  
+  # Properly escape JSON arguments to handle spaces and special characters
+  local escaped_user_id=$(printf '%s' "$user_id" | sed 's/"/\\"/g')
+  
+  local args="{\"Args\":[\"GetUserTransactionHistory\",\"$escaped_user_id\",\"$limit\"]}"
+  
+  executeChaincodeCommand "$org_name" "$user_name" "query" "GetUserTransactionHistory" "$args"
 } 

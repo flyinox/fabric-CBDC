@@ -94,6 +94,13 @@ function generateComposeFiles() {
   # Generate main compose file
   local compose_file="compose/compose-test-net.yaml"
   
+  # Check if CouchDB is enabled
+  local couchdb_enabled=false
+  if [ "${DATABASE}" == "couchdb" ]; then
+    couchdb_enabled=true
+    infoln "📊 CouchDB support enabled"
+  fi
+  
   cat > "$compose_file" << EOF
 # Copyright IBM Corp. All Rights Reserved.
 #
@@ -164,6 +171,30 @@ services:
 
 EOF
 
+  # Add CouchDB services if enabled
+  if [ "$couchdb_enabled" == "true" ]; then
+    for i in $(seq 0 $((NETWORK_ORGS_COUNT - 1))); do
+      local org_domain="${NETWORK_ORG_DOMAINS[$i]}"
+      local org_couchdb_port="${NETWORK_ORG_COUCHDB_PORTS[$i]}"
+      
+      cat >> "$compose_file" << EOF
+  couchdb${i}:
+    container_name: couchdb${i}
+    image: couchdb:3.4.2
+    labels:
+      service: hyperledger-fabric
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - ${org_couchdb_port}:5984
+    networks:
+      - test
+
+EOF
+    done
+  fi
+
   # Add peer services
   for i in $(seq 0 $((NETWORK_ORGS_COUNT - 1))); do
     local org_name="${NETWORK_ORG_NAMES[$i]}"
@@ -173,14 +204,8 @@ EOF
     local org_ops_port="${NETWORK_ORG_OPERATIONS_PORTS[$i]}"
     local org_lower=$(echo "$org_name" | tr '[:upper:]' '[:lower:]')
     
-    cat >> "$compose_file" << EOF
-  peer0.${org_domain}:
-    container_name: peer0.${org_domain}
-    image: hyperledger/fabric-peer:latest
-    labels:
-      service: hyperledger-fabric
-    environment:
-      - FABRIC_CFG_PATH=/etc/hyperledger/peercfg
+    # Prepare environment variables
+    local env_vars="      - FABRIC_CFG_PATH=/etc/hyperledger/peercfg
       - FABRIC_LOGGING_SPEC=INFO
       - CORE_PEER_TLS_ENABLED=true
       - CORE_PEER_PROFILE_ENABLED=false
@@ -198,9 +223,28 @@ EOF
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
       - CORE_OPERATIONS_LISTENADDRESS=peer0.${org_domain}:${org_ops_port}
       - CORE_METRICS_PROVIDER=prometheus
-      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0${org_lower}"}
+      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={\"peername\":\"peer0${org_lower}\"}
       - CORE_CHAINCODE_EXECUTETIMEOUT=300s
-      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabric_test
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabric_test"
+    
+    # Add CouchDB environment variables if enabled
+    if [ "$couchdb_enabled" == "true" ]; then
+      local org_couchdb_port="${NETWORK_ORG_COUCHDB_PORTS[$i]}"
+      env_vars="${env_vars}
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb${i}:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw"
+    fi
+    
+    cat >> "$compose_file" << EOF
+  peer0.${org_domain}:
+    container_name: peer0.${org_domain}
+    image: hyperledger/fabric-peer:latest
+    labels:
+      service: hyperledger-fabric
+    environment:
+${env_vars}
     volumes:
       - ../organizations/peerOrganizations/${org_domain}/peers/peer0.${org_domain}:/etc/hyperledger/fabric
       - peer0.${org_domain}:/var/hyperledger/production
@@ -213,6 +257,17 @@ EOF
       - ${org_ops_port}:${org_ops_port}
     networks:
       - test
+EOF
+
+    # Add dependency on CouchDB if enabled
+    if [ "$couchdb_enabled" == "true" ]; then
+      cat >> "$compose_file" << EOF
+    depends_on:
+      - couchdb${i}
+EOF
+    fi
+
+    cat >> "$compose_file" << EOF
 
 EOF
   done
@@ -561,16 +616,16 @@ EOF
 EOF
 }
 
-# Generate chaincode from template with central bank MSP ID and domain
-function generate_chaincode_from_template() {
+# Generate configuration from template with central bank MSP ID and domain
+function generate_config_from_template() {
   local central_bank_name="$1"
   local central_msp_id="${central_bank_name}MSP"
-  local template_file="chaincode/chaincode/token_contract.go.template"
-  local output_file="chaincode/chaincode/token_contract.go"
+  local config_template_file="chaincode/chaincode/config.go.template"
+  local config_output_file="chaincode/chaincode/config.go"
   local network_config_file="network-config.json"
   
-  if [ ! -f "$template_file" ]; then
-    errorln "Chaincode template not found: $template_file"
+  if [ ! -f "$config_template_file" ]; then
+    errorln "Config template not found: $config_template_file"
     return 1
   fi
   
@@ -593,24 +648,24 @@ function generate_chaincode_from_template() {
     return 1
   fi
   
-  infoln "📝 从模板生成智能合约..."
+  infoln "📝 从模板生成配置文件..."
   infoln "   央行 MSP ID: $central_msp_id"
   infoln "   央行域名: $central_bank_domain"
   
   # Replace template placeholders with actual values
-  sed -e "s/{{CENTRAL_MSP_ID}}/$central_msp_id/g" \
-      -e "s/{{CENTRAL_BANK_DOMAIN}}/$central_bank_domain/g" \
-      "$template_file" > "$output_file"
+  sed -e "s/{{CENTRAL_MSP_ID}}/\"$central_msp_id\"/g" \
+      -e "s/{{CENTRAL_BANK_DOMAIN}}/\"$central_bank_domain\"/g" \
+      "$config_template_file" > "$config_output_file"
   
   if [ $? -eq 0 ]; then
-    successln "✅ 智能合约已生成: $output_file"
-    infoln "   Mint 和 Burn 权限已设置为: $central_msp_id"
-    infoln "   央行域名权限控制已设置为: $central_bank_domain"
+    successln "✅ 配置文件已生成: $config_output_file"
+    infoln "   央行 MSP ID 已设置为: $central_msp_id"
+    infoln "   央行域名已设置为: $central_bank_domain"
     
     # Generate collection configuration
     generate_collection_config "$central_msp_id"
   else
-    errorln "生成智能合约失败"
+    errorln "生成配置文件失败"
     return 1
   fi
 }
@@ -719,8 +774,8 @@ function generate_cbdc_default_config() {
   
   generate_cbdc_network_config "$channel_name" "CentralBank" "Bank1" "Bank2"
   
-  # Generate chaincode from template
-  generate_chaincode_from_template "CentralBank"
+  # Generate configuration from template
+  generate_config_from_template "CentralBank"
   
   successln "✅ 默认 CBDC 网络配置已保存到: $config_file"
   infoln "使用默认配置: 央行 (CentralBank) + 2个银行 (Bank1, Bank2)，频道 '$channel_name'"

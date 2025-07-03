@@ -1,0 +1,7 @@
+package main
+
+// ========== 组织配置 ==========
+
+// 央行组织配置
+const CENTRAL_MSP_ID = {{CENTRAL_MSP_ID}}               // 央行MSP ID
+const CENTRAL_BANK_DOMAIN = {{CENTRAL_BANK_DOMAIN}} // 央行域名

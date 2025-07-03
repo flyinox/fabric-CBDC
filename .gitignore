@@ -91,12 +91,15 @@ chaincode/vendor
 /channel-artifacts/*.pb
 /org3-artifacts/crypto-config/*
 chaincode/chaincode/token_contract.go
+chaincode/collections_config_generated.json
 network-config.json
 organizations/fabric-ca/*
 addOrg3/fabric-ca/org3/*
+compose/compose-test-net.yaml
 organizations/ordererOrganizations/*
 organizations/peerOrganizations/*
 system-genesis-block/*
+chaincode/chaincode/config.go
 *.tar.gz
 log.txt
 .cursor

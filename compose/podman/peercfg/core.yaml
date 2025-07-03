@@ -284,12 +284,12 @@ peer:
         # rootcert.file represents the trusted root certificate chain used for verifying certificates
         # of other nodes during outbound connections.
         # It is not required to be set, but can be used to augment the set of TLS CA certificates
-        # available from the MSPs of each channel’s configuration.
+        # available from the MSPs of each channel's configuration.
         rootcert:
             file: tls/ca.crt
         # If mutual TLS is enabled, clientRootCAs.files contains a list of additional root certificates
         # used for verifying certificates of client connections.
-        # It augments the set of TLS CA certificates available from the MSPs of each channel’s configuration.
+        # It augments the set of TLS CA certificates available from the MSPs of each channel's configuration.
         # Minimally, set your organization's TLS CA root certificate so that the peer can receive join channel requests.
         clientRootCAs:
             files:
@@ -640,7 +640,7 @@ ledger:
     # stateDatabase - options are "goleveldb", "CouchDB"
     # goleveldb - default state database stored in goleveldb.
     # CouchDB - store state database in CouchDB
-    stateDatabase: goleveldb
+    stateDatabase: CouchDB
     # Limit on the number of records to return per query
     totalQueryLimit: 100000
     couchDBConfig:

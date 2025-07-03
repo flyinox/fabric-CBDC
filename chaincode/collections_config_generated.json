@@ -1,7 +1,7 @@
 [
   {
     "name": "central_bank_full_data",
-    "policy": "OR('c1MSP.member')",
+    "policy": "OR('cc1MSP.member')",
     "requiredPeerCount": 0,
     "maxPeerCount": 0,
     "blockToLive": 0,
