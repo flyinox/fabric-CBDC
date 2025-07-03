@@ -498,64 +498,33 @@ func (s *SmartContract) GetUserInfo(ctx contractapi.TransactionContextInterface)
 
 // GetUserAccountInfo 返回指定用户的完整账户信息
 func (s *SmartContract) GetUserAccountInfo(ctx contractapi.TransactionContextInterface, userID string) (string, error) {
-	// 首先检查合约是否已初始化
-	initialized, err := checkInitialized(ctx)
+	// 获取当前调用者的信息
+	callerID, err := ctx.GetClientIdentity().GetID()
 	if err != nil {
-		return "", fmt.Errorf("failed to check if contract is already initialized: %v", err)
-	}
-	if !initialized {
-		return "", fmt.Errorf("contract options need to be set before calling any function, call Initialize() to initialize contract")
+		return "", fmt.Errorf("failed to get caller id: %v", err)
 	}
 
-	// 获取用户账户信息
-	userBalance, err := s.getUserAccountInfo(ctx, userID)
+	// 检查权限
+	hasPermission, err := s.checkAccountInfoPermission(ctx, callerID, userID)
 	if err != nil {
-		return "", fmt.Errorf("failed to get user account info: %v", err)
+		return "", fmt.Errorf("failed to check permission: %v", err)
+	}
+	if !hasPermission {
+		return "", fmt.Errorf("caller does not have permission to view account info of user %s", userID)
 	}
 
-	// 将用户账户信息转换为JSON格式
-	userAccountJSON, err := json.Marshal(userBalance)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal user account info: %v", err)
-	}
-
-	log.Printf("User account info: %s", string(userAccountJSON))
-
-	return string(userAccountJSON), nil
+	return s.getAccountInfoAsJSON(ctx, userID, "user")
 }
 
 // GetClientAccountInfo 返回当前调用客户端的完整账户信息
 func (s *SmartContract) GetClientAccountInfo(ctx contractapi.TransactionContextInterface) (string, error) {
-	// 首先检查合约是否已初始化
-	initialized, err := checkInitialized(ctx)
-	if err != nil {
-		return "", fmt.Errorf("failed to check if contract is already initialized: %v", err)
-	}
-	if !initialized {
-		return "", fmt.Errorf("contract options need to be set before calling any function, call Initialize() to initialize contract")
-	}
-
 	// 获取提交客户端身份的ID
 	clientID, err := ctx.GetClientIdentity().GetID()
 	if err != nil {
 		return "", fmt.Errorf("failed to get client id: %v", err)
 	}
 
-	// 获取用户账户信息
-	userBalance, err := s.getUserAccountInfo(ctx, clientID)
-	if err != nil {
-		return "", fmt.Errorf("failed to get client account info: %v", err)
-	}
-
-	// 将用户账户信息转换为JSON格式
-	userAccountJSON, err := json.Marshal(userBalance)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal client account info: %v", err)
-	}
-
-	log.Printf("Client account info: %s", string(userAccountJSON))
-
-	return string(userAccountJSON), nil
+	return s.getAccountInfoAsJSON(ctx, clientID, "client")
 }
 
 // TotalSupply 返回代币的总供应量
@@ -903,6 +872,34 @@ func sub(b int, q int) (int, error) {
 
 // ========== 内部辅助方法 ==========
 
+// getAccountInfoAsJSON 通用的账户信息获取和JSON序列化函数
+func (s *SmartContract) getAccountInfoAsJSON(ctx contractapi.TransactionContextInterface, userID string, logPrefix string) (string, error) {
+	// 首先检查合约是否已初始化
+	initialized, err := checkInitialized(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to check if contract is already initialized: %v", err)
+	}
+	if !initialized {
+		return "", fmt.Errorf("contract options need to be set before calling any function, call Initialize() to initialize contract")
+	}
+
+	// 获取用户账户信息
+	userBalance, err := s.getUserAccountInfo(ctx, userID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get %s account info: %v", logPrefix, err)
+	}
+
+	// 将用户账户信息转换为JSON格式
+	userAccountJSON, err := json.Marshal(userBalance)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal %s account info: %v", logPrefix, err)
+	}
+
+	log.Printf("%s account info: %s", logPrefix, string(userAccountJSON))
+
+	return string(userAccountJSON), nil
+}
+
 // extractOrgMSPFromClientID 从clientID中提取组织MSP信息
 // 这个方法解析X.509证书格式的clientID，提取组织信息
 func (s *SmartContract) extractOrgMSPFromClientID(clientID string) (string, error) {
@@ -1151,6 +1148,48 @@ func (s *SmartContract) transferHelperPrivate(ctx contractapi.TransactionContext
 }
 
 // ========== 权限控制辅助函数 ==========
+
+// checkAccountInfoPermission 检查调用者是否有权限查看指定用户的账户信息
+func (s *SmartContract) checkAccountInfoPermission(ctx contractapi.TransactionContextInterface, callerID, targetUserID string) (bool, error) {
+	// 如果调用者查询自己的账户信息，直接允许
+	if callerID == targetUserID {
+		return true, nil
+	}
+
+	// 获取调用者的信息（用于验证调用者账户存在）
+	_, err := s.getUserAccountInfo(ctx, callerID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get caller account info: %v", err)
+	}
+
+	// 获取目标用户的信息
+	targetInfo, err := s.getUserAccountInfo(ctx, targetUserID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get target user account info: %v", err)
+	}
+
+	// 解析调用者的clientID获取用户类型
+	callerDomain, err := s.extractDomainFromClientID(callerID)
+	if err != nil {
+		return false, fmt.Errorf("failed to extract caller domain: %v", err)
+	}
+
+	// 检查是否是央行用户（可以查看所有账户信息）
+	if callerDomain == "{{CENTRAL_BANK_DOMAIN}}" {
+		return true, nil
+	}
+
+	// 检查是否是银行admin用户
+	if s.isAdminUser(callerID) {
+		// admin用户可以查看同一银行的所有账户信息
+		if callerDomain == targetInfo.OrgMSP {
+			return true, nil
+		}
+	}
+
+	// 其他情况不允许查看
+	return false, nil
+}
 
 // checkBalancePermission 检查调用者是否有权限查看指定账户的余额
 func (s *SmartContract) checkBalancePermission(ctx contractapi.TransactionContextInterface, callerID, targetAccount string) (bool, error) {
