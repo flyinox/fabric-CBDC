@@ -914,13 +914,14 @@ func (s *SmartContract) extractOrgMSPFromClientID(clientID string) (string, erro
 
 	decodedClientID := string(decodedBytes)
 
-	// 解析 X.509 格式：x509::CN=User1@domain.com,OU=client,O=Org1,ST=State,C=Country::...
+	// 解析 X.509 格式：x509::CN=User1@domain.com,OU=client,O=Org1,ST=State,C=Country::CN=ca.domain.com,O=domain.com,...
 	if strings.HasPrefix(decodedClientID, "x509::") {
 		parts := strings.Split(decodedClientID, "::")
 		if len(parts) >= 2 {
+			// 首先尝试从用户证书部分提取组织信息
 			subjectPart := parts[1]
 
-			// 解析 O (Organization) - 这是组织名称
+			// 解析 O (Organization) - 用户证书部分
 			if orgMatch := strings.Split(subjectPart, "O="); len(orgMatch) > 1 {
 				orgPart := strings.Split(orgMatch[1], ",")[0]
 				return orgPart, nil
@@ -934,6 +935,17 @@ func (s *SmartContract) extractOrgMSPFromClientID(clientID string) (string, erro
 					if len(parts) > 1 {
 						return parts[1], nil
 					}
+				}
+			}
+
+			// 如果用户证书部分没有找到，尝试从CA证书部分提取
+			if len(parts) >= 3 {
+				caPart := parts[2]
+				
+				// 解析 CA 证书的 O (Organization)
+				if orgMatch := strings.Split(caPart, "O="); len(orgMatch) > 1 {
+					orgPart := strings.Split(orgMatch[1], ",")[0]
+					return orgPart, nil
 				}
 			}
 		}
@@ -1223,16 +1235,39 @@ func (s *SmartContract) extractDomainFromClientID(clientID string) (string, erro
 
 	decodedClientID := string(decodedBytes)
 
-	// 解析 X.509 格式
+	// 解析 X.509 格式：x509::CN=User1@domain.com,OU=client,O=Org1,ST=State,C=Country::CN=ca.domain.com,O=domain.com,...
 	if strings.HasPrefix(decodedClientID, "x509::") {
 		parts := strings.Split(decodedClientID, "::")
 		if len(parts) >= 2 {
+			// 首先尝试从用户证书部分提取组织信息
 			subjectPart := parts[1]
-
-			// 解析 O (Organization)
+			
+			// 解析 O (Organization) - 用户证书部分
 			if orgMatch := strings.Split(subjectPart, "O="); len(orgMatch) > 1 {
 				orgPart := strings.Split(orgMatch[1], ",")[0]
 				return orgPart, nil
+			}
+
+			// 如果没有O字段，尝试从CN中提取组织信息
+			if cnMatch := strings.Split(subjectPart, "CN="); len(cnMatch) > 1 {
+				cnPart := strings.Split(cnMatch[1], ",")[0]
+				if strings.Contains(cnPart, "@") {
+					parts := strings.Split(cnPart, "@")
+					if len(parts) > 1 {
+						return parts[1], nil
+					}
+				}
+			}
+
+			// 如果用户证书部分没有找到，尝试从CA证书部分提取
+			if len(parts) >= 3 {
+				caPart := parts[2]
+				
+				// 解析 CA 证书的 O (Organization)
+				if orgMatch := strings.Split(caPart, "O="); len(orgMatch) > 1 {
+					orgPart := strings.Split(orgMatch[1], ",")[0]
+					return orgPart, nil
+				}
 			}
 		}
 	}

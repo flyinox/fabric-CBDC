@@ -37,12 +37,17 @@ function loadNetworkConfig() {
 # 获取组织名称
 function getOrgName() {
   local org_index=$1
-  local array_index=$((org_index - 1))
   
-  if [[ $array_index -ge 0 && $array_index -lt ${#NETWORK_ORGS[@]} ]]; then
-    echo "${NETWORK_ORGS[$array_index]}"
+  # 如果传入的是数字索引（从0开始）
+  if [[ "$org_index" =~ ^[0-9]+$ ]]; then
+    if [[ $org_index -ge 0 && $org_index -lt ${#NETWORK_ORGS[@]} ]]; then
+      echo "${NETWORK_ORGS[$org_index]}"
+    else
+      echo "org${org_index}"  # 默认后备名称
+    fi
   else
-    echo "org${org_index}"  # 默认后备名称
+    # 如果传入的是组织名称，直接返回
+    echo "$org_index"
   fi
 }
 
@@ -427,14 +432,29 @@ chaincodeQuery() {
   CC_QUERY_CONSTRUCTOR=$4
   local org_name=$(getOrgName $ORG)
 
-  infoln "Querying on peer0.${org_name} on channel '$CHANNEL'..."
+  # 保存当前环境变量
+  local current_org=$ORG
+  local current_org_name=$org_name
+  
+  # 强制使用央行peer（通常是第一个组织）
+  # 由于setGlobals函数期望从1开始的索引，我们需要传入1
+  local central_org_index=1
+  local central_org_name=$(getOrgName 0)  # 从0开始的索引获取名称
+  
+  infoln "查询操作：使用央行peer (${central_org_name}) 进行查询..."
+  infoln "原始请求组织: ${org_name}"
+  
+  # 设置央行环境变量
+  setGlobals $central_org_index
+  
+  infoln "Querying on peer0.${central_org_name} on channel '$CHANNEL'..."
   local rc=1
   local COUNTER=1
   # continue to poll
   # we either get a successful response, or reach MAX RETRY
   while [ $rc -ne 0 -a $COUNTER -lt $MAX_RETRY ]; do
     sleep $DELAY
-    infoln "Attempting to Query peer0.${org_name}, Retry after $DELAY seconds."
+    infoln "Attempting to Query peer0.${central_org_name}, Retry after $DELAY seconds."
     set -x
     peer chaincode query -C $CHANNEL -n ${CC_NAME_LOCAL} -c "${CC_QUERY_CONSTRUCTOR}" >&log.txt
     res=$?
@@ -444,8 +464,11 @@ chaincodeQuery() {
   done
   cat log.txt
   if test $rc -eq 0; then
-    successln "Query successful on peer0.${org_name} on channel '$CHANNEL'"
+    successln "Query successful on peer0.${central_org_name} on channel '$CHANNEL'"
   else
-    fatalln "After $MAX_RETRY attempts, Query result on peer0.${org_name} is INVALID!"
+    fatalln "After $MAX_RETRY attempts, Query result on peer0.${central_org_name} is INVALID!"
   fi
+  
+  # 恢复原始环境变量
+  setGlobals $current_org
 }

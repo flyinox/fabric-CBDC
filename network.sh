@@ -825,8 +825,8 @@ function startCBDCNetwork() {
   println
   infoln "网络信息:"
   println "  频道名称: $channel_name"
-  println "  智能合约: $CC_NAME"
-  println "  智能合约版本: $CC_VERSION"
+  println "  智能合约: $cbdc_cc_name"
+  println "  智能合约版本: $cbdc_cc_version"
   println
   infoln "下一步你可以:"
   println "  - 使用 './network.sh cc invoke' 调用智能合约"
