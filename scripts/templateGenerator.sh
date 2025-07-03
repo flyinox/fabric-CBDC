@@ -561,27 +561,51 @@ EOF
 EOF
 }
 
-# Generate chaincode from template with central bank MSP ID
+# Generate chaincode from template with central bank MSP ID and domain
 function generate_chaincode_from_template() {
   local central_bank_name="$1"
   local central_msp_id="${central_bank_name}MSP"
   local template_file="chaincode/chaincode/token_contract.go.template"
   local output_file="chaincode/chaincode/token_contract.go"
+  local network_config_file="network-config.json"
   
   if [ ! -f "$template_file" ]; then
     errorln "Chaincode template not found: $template_file"
     return 1
   fi
   
+  if [ ! -f "$network_config_file" ]; then
+    errorln "Network configuration not found: $network_config_file"
+    return 1
+  fi
+  
+  # Extract central bank domain from network configuration
+  local central_bank_domain=""
+  if command -v jq &> /dev/null; then
+    central_bank_domain=$(jq -r '.network.organizations[] | select(.type == "central_bank") | .domain' "$network_config_file" 2>/dev/null)
+  else
+    # Fallback: parse manually if jq is not available
+    central_bank_domain=$(grep -A 10 '"type": "central_bank"' "$network_config_file" | grep '"domain"' | head -1 | sed 's/.*"domain": "\([^"]*\)".*/\1/')
+  fi
+  
+  if [ -z "$central_bank_domain" ] || [ "$central_bank_domain" == "null" ]; then
+    errorln "Failed to extract central bank domain from network configuration"
+    return 1
+  fi
+  
   infoln "📝 从模板生成智能合约..."
   infoln "   央行 MSP ID: $central_msp_id"
+  infoln "   央行域名: $central_bank_domain"
   
-  # Replace template placeholder with actual central bank MSP ID
-  sed "s/{{CENTRAL_MSP_ID}}/$central_msp_id/g" "$template_file" > "$output_file"
+  # Replace template placeholders with actual values
+  sed -e "s/{{CENTRAL_MSP_ID}}/$central_msp_id/g" \
+      -e "s/{{CENTRAL_BANK_DOMAIN}}/$central_bank_domain/g" \
+      "$template_file" > "$output_file"
   
   if [ $? -eq 0 ]; then
     successln "✅ 智能合约已生成: $output_file"
     infoln "   Mint 和 Burn 权限已设置为: $central_msp_id"
+    infoln "   央行域名权限控制已设置为: $central_bank_domain"
     
     # Generate collection configuration
     generate_collection_config "$central_msp_id"

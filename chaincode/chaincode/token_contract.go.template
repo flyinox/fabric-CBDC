@@ -316,7 +316,7 @@ func (s *SmartContract) Transfer(ctx contractapi.TransactionContextInterface, re
 	return nil
 }
 
-// BalanceOf 返回给定账户的余额
+// BalanceOf 返回给定账户的余额（带权限控制）
 func (s *SmartContract) BalanceOf(ctx contractapi.TransactionContextInterface, account string) (int, error) {
 
 	// 首先检查合约是否已初始化
@@ -328,10 +328,25 @@ func (s *SmartContract) BalanceOf(ctx contractapi.TransactionContextInterface, a
 		return 0, fmt.Errorf("contract options need to be set before calling any function, call Initialize() to initialize contract")
 	}
 
+	// 获取当前调用者的信息
+	callerID, err := ctx.GetClientIdentity().GetID()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get caller id: %v", err)
+	}
+
+	// 检查权限
+	hasPermission, err := s.checkBalancePermission(ctx, callerID, account)
+	if err != nil {
+		return 0, fmt.Errorf("failed to check permission: %v", err)
+	}
+	if !hasPermission {
+		return 0, fmt.Errorf("caller does not have permission to view balance of account %s", account)
+	}
+
 	// 从私有集合获取余额
 	balance, err := s.getBalanceFromPrivateCollection(ctx, account)
 	if err != nil {
-		return 0, fmt.Errorf("failed to read from private collection: %v", err)
+		return 0, fmt.Errorf("failed to read client account %s from private collection: %v", account, err)
 	}
 
 	return balance, nil
@@ -1121,4 +1136,106 @@ func (s *SmartContract) transferHelperPrivate(ctx contractapi.TransactionContext
 	log.Printf("recipient %s balance updated from %d to %d", to, toCurrentBalance, toUpdatedBalance)
 
 	return nil
+}
+
+// ========== 权限控制辅助函数 ==========
+
+// checkBalancePermission 检查调用者是否有权限查看指定账户的余额
+func (s *SmartContract) checkBalancePermission(ctx contractapi.TransactionContextInterface, callerID, targetAccount string) (bool, error) {
+	// 如果调用者查询自己的账户，直接允许
+	if callerID == targetAccount {
+		return true, nil
+	}
+
+	// 获取调用者的信息（用于验证调用者账户存在）
+	_, err := s.getUserAccountInfo(ctx, callerID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get caller account info: %v", err)
+	}
+
+	// 获取目标账户的信息
+	targetInfo, err := s.getUserAccountInfo(ctx, targetAccount)
+	if err != nil {
+		return false, fmt.Errorf("failed to get target account info: %v", err)
+	}
+
+	// 解析调用者的clientID获取用户类型
+	callerDomain, err := s.extractDomainFromClientID(callerID)
+	if err != nil {
+		return false, fmt.Errorf("failed to extract caller domain: %v", err)
+	}
+
+	// 检查是否是央行用户（可以查看所有账户）
+	if callerDomain == "{{CENTRAL_BANK_DOMAIN}}" {
+		return true, nil
+	}
+
+	// 检查是否是银行admin用户
+	if s.isAdminUser(callerID) {
+		// admin用户可以查看同一银行的所有账户
+		if callerDomain == targetInfo.OrgMSP {
+			return true, nil
+		}
+	}
+
+	// 其他情况不允许查看
+	return false, nil
+}
+
+// isAdminUser 检查用户是否是admin用户
+func (s *SmartContract) isAdminUser(clientID string) bool {
+	// 尝试解码 base64 编码的 clientID
+	decodedBytes, err := base64.StdEncoding.DecodeString(clientID)
+	if err != nil {
+		return false
+	}
+	
+	decodedClientID := string(decodedBytes)
+	
+	// 解析 X.509 格式，检查CN是否包含Admin
+	if strings.HasPrefix(decodedClientID, "x509::") {
+		parts := strings.Split(decodedClientID, "::")
+		if len(parts) >= 2 {
+			subjectPart := parts[1]
+			
+			// 解析 CN (Common Name)
+			if cnMatch := strings.Split(subjectPart, "CN="); len(cnMatch) > 1 {
+				cnPart := strings.Split(cnMatch[1], ",")[0]
+				// 检查是否包含Admin（不区分大小写）
+				if strings.Contains(strings.ToLower(cnPart), "admin") {
+					return true
+				}
+			}
+		}
+	}
+	
+	return false
+}
+
+// extractDomainFromClientID 从clientID中提取组织域名信息
+// 这个方法解析X.509证书格式的clientID，提取组织域名
+func (s *SmartContract) extractDomainFromClientID(clientID string) (string, error) {
+	// 尝试解码 base64 编码的 clientID
+	decodedBytes, err := base64.StdEncoding.DecodeString(clientID)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode base64 clientID: %v", err)
+	}
+
+	decodedClientID := string(decodedBytes)
+
+	// 解析 X.509 格式
+	if strings.HasPrefix(decodedClientID, "x509::") {
+		parts := strings.Split(decodedClientID, "::")
+		if len(parts) >= 2 {
+			subjectPart := parts[1]
+
+			// 解析 O (Organization)
+			if orgMatch := strings.Split(subjectPart, "O="); len(orgMatch) > 1 {
+				orgPart := strings.Split(orgMatch[1], ",")[0]
+				return orgPart, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("unable to extract domain from clientID: %s", clientID)
 }

@@ -623,6 +623,40 @@ function cbdcTotalSupply() {
   executeChaincodeCommand "$org_name" "$user_name" "query" "TotalSupply" "$args"
 }
 
+# CBDC Client Account ID query
+function cbdcClientAccountID() {
+  local org_name=""
+  local user_name=""
+  
+  # Parse command line arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -org)
+        org_name="$2"
+        shift 2
+        ;;
+      -user)
+        user_name="$2"
+        shift 2
+        ;;
+      *)
+        errorln "未知参数: $1"
+        return 1
+        ;;
+    esac
+  done
+  
+  infoln "🆔 查询客户端账户ID..."
+  println
+  
+  # Use inline selection to avoid function call issues
+  selectOrgAndUser org_name user_name
+  
+  local args="{\"Args\":[\"ClientAccountID\"]}"
+  
+  executeChaincodeCommand "$org_name" "$user_name" "query" "ClientAccountID" "$args"
+}
+
 # CBDC Approve command
 function cbdcApprove() {
   local spender=""
@@ -911,6 +945,12 @@ function cbdcChaincode() {
     supply)
       cbdcTotalSupply "$@"
       ;;
+    clientAccountID)
+      cbdcClientAccountID "$@"
+      ;;
+    clientid)
+      cbdcClientAccountID "$@"
+      ;;
     approve)
       cbdcApprove "$@"
       ;;
@@ -956,6 +996,8 @@ function printCBDCHelp() {
   println "  transfer   - 转账代币"
   println "  balance    - 查询账户余额"
   println "  supply     - 查询代币总供应量"
+  println "  clientAccountID - 查询客户端账户ID"
+  println "  clientid   - 查询客户端账户ID (clientAccountID的简写)"
   println "  approve    - 批准代币授权"
   println "  allowance  - 查询授权额度"
   println "  userinfo   - 获取用户基本信息"

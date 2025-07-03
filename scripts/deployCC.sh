@@ -15,19 +15,7 @@ DELAY=${10:-"3"}
 MAX_RETRY=${11:-"5"}
 VERBOSE=${12:-"false"}
 
-println "executing with the following"
-println "- CHANNEL_NAME: ${C_GREEN}${CHANNEL_NAME}${C_RESET}"
-println "- CC_NAME: ${C_GREEN}${CC_NAME}${C_RESET}"
-println "- CC_SRC_PATH: ${C_GREEN}${CC_SRC_PATH}${C_RESET}"
-println "- CC_SRC_LANGUAGE: ${C_GREEN}${CC_SRC_LANGUAGE}${C_RESET}"
-println "- CC_VERSION: ${C_GREEN}${CC_VERSION}${C_RESET}"
-println "- CC_SEQUENCE: ${C_GREEN}${CC_SEQUENCE}${C_RESET}"
-println "- CC_END_POLICY: ${C_GREEN}${CC_END_POLICY}${C_RESET}"
-println "- CC_COLL_CONFIG: ${C_GREEN}${CC_COLL_CONFIG}${C_RESET}"
-println "- CC_INIT_FCN: ${C_GREEN}${CC_INIT_FCN}${C_RESET}"
-println "- DELAY: ${C_GREEN}${DELAY}${C_RESET}"
-println "- MAX_RETRY: ${C_GREEN}${MAX_RETRY}${C_RESET}"
-println "- VERBOSE: ${C_GREEN}${VERBOSE}${C_RESET}"
+# 先不显示参数信息，等处理完背书策略后再显示
 
 INIT_REQUIRED="--init-required"
 # check if the init fcn should be called
@@ -35,11 +23,7 @@ if [ "$CC_INIT_FCN" = "NA" ]; then
   INIT_REQUIRED=""
 fi
 
-if [ "$CC_END_POLICY" = "NA" ]; then
-  CC_END_POLICY=""
-else
-  CC_END_POLICY="--signature-policy $CC_END_POLICY"
-fi
+
 
 if [ "$CC_COLL_CONFIG" = "NA" ]; then
   CC_COLL_CONFIG=""
@@ -91,6 +75,15 @@ function readNetworkConfig() {
     fi
     
     infoln "Found ${#temp_orgs[@]} organizations: ${temp_orgs[*]}"
+    
+    # 读取第一个组织的MSP ID作为背书策略
+    CENTRAL_BANK_MSP=$(jq -r '.network.organizations[0].msp_id' "$config_file")
+    if [[ "$CENTRAL_BANK_MSP" == "null" || -z "$CENTRAL_BANK_MSP" ]]; then
+      errorln "Failed to read central bank MSP ID from $config_file"
+      exit 1
+    fi
+    
+    infoln "Using central bank MSP: $CENTRAL_BANK_MSP for endorsement policy"
     return 0
   else
     warnln "Network config file $config_file not found, using default org1/org2 configuration"
@@ -142,6 +135,41 @@ checkPrereqs
 
 # 读取网络配置
 readNetworkConfig
+
+# 处理背书策略 - 移到这里，在readNetworkConfig之后
+# 优先使用从network-config.json读取的央行MSP，除非明确指定了其他策略
+if [[ -n "$CENTRAL_BANK_MSP" ]]; then
+  # 如果CC_END_POLICY是NA或者包含CentralBankMSP（说明是默认值），则使用从配置文件读取的MSP
+  if [ "$CC_END_POLICY" = "NA" ] || [[ "$CC_END_POLICY" == *"CentralBankMSP"* ]]; then
+    CC_END_POLICY="--signature-policy OR('${CENTRAL_BANK_MSP}.member')"
+    infoln "Using central bank MSP from network-config.json: $CC_END_POLICY"
+  else
+    CC_END_POLICY="--signature-policy $CC_END_POLICY"
+    infoln "Using explicitly specified endorsement policy: $CC_END_POLICY"
+  fi
+else
+  if [ "$CC_END_POLICY" = "NA" ]; then
+    CC_END_POLICY=""
+    warnln "No central bank MSP found, using default endorsement policy"
+  else
+    CC_END_POLICY="--signature-policy $CC_END_POLICY"
+  fi
+fi
+
+# 现在显示处理后的参数信息
+println "executing with the following"
+println "- CHANNEL_NAME: ${C_GREEN}${CHANNEL_NAME}${C_RESET}"
+println "- CC_NAME: ${C_GREEN}${CC_NAME}${C_RESET}"
+println "- CC_SRC_PATH: ${C_GREEN}${CC_SRC_PATH}${C_RESET}"
+println "- CC_SRC_LANGUAGE: ${C_GREEN}${CC_SRC_LANGUAGE}${C_RESET}"
+println "- CC_VERSION: ${C_GREEN}${CC_VERSION}${C_RESET}"
+println "- CC_SEQUENCE: ${C_GREEN}${CC_SEQUENCE}${C_RESET}"
+println "- CC_END_POLICY: ${C_GREEN}${CC_END_POLICY}${C_RESET}"
+println "- CC_COLL_CONFIG: ${C_GREEN}${CC_COLL_CONFIG}${C_RESET}"
+println "- CC_INIT_FCN: ${C_GREEN}${CC_INIT_FCN}${C_RESET}"
+println "- DELAY: ${C_GREEN}${DELAY}${C_RESET}"
+println "- MAX_RETRY: ${C_GREEN}${MAX_RETRY}${C_RESET}"
+println "- VERBOSE: ${C_GREEN}${VERBOSE}${C_RESET}"
 
 ## package the chaincode
 ./scripts/packageCC.sh $CC_NAME $CC_SRC_PATH $CC_SRC_LANGUAGE $CC_VERSION 

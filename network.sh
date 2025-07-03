@@ -814,7 +814,7 @@ function startCBDCNetwork() {
   local cbdc_cc_sequence="1"
   local cbdc_cc_init_fcn="NA"
   
-  scripts/deployCC.sh $channel_name $cbdc_cc_name $cbdc_cc_path $cbdc_cc_language $cbdc_cc_version $cbdc_cc_sequence $cbdc_cc_init_fcn "$CC_END_POLICY" "$CC_COLL_CONFIG" $CLI_DELAY $MAX_RETRY $VERBOSE
+  scripts/deployCC.sh $channel_name $cbdc_cc_name $cbdc_cc_path $cbdc_cc_language $cbdc_cc_version $cbdc_cc_sequence $cbdc_cc_init_fcn "NA" "$CC_COLL_CONFIG" $CLI_DELAY $MAX_RETRY $VERBOSE
   if [ $? -ne 0 ]; then
     fatalln "智能合约部署失败"
   fi
