@@ -886,9 +886,14 @@ if [ "$MODE" == "up-couchdb" ]; then
   MODE="up"
 fi
 
-# 添加 CouchDB 支持
-if [ "$MODE" == "start-couchdb" ]; then
+# 默认 start 命令使用 CouchDB
+if [ "$MODE" == "start" ]; then
   export DATABASE="couchdb"
+fi
+
+# 添加 LevelDB 支持（start-nocouchdb）
+if [ "$MODE" == "start-nocouchdb" ]; then
+  export DATABASE="goleveldb"
   MODE="start"
 fi
 

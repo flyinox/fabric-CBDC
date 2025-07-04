@@ -50,15 +50,17 @@ function printHelp() {
     println "      需要先运行 'setup' 命令配置网络"
     println
     println "    Flags:"
-    println "    -s <dbtype> - 节点状态数据库: goleveldb (默认) 或 couchdb"
+    println "    -s <dbtype> - 节点状态数据库: couchdb (默认) 或 goleveldb"
     println "    -r <max retry> - CLI 重试次数 (默认 5)"
     println "    -d <delay> - CLI 延迟秒数 (默认 3)"
     println "    -verbose - 详细输出模式"
     println "    -h - 显示此帮助信息"
     println
     println " Examples:"
-    println "   network.sh start                     # 启动 CBDC 网络"
-    println "   network.sh start -s couchdb -verbose # 使用 CouchDB 并显示详细输出"
+    println "   network.sh start                     # 启动 CBDC 网络 (默认使用 CouchDB)"
+    println "   network.sh start-nocouchdb          # 启动 CBDC 网络 (使用 LevelDB)"
+    println "   network.sh start -s goleveldb       # 显式指定使用 LevelDB"
+    println "   network.sh start -verbose            # 使用 CouchDB 并显示详细输出"
   elif [ "$USAGE" == "up" ]; then
     println "Usage: "
     println "  network.sh \033[0;32mup\033[0m [Flags]"
@@ -66,7 +68,7 @@ function printHelp() {
     println "    Flags:"
     println "    -ca - Use Certificate Authorities to generate network crypto material"
     println "    -c <channel name> - Name of channel to create (defaults to \"mychannel\")"
-    println "    -s <dbtype> - Peer state database to deploy: goleveldb (default) or couchdb"
+    println "    -s <dbtype> - Peer state database to deploy: couchdb (default) or goleveldb"
     println "    -r <max retry> - CLI times out after certain number of attempts (defaults to 5)"
     println "    -d <delay> - CLI delays for a certain number of seconds (defaults to 3)"
     println "    -verbose - Verbose mode"
@@ -182,7 +184,8 @@ function printHelp() {
     println "  network.sh <Mode> [Flags]"
     println "    主要命令 (CBDC 网络):"
     println "      \033[0;32msetup\033[0m - 配置 CBDC 网络的央行和银行组织 (运行其他命令前必须先执行)"
-    println "      \033[0;32mstart\033[0m - 启动完整的 CBDC 网络 (包含 up + createChannel + deployCC)"
+    println "      \033[0;32mstart\033[0m - 启动完整的 CBDC 网络 (默认使用 CouchDB，包含 up + createChannel + deployCC)"
+    println "      \033[0;32mstart-nocouchdb\033[0m - 启动完整的 CBDC 网络 (使用 LevelDB，包含 up + createChannel + deployCC)"
     println
     println "    基础命令:"
     println "      \033[0;32mprereq\033[0m - 安装 Fabric 二进制文件和 Docker 镜像"
@@ -210,7 +213,7 @@ function printHelp() {
     println "    Used with \033[0;32mnetwork.sh up\033[0m, \033[0;32mnetwork.sh createChannel\033[0m, \033[0;32mnetwork.sh start\033[0m:"
     println "    -ca - Use Certificate Authorities to generate network crypto material"
     println "    -c <channel name> - Name of channel to create (defaults to \"mychannel\")"
-    println "    -s <dbtype> - Peer state database to deploy: goleveldb (default) or couchdb"
+    println "    -s <dbtype> - Peer state database to deploy: couchdb (default) or goleveldb"
     println "    -r <max retry> - CLI times out after certain number of attempts (defaults to 5)"
     println "    -d <delay> - CLI delays for a certain number of seconds (defaults to 3)"
     println "    -verbose - Verbose mode"
@@ -230,7 +233,8 @@ function printHelp() {
     println
     println " CBDC 网络使用示例:"
     println "   network.sh setup -central PBOC -banks ICBC ABC BOC    # 配置央行和银行"
-    println "   network.sh start -s couchdb                           # 启动完整网络"
+    println "   network.sh start                                      # 启动完整网络 (默认使用 CouchDB)"
+    println "   network.sh start-nocouchdb                            # 启动完整网络 (使用 LevelDB)"
     println
     println " Possible Mode and flag combinations"
     println "   \033[0;32mup\033[0m -ca -r -d -s -verbose"
