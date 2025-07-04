@@ -90,7 +90,6 @@ chaincode/vendor
 /channel-artifacts/*.json
 /channel-artifacts/*.pb
 /org3-artifacts/crypto-config/*
-chaincode/chaincode/token_contract.go
 chaincode/collections_config_generated.json
 network-config.json
 organizations/fabric-ca/*
@@ -103,3 +102,4 @@ chaincode/chaincode/config.go
 *.tar.gz
 log.txt
 .cursor
+TODO.md

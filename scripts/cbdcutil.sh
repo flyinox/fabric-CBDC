@@ -1011,8 +1011,14 @@ function cbdcChaincode() {
     querytx)
       cbdcQueryUserTransactions "$@"
       ;;
+    querytxpage)
+      cbdcQueryUserTransactionsWithPagination "$@"
+      ;;
     txhistory)
       cbdcGetUserTransactionHistory "$@"
+      ;;
+    txhistorypage)
+      cbdcGetUserTransactionHistoryWithPagination "$@"
       ;;
     help)
       printCBDCHelp
@@ -1048,12 +1054,24 @@ function printCBDCHelp() {
   println "  account    - 获取用户账户信息 (accountinfo的简写)"
   println "  clientaccount - 获取当前客户端账户信息"
   println "  querytx    - 查询用户交易记录（富查询，支持多条件筛选）"
+  println "  querytxpage - 查询用户交易记录（分页查询）"
   println "  txhistory  - 获取用户交易历史（简化版本）"
+  println "  txhistorypage - 获取用户交易历史（分页查询）"
   println "  help       - 显示此帮助信息"
   println
   println "通用选项:"
   println "  -org <组织名>   - 指定执行操作的组织"
   println "  -user <用户名>  - 指定执行操作的用户"
+  println
+  println "分页查询选项:"
+  println "  -pagesize <数量> - 页面大小（querytxpage: 1-100，txhistorypage: 1-1000）"
+  println "  -offset <偏移量>  - 偏移量（从0开始）"
+  println
+  println "富查询筛选选项:"
+  println "  -minamount <金额> - 最小金额筛选"
+  println "  -maxamount <金额> - 最大金额筛选"
+  println "  -type <类型>      - 交易类型筛选"
+  println "  -counterparty <ID> - 交易对手方筛选"
   println
   println "示例:"
   println "  $0 ccc init -name \"Digital Yuan\" -symbol \"DCEP\" -decimals \"2\""
@@ -1069,10 +1087,17 @@ function printCBDCHelp() {
   println "  $0 ccc querytx -userid <用户ID> -counterparty <对手方ID>"
   println "  $0 ccc txhistory -userid <用户ID> -limit 100"
   println
+  println "  # 带筛选条件的分页查询"
+  println "  $0 ccc querytxpage -userid <用户ID> -minamount 100 -maxamount 1000 -type transfer -pagesize 10 -offset 0"
+  println "  $0 ccc querytxpage -userid <用户ID> -counterparty <对手方ID> -pagesize 15 -offset 0"
+  println
+  println "  # 交易历史分页查询"
+  println "  $0 ccc txhistorypage -userid <用户ID> -pagesize 50 -offset 0"
+  println "  $0 ccc txhistorypage -userid <用户ID> -pagesize 50 -offset 50  # 下一页"
+  println
   println "注意:"
   println "  - 如果不提供选项，系统将进入交互模式"
   println "  - mint 和 burn 操作仅限央行执行"
-  println "  - 其他操作可由任何组织执行"
   println "  - 富查询功能需要 CouchDB 支持"
 }
 
@@ -1250,4 +1275,238 @@ function cbdcGetUserTransactionHistory() {
   local args="{\"Args\":[\"GetUserTransactionHistory\",\"$escaped_user_id\",\"$limit\"]}"
   
   executeChaincodeCommand "$org_name" "$user_name" "query" "GetUserTransactionHistory" "$args"
+}
+
+# CBDC Query user transactions with pagination support
+function cbdcQueryUserTransactionsWithPagination() {
+  local org_name=""
+  local user_name=""
+  local user_id=""
+  local min_amount=""
+  local max_amount=""
+  local transaction_type=""
+  local counterparty=""
+  local page_size=""
+  local offset=""
+  
+  # Parse command line arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -org)
+        org_name="$2"
+        shift 2
+        ;;
+      -user)
+        user_name="$2"
+        shift 2
+        ;;
+      -userid)
+        user_id="$2"
+        shift 2
+        ;;
+      -minamount)
+        min_amount="$2"
+        shift 2
+        ;;
+      -maxamount)
+        max_amount="$2"
+        shift 2
+        ;;
+      -type)
+        transaction_type="$2"
+        shift 2
+        ;;
+      -counterparty)
+        counterparty="$2"
+        shift 2
+        ;;
+      -pagesize)
+        page_size="$2"
+        shift 2
+        ;;
+      -offset)
+        offset="$2"
+        shift 2
+        ;;
+      *)
+        errorln "未知参数: $1"
+        return 1
+        ;;
+    esac
+  done
+  
+  infoln "🔍 查询用户交易记录（分页查询）..."
+  println
+  
+  # Use inline selection to avoid function call issues
+  selectOrgAndUser org_name user_name
+  
+  # Interactive input for user_id if not provided
+  if [ -z "$user_id" ]; then
+    printf "请输入要查询的用户ID: "
+    read -r user_id
+    if [ -z "$user_id" ]; then
+      errorln "用户ID不能为空"
+      return 1
+    fi
+  fi
+  
+  # Interactive input for other parameters if not provided
+  if [ -z "$min_amount" ]; then
+    printf "请输入最小金额 (可选，直接回车跳过): "
+    read -r min_amount
+  fi
+  
+  if [ -z "$max_amount" ]; then
+    printf "请输入最大金额 (可选，直接回车跳过): "
+    read -r max_amount
+  fi
+  
+  if [ -z "$transaction_type" ]; then
+    printf "请输入交易类型 (可选，直接回车跳过): "
+    read -r transaction_type
+  fi
+  
+  if [ -z "$counterparty" ]; then
+    printf "请输入交易对手方 (可选，直接回车跳过): "
+    read -r counterparty
+  fi
+  
+  if [ -z "$page_size" ]; then
+    printf "请输入页面大小 (默认20，最大100): "
+    read -r page_size
+    if [ -z "$page_size" ]; then
+      page_size="20"
+    fi
+  fi
+  
+  if [ -z "$offset" ]; then
+    printf "请输入偏移量 (默认0): "
+    read -r offset
+    if [ -z "$offset" ]; then
+      offset="0"
+    fi
+  fi
+  
+  # Set default values for empty parameters
+  if [ -z "$min_amount" ]; then
+    min_amount="0"
+  fi
+  
+  if [ -z "$max_amount" ]; then
+    max_amount="0"
+  fi
+  
+  # Validate page_size
+  if ! [[ "$page_size" =~ ^[0-9]+$ ]] || [ "$page_size" -lt 1 ] || [ "$page_size" -gt 100 ]; then
+    errorln "页面大小必须是1-100之间的整数"
+    return 1
+  fi
+  
+  # Validate offset
+  if ! [[ "$offset" =~ ^[0-9]+$ ]] || [ "$offset" -lt 0 ]; then
+    errorln "偏移量必须是非负整数"
+    return 1
+  fi
+  
+  # Properly escape JSON arguments to handle spaces and special characters
+  local escaped_user_id=$(printf '%s' "$user_id" | sed 's/"/\\"/g')
+  local escaped_transaction_type=$(printf '%s' "$transaction_type" | sed 's/"/\\"/g')
+  local escaped_counterparty=$(printf '%s' "$counterparty" | sed 's/"/\\"/g')
+  
+  local args="{\"Args\":[\"QueryUserTransactionsWithOffset\",\"$escaped_user_id\",\"$min_amount\",\"$max_amount\",\"$escaped_transaction_type\",\"$escaped_counterparty\",\"$page_size\",\"$offset\"]}"
+  
+  executeChaincodeCommand "$org_name" "$user_name" "query" "QueryUserTransactionsWithOffset" "$args"
+}
+
+# CBDC Get user transaction history with pagination support
+function cbdcGetUserTransactionHistoryWithPagination() {
+  local org_name=""
+  local user_name=""
+  local user_id=""
+  local page_size=""
+  local offset=""
+  
+  # Parse command line arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -org)
+        org_name="$2"
+        shift 2
+        ;;
+      -user)
+        user_name="$2"
+        shift 2
+        ;;
+      -userid)
+        user_id="$2"
+        shift 2
+        ;;
+      -pagesize)
+        page_size="$2"
+        shift 2
+        ;;
+      -offset)
+        offset="$2"
+        shift 2
+        ;;
+      *)
+        errorln "未知参数: $1"
+        return 1
+        ;;
+    esac
+  done
+  
+  infoln "📜 获取用户交易历史（分页查询）..."
+  println
+  
+  # Use inline selection to avoid function call issues
+  selectOrgAndUser org_name user_name
+  
+  # Interactive input for user_id if not provided
+  if [ -z "$user_id" ]; then
+    printf "请输入要查询的用户ID: "
+    read -r user_id
+    if [ -z "$user_id" ]; then
+      errorln "用户ID不能为空"
+      return 1
+    fi
+  fi
+  
+  # Interactive input for page_size if not provided
+  if [ -z "$page_size" ]; then
+    printf "请输入页面大小 (默认50，最大1000): "
+    read -r page_size
+    if [ -z "$page_size" ]; then
+      page_size="50"
+    fi
+  fi
+  
+  # Interactive input for offset if not provided
+  if [ -z "$offset" ]; then
+    printf "请输入偏移量 (默认0): "
+    read -r offset
+    if [ -z "$offset" ]; then
+      offset="0"
+    fi
+  fi
+  
+  # Validate page_size
+  if ! [[ "$page_size" =~ ^[0-9]+$ ]] || [ "$page_size" -lt 1 ] || [ "$page_size" -gt 1000 ]; then
+    errorln "页面大小必须是1-1000之间的整数"
+    return 1
+  fi
+  
+  # Validate offset
+  if ! [[ "$offset" =~ ^[0-9]+$ ]] || [ "$offset" -lt 0 ]; then
+    errorln "偏移量必须是非负整数"
+    return 1
+  fi
+  
+  # Properly escape JSON arguments to handle spaces and special characters
+  local escaped_user_id=$(printf '%s' "$user_id" | sed 's/"/\\"/g')
+  
+  local args="{\"Args\":[\"GetUserTransactionHistoryWithPagination\",\"$escaped_user_id\",\"$page_size\",\"$offset\"]}"
+  
+  executeChaincodeCommand "$org_name" "$user_name" "query" "GetUserTransactionHistoryWithPagination" "$args"
 } 
