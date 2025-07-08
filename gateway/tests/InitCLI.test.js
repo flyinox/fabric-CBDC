@@ -143,8 +143,7 @@ describe('InitCLI', () => {
       const mockQuestion = jest.fn()
         .mockResolvedValueOnce('') // name
         .mockResolvedValueOnce('') // symbol
-        .mockResolvedValueOnce('') // decimals
-        .mockResolvedValueOnce(''); // identityName
+        .mockResolvedValueOnce(''); // decimals
 
       cli.question = mockQuestion;
 
@@ -153,17 +152,18 @@ describe('InitCLI', () => {
       expect(result).toEqual({
         name: 'Digital Yuan',
         symbol: 'DCEP',
-        decimals: '2',
-        identityName: 'admin'
+        decimals: '2'
       });
+
+      expect(mockQuestion).toHaveBeenCalledTimes(3);
     });
 
     it('应该使用用户输入的值', async () => {
+      // Mock readline 输入
       const mockQuestion = jest.fn()
-        .mockResolvedValueOnce('Custom Token')
-        .mockResolvedValueOnce('CTK')
-        .mockResolvedValueOnce('6')
-        .mockResolvedValueOnce('user1');
+        .mockResolvedValueOnce('Custom Token') // name
+        .mockResolvedValueOnce('CTK') // symbol
+        .mockResolvedValueOnce('6'); // decimals
 
       cli.question = mockQuestion;
 
@@ -172,9 +172,10 @@ describe('InitCLI', () => {
       expect(result).toEqual({
         name: 'Custom Token',
         symbol: 'CTK',
-        decimals: '6',
-        identityName: 'user1'
+        decimals: '6'
       });
+
+      expect(mockQuestion).toHaveBeenCalledTimes(3);
     });
   });
 

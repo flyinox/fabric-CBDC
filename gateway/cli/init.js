@@ -89,9 +89,8 @@ class InitCLI {
     const name = await this.question('请输入代币名称 [默认: Digital Yuan]: ') || 'Digital Yuan';
     const symbol = await this.question('请输入代币符号 [默认: DCEP]: ') || 'DCEP';
     const decimals = await this.question('请输入小数位数 [默认: 2]: ') || '2';
-    const identityName = await this.question('请输入身份名称 [默认: admin]: ') || 'admin';
 
-    return { name, symbol, decimals, identityName };
+    return { name, symbol, decimals };
   }
 
   // 验证参数
@@ -138,7 +137,6 @@ class InitCLI {
       console.log(`  名称: ${options.name}`);
       console.log(`  符号: ${options.symbol}`);
       console.log(`  小数位数: ${options.decimals}`);
-      console.log(`  身份: ${options.identityName || 'admin'}`);
       console.log('');
 
       // 执行初始化

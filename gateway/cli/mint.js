@@ -79,9 +79,8 @@ class MintCLI {
     console.log('💰 CBDC 代币铸造工具\n');
 
     const amount = await this.question('请输入铸造数量: ');
-    const identityName = await this.question('请输入身份名称 [默认: admin]: ') || 'admin';
 
-    return { amount, identityName };
+    return { amount };
   }
 
   // 验证参数
@@ -123,7 +122,6 @@ class MintCLI {
 
       console.log('🚀 开始铸造 CBDC 代币...');
       console.log(`  数量: ${options.amount}`);
-      console.log(`  身份: ${options.identityName || 'admin'}`);
       console.log('');
 
       // 执行铸造

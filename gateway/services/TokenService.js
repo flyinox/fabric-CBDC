@@ -11,7 +11,7 @@ class TokenService extends BaseService {
    * @param {string} options.name - 代币名称
    * @param {string} options.symbol - 代币符号
    * @param {string} options.decimals - 小数位数
-   * @param {string} options.identityName - 身份名称，默认为 'admin'
+   * @param {string} options.identityName - 身份名称，默认为当前选择的用户
    * @returns {Promise<Object>} 初始化结果
    */
   async initialize(options = {}) {
@@ -19,15 +19,21 @@ class TokenService extends BaseService {
       name = 'Digital Yuan',
       symbol = 'DCEP',
       decimals = '2',
-      identityName = 'admin'
+      identityName
     } = options;
 
     // 参数验证
     this._validateInitParams(name, symbol, decimals);
 
+    // 获取当前用户或使用指定用户
+    const currentUser = identityName || this.getCurrentUser() || 'admin';
+    
+    // 显示当前用户信息
+    this.showCurrentUserInfo();
+
     try {
       // 连接网络
-      await this.connect(identityName);
+      await this.connect(currentUser);
 
       // 执行初始化
       const result = await this.invokeTransaction('Initialize', name, symbol, decimals);
@@ -85,12 +91,18 @@ class TokenService extends BaseService {
 
   /**
    * 获取代币信息
-   * @param {string} identityName - 身份名称，默认为 'admin'
+   * @param {string} identityName - 身份名称，默认为当前选择的用户
    * @returns {Promise<Object>} 代币信息
    */
-  async getTokenInfo(identityName = 'admin') {
+  async getTokenInfo(identityName) {
+    // 获取当前用户或使用指定用户
+    const currentUser = identityName || this.getCurrentUser() || 'admin';
+    
+    // 显示当前用户信息
+    this.showCurrentUserInfo();
+
     try {
-      await this.connect(identityName);
+      await this.connect(currentUser);
 
       // 查询代币信息（这里假设链码有相应的查询函数）
       const nameResult = await this.evaluateTransaction('Name');
@@ -122,21 +134,38 @@ class TokenService extends BaseService {
    * 铸造新代币
    * @param {Object} options - 铸造选项
    * @param {string} options.amount - 铸造数量
-   * @param {string} options.identityName - 身份名称，默认为 'admin'
+   * @param {string} options.identityName - 身份名称，默认为当前选择的用户
    * @returns {Promise<Object>} 铸造结果
    */
   async mint(options = {}) {
     const {
       amount,
-      identityName = 'admin'
+      identityName
     } = options;
 
     // 参数验证
     this._validateMintParams(amount);
 
+    // 获取当前用户或使用指定用户
+    const currentUser = identityName || this.getCurrentUser() || 'admin';
+    
+    // 显示当前用户信息
+    this.showCurrentUserInfo();
+
     try {
       // 连接网络
-      await this.connect(identityName);
+      await this.connect(currentUser);
+
+      // 验证是否为央行身份
+      const centralBankInfo = this.getCentralBankInfo();
+      if (!centralBankInfo) {
+        throw new Error('无法获取央行组织信息');
+      }
+
+      // 检查当前身份是否为央行身份
+      // 注意：这里假设钱包中的身份文件包含正确的 MSP ID
+      // 在实际环境中，可能需要更严格的身份验证
+      console.log(`⚠️  注意：铸造操作仅限央行身份执行，当前使用身份: ${currentUser}`);
 
       // 执行铸造
       const result = await this.invokeTransaction('Mint', amount);

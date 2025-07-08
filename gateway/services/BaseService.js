@@ -114,33 +114,28 @@ class BaseService {
   }
 
   // 连接网络
-  async connect(identityName = 'admin') {
+  async connect(identityFileName = 'CentralBank_Admin') {
     if (!this.connectionProfile) {
       this.buildConnectionProfile();
     }
-
     // 加载钱包
     const walletPath = path.join(__dirname, '../wallet');
     const wallet = await Wallets.newFileSystemWallet(walletPath);
-
     // 检查身份是否存在
-    const identity = await wallet.get(identityName);
+    const identity = await wallet.get(identityFileName);
     if (!identity) {
-      throw new Error(`钱包中未找到身份 "${identityName}"`);
+      throw new Error(`钱包中未找到身份 "${identityFileName}"`);
     }
-
     // 创建网关连接
     this.gateway = new Gateway();
     await this.gateway.connect(this.connectionProfile, {
       wallet,
-      identity: identityName,
+      identity: identityFileName,
       discovery: { enabled: false }
     });
-
     // 获取网络和合约
     this.network = await this.gateway.getNetwork('cbdc-channel');
     this.contract = this.network.getContract('cbdc');
-
     return {
       gateway: this.gateway,
       network: this.network,
@@ -189,6 +184,52 @@ class BaseService {
       this.loadNetworkConfig();
     }
     return this.centralBankOrg;
+  }
+
+  // 获取当前选择的用户（返回身份文件名）
+  getCurrentUser() {
+    const currentUserFile = path.join(__dirname, '../.current-user');
+    if (fs.existsSync(currentUserFile)) {
+      return fs.readFileSync(currentUserFile, 'utf8').trim();
+    }
+    return null;
+  }
+
+  // 获取用户身份信息（通过身份文件名）
+  getUserIdentityInfo(identityFileName) {
+    const walletPath = path.join(__dirname, '../wallet');
+    const identityPath = path.join(walletPath, `${identityFileName}.id`);
+    if (fs.existsSync(identityPath)) {
+      return JSON.parse(fs.readFileSync(identityPath, 'utf8'));
+    }
+    return null;
+  }
+
+  // 显示当前用户信息
+  showCurrentUserInfo() {
+    const currentUserFileName = this.getCurrentUser();
+    if (currentUserFileName) {
+      const identityInfo = this.getUserIdentityInfo(currentUserFileName);
+      if (identityInfo) {
+        const orgTypeIcon = identityInfo.orgType === 'central_bank' ? '🏛️' : '🏦';
+        console.log(`👤 当前用户: ${orgTypeIcon} ${identityInfo.userName} (${identityInfo.mspId}) - ${identityInfo.orgName}`);
+        return currentUserFileName;
+      } else {
+        console.log(`⚠️  当前用户 ${currentUserFileName} 的身份文件不存在`);
+        const currentUserFile = path.join(__dirname, '../.current-user');
+        try {
+          if (fs.existsSync(currentUserFile)) {
+            fs.unlinkSync(currentUserFile);
+          }
+        } catch (error) {
+          console.log(`⚠️  清除当前用户设置失败: ${error.message}`);
+        }
+        return null;
+      }
+    } else {
+      console.log('⚠️  当前未选择任何用户，将使用默认身份');
+      return null;
+    }
   }
 }
 

@@ -27,7 +27,12 @@ describe('TokenService', () => {
       evaluateTransaction: jest.fn(),
       loadNetworkConfig: jest.fn(),
       buildConnectionProfile: jest.fn(),
-      getCentralBankInfo: jest.fn()
+      getCentralBankInfo: jest.fn().mockReturnValue({
+        name: 'CentralBank',
+        msp_id: 'CentralBankMSP',
+        domain: 'centralbank.example.com',
+        type: 'central_bank'
+      })
     };
 
     // Mock BaseService 构造函数

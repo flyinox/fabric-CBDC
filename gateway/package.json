@@ -9,6 +9,13 @@
     "test:coverage": "jest --coverage",
     "test:init": "jest --testNamePattern='init'",
     "test:mint": "jest --testNamePattern='mint'",
+    "init": "node cli/init.js",
+    "mint": "node cli/mint.js",
+    "user:list": "node cli/selectUser.js -list",
+    "user:current": "node cli/selectUser.js -current",
+    "user:select": "node cli/selectUser.js",
+    "user:clear": "node cli/selectUser.js -clear",
+    "create:identities": "node createAllIdentities.js",
     "start": "node index.js"
   },
   "keywords": [

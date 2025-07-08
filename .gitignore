@@ -103,3 +103,7 @@ chaincode/chaincode/config.go
 log.txt
 .cursor
 TODO.md
+
+gateway/.current-user
+gateway/wallet
+

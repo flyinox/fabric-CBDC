@@ -240,4 +240,38 @@ describe('MintCLI', () => {
       exitSpy.mockRestore();
     });
   });
+
+  describe('interactiveInput', () => {
+    it('应该使用默认值当用户输入为空', async () => {
+      // Mock readline 输入
+      const mockQuestion = jest.fn()
+        .mockResolvedValueOnce('1000'); // amount
+
+      cli.question = mockQuestion;
+
+      const result = await cli.interactiveInput();
+
+      expect(result).toEqual({
+        amount: '1000'
+      });
+
+      expect(mockQuestion).toHaveBeenCalledTimes(1);
+    });
+
+    it('应该使用用户输入的值', async () => {
+      // Mock readline 输入
+      const mockQuestion = jest.fn()
+        .mockResolvedValueOnce('5000'); // amount
+
+      cli.question = mockQuestion;
+
+      const result = await cli.interactiveInput();
+
+      expect(result).toEqual({
+        amount: '5000'
+      });
+
+      expect(mockQuestion).toHaveBeenCalledTimes(1);
+    });
+  });
 }); 
