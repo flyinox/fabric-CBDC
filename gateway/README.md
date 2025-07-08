@@ -52,6 +52,9 @@ npm run init
 
 # 铸造代币
 npm run mint
+
+# 销毁代币
+npm run burn
 ```
 
 ## 📋 功能特性
@@ -67,7 +70,10 @@ npm run mint
 
 - **初始化**: 创建 CBDC 代币合约
 - **铸造**: 央行铸造新代币
-- **查询**: 获取代币信息和余额
+- **销毁**: 央行销毁代币
+- **转账**: 代币转账和授权管理
+- **富查询**: 交易记录查询和分页功能
+- **账户查询**: 查询账户信息、余额、用户信息等
 
 ## 🛠️ 命令行工具
 
@@ -99,9 +105,44 @@ npm run init
 # 铸造代币
 npm run mint
 
+# 销毁代币
+npm run burn
+
+# 转账 (交互模式)
+npm run transfer
+
+# 富查询 (交互模式)
+npm run query
+
+# 账户查询 (交互模式)
+npm run account
+
+# 转账 (命令行模式)
+npm run transfer -- -t transfer -to <接收者地址> -a 100                    # 直接转账
+npm run transfer -- -t transferfrom -from <发送者地址> -to <接收者地址> -a 50  # 授权转账
+npm run transfer -- -t approve -spender <被授权者地址> -a 200               # 批准授权
+
+# 富查询 (命令行模式)
+npm run query -- -t transactions -u <用户ID> --minamount 100 --maxamount 1000 --transactiontype transfer  # 基础富查询
+npm run query -- -t transactionspage -u <用户ID> --pagesize 20 --offset 0                                # 分页查询
+npm run query -- -t transactionsbookmark -u <用户ID> --pagesize 15 --bookmark <书签>                      # 书签分页查询
+npm run query -- -t history -u <用户ID> --pagesize 50 --offset 0                                          # 交易历史查询
+
+# 账户查询 (命令行模式)
+npm run account -- -t account                    # 查询当前客户端账户信息
+npm run account -- -t account -u <用户ID>        # 查询指定用户账户信息
+npm run account -- -t userinfo                   # 查询用户基本信息
+npm run account -- -t balance                    # 查询当前客户端余额
+npm run account -- -t balance -a <账户地址>      # 查询指定账户余额
+npm run account -- -t accountid                  # 查询客户端账户ID
+npm run account -- -t allowance --owner <授权者> --spender <被授权者>  # 查询授权额度
+
 # 带参数执行
 node cli/init.js -name "Digital Yuan" -symbol "DCEP" -decimals "2"
 node cli/mint.js -amount "1000"
+node cli/burn.js -amount "500"
+node cli/transfer.js -t transfer -to <接收者地址> -a 100
+node cli/query.js -t transactions -u <用户ID> --minamount 100 --maxamount 1000
 ```
 
 ## 🏗️ 架构设计
@@ -132,6 +173,7 @@ npm test
 # 运行特定功能测试
 npm run test:init
 npm run test:mint
+npm run test:burn
 
 # 测试覆盖率
 npm run test:coverage
@@ -144,6 +186,10 @@ gateway/
 ├── cli/                    # 命令行工具
 │   ├── init.js            # 初始化工具
 │   ├── mint.js            # 铸造工具
+│   ├── burn.js            # 销毁工具
+│   ├── transfer.js        # 转账工具
+│   ├── query.js           # 富查询工具
+│   ├── account.js         # 账户查询工具
 │   └── selectUser.js      # 用户选择工具
 ├── services/              # 服务层
 │   ├── BaseService.js     # 基础服务

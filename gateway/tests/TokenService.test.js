@@ -321,6 +321,717 @@ describe('TokenService', () => {
     });
   });
 
+  describe('burn', () => {
+    it('应该成功销毁代币', async () => {
+      const tokenService = new TokenService();
+      const mockResult = Buffer.from('tx123');
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.getCentralBankInfo = jest.fn().mockReturnValue({ name: 'CentralBank' });
+      tokenService.invokeTransaction = jest.fn().mockResolvedValue(mockResult);
+
+      const result = await tokenService.burn({ amount: '1000' });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('代币销毁成功');
+      expect(result.data.amount).toBe(1000);
+      expect(result.data.txId).toBe('tx123');
+      expect(tokenService.invokeTransaction).toHaveBeenCalledWith('Burn', '1000');
+    });
+
+    it('应该验证销毁参数', async () => {
+      const tokenService = new TokenService();
+
+      await expect(tokenService.burn({ amount: '' })).rejects.toThrow('销毁数量不能为空');
+      await expect(tokenService.burn({ amount: 'abc' })).rejects.toThrow('销毁数量必须是非负整数');
+      await expect(tokenService.burn({ amount: '-100' })).rejects.toThrow('销毁数量必须是非负整数');
+    });
+
+    it('应该处理销毁失败', async () => {
+      const tokenService = new TokenService();
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.getCentralBankInfo = jest.fn().mockReturnValue({ name: 'CentralBank' });
+      tokenService.invokeTransaction = jest.fn().mockRejectedValue(new Error('销毁失败'));
+
+      const result = await tokenService.burn({ amount: '1000' });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('代币销毁失败');
+      expect(result.error).toBe('销毁失败');
+    });
+  });
+
+  describe('getAccountInfo', () => {
+    it('应该成功获取当前客户端账户信息', async () => {
+      const tokenService = new TokenService();
+      const mockAccountInfo = {
+        userId: 'user123',
+        balance: 1000,
+        orgMsp: 'CentralBankMSP'
+      };
+      const mockResult = Buffer.from(JSON.stringify(mockAccountInfo));
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.evaluateTransaction = jest.fn().mockResolvedValue(mockResult);
+
+      const result = await tokenService.getAccountInfo();
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockAccountInfo);
+      expect(tokenService.evaluateTransaction).toHaveBeenCalledWith('GetClientAccountInfo');
+    });
+
+    it('应该成功获取指定用户账户信息', async () => {
+      const tokenService = new TokenService();
+      const mockAccountInfo = {
+        userId: 'user456',
+        balance: 2000,
+        orgMsp: 'Bank1MSP'
+      };
+      const mockResult = Buffer.from(JSON.stringify(mockAccountInfo));
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.evaluateTransaction = jest.fn().mockResolvedValue(mockResult);
+
+      const result = await tokenService.getAccountInfo({ userId: 'user456' });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockAccountInfo);
+      expect(tokenService.evaluateTransaction).toHaveBeenCalledWith('GetUserAccountInfo', 'user456');
+    });
+
+    it('应该处理查询失败', async () => {
+      const tokenService = new TokenService();
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.evaluateTransaction = jest.fn().mockRejectedValue(new Error('查询失败'));
+
+      const result = await tokenService.getAccountInfo();
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('获取账户信息失败');
+      expect(result.error).toBe('查询失败');
+    });
+  });
+
+  describe('getUserInfo', () => {
+    it('应该成功获取用户信息', async () => {
+      const tokenService = new TokenService();
+      const mockUserInfo = {
+        clientId: 'client123',
+        userName: 'User1',
+        orgName: 'CentralBank',
+        orgUnit: 'client',
+        mspId: 'CentralBankMSP',
+        txId: 'tx123',
+        channelId: 'cbdc-channel'
+      };
+      const mockResult = Buffer.from(JSON.stringify(mockUserInfo));
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.evaluateTransaction = jest.fn().mockResolvedValue(mockResult);
+
+      const result = await tokenService.getUserInfo();
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockUserInfo);
+      expect(tokenService.evaluateTransaction).toHaveBeenCalledWith('GetUserInfo');
+    });
+
+    it('应该处理查询失败', async () => {
+      const tokenService = new TokenService();
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.evaluateTransaction = jest.fn().mockRejectedValue(new Error('查询失败'));
+
+      const result = await tokenService.getUserInfo();
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('获取用户信息失败');
+      expect(result.error).toBe('查询失败');
+    });
+  });
+
+  describe('getBalance', () => {
+    it('应该成功获取当前客户端余额', async () => {
+      const tokenService = new TokenService();
+      const mockResult = Buffer.from('1000');
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.evaluateTransaction = jest.fn().mockResolvedValue(mockResult);
+
+      const result = await tokenService.getBalance();
+
+      expect(result.success).toBe(true);
+      expect(result.data.account).toBe('current');
+      expect(result.data.balance).toBe(1000);
+      expect(tokenService.evaluateTransaction).toHaveBeenCalledWith('ClientAccountBalance');
+    });
+
+    it('应该成功获取指定账户余额', async () => {
+      const tokenService = new TokenService();
+      const mockResult = Buffer.from('2000');
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.evaluateTransaction = jest.fn().mockResolvedValue(mockResult);
+
+      const result = await tokenService.getBalance({ account: 'user456' });
+
+      expect(result.success).toBe(true);
+      expect(result.data.account).toBe('user456');
+      expect(result.data.balance).toBe(2000);
+      expect(tokenService.evaluateTransaction).toHaveBeenCalledWith('BalanceOf', 'user456');
+    });
+
+    it('应该处理查询失败', async () => {
+      const tokenService = new TokenService();
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.evaluateTransaction = jest.fn().mockRejectedValue(new Error('查询失败'));
+
+      const result = await tokenService.getBalance();
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('获取余额失败');
+      expect(result.error).toBe('查询失败');
+    });
+  });
+
+  describe('getClientAccountId', () => {
+    it('应该成功获取客户端账户ID', async () => {
+      const tokenService = new TokenService();
+      const mockResult = Buffer.from('client123');
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.evaluateTransaction = jest.fn().mockResolvedValue(mockResult);
+
+      const result = await tokenService.getClientAccountId();
+
+      expect(result.success).toBe(true);
+      expect(result.data.accountId).toBe('client123');
+      expect(tokenService.evaluateTransaction).toHaveBeenCalledWith('ClientAccountID');
+    });
+
+    it('应该处理查询失败', async () => {
+      const tokenService = new TokenService();
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.evaluateTransaction = jest.fn().mockRejectedValue(new Error('查询失败'));
+
+      const result = await tokenService.getClientAccountId();
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('获取账户ID失败');
+      expect(result.error).toBe('查询失败');
+    });
+  });
+
+  describe('getAllowance', () => {
+    it('应该成功获取授权额度', async () => {
+      const tokenService = new TokenService();
+      const mockResult = Buffer.from('500');
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.evaluateTransaction = jest.fn().mockResolvedValue(mockResult);
+
+      const result = await tokenService.getAllowance({
+        owner: 'owner123',
+        spender: 'spender456'
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data.owner).toBe('owner123');
+      expect(result.data.spender).toBe('spender456');
+      expect(result.data.allowance).toBe(500);
+      expect(tokenService.evaluateTransaction).toHaveBeenCalledWith('Allowance', 'owner123', 'spender456');
+    });
+
+    it('应该验证授权参数', async () => {
+      const tokenService = new TokenService();
+
+      await expect(tokenService.getAllowance({ owner: '', spender: 'spender456' })).rejects.toThrow('授权者地址不能为空');
+      await expect(tokenService.getAllowance({ owner: 'owner123', spender: '' })).rejects.toThrow('被授权者地址不能为空');
+    });
+
+    it('应该处理查询失败', async () => {
+      const tokenService = new TokenService();
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.evaluateTransaction = jest.fn().mockRejectedValue(new Error('查询失败'));
+
+      const result = await tokenService.getAllowance({
+        owner: 'owner123',
+        spender: 'spender456'
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('获取授权额度失败');
+      expect(result.error).toBe('查询失败');
+    });
+  });
+
+  describe('transfer', () => {
+    it('应该成功转账', async () => {
+      const tokenService = new TokenService();
+      const mockResult = Buffer.from('tx123');
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.invokeTransaction = jest.fn().mockResolvedValue(mockResult);
+
+      const result = await tokenService.transfer({
+        recipient: 'recipient123',
+        amount: '1000'
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('转账成功');
+      expect(result.data.from).toBe('CentralBank_Admin');
+      expect(result.data.to).toBe('recipient123');
+      expect(result.data.amount).toBe(1000);
+      expect(result.data.txId).toBe('tx123');
+      expect(tokenService.invokeTransaction).toHaveBeenCalledWith('Transfer', 'recipient123', '1000');
+    });
+
+    it('应该验证转账参数', async () => {
+      const tokenService = new TokenService();
+
+      await expect(tokenService.transfer({ recipient: '', amount: '1000' })).rejects.toThrow('接收者地址不能为空');
+      await expect(tokenService.transfer({ recipient: 'recipient123', amount: '' })).rejects.toThrow('转账数量不能为空');
+      await expect(tokenService.transfer({ recipient: 'recipient123', amount: 'abc' })).rejects.toThrow('转账数量必须是正整数');
+      await expect(tokenService.transfer({ recipient: 'recipient123', amount: '0' })).rejects.toThrow('转账数量必须是正整数');
+      await expect(tokenService.transfer({ recipient: 'recipient123', amount: '-100' })).rejects.toThrow('转账数量必须是正整数');
+    });
+
+    it('应该处理转账失败', async () => {
+      const tokenService = new TokenService();
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.invokeTransaction = jest.fn().mockRejectedValue(new Error('余额不足'));
+
+      const result = await tokenService.transfer({
+        recipient: 'recipient123',
+        amount: '1000'
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('转账失败');
+      expect(result.error).toBe('余额不足');
+    });
+  });
+
+  describe('transferFrom', () => {
+    it('应该成功授权转账', async () => {
+      const tokenService = new TokenService();
+      const mockResult = Buffer.from('tx456');
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.invokeTransaction = jest.fn().mockResolvedValue(mockResult);
+
+      const result = await tokenService.transferFrom({
+        from: 'from123',
+        to: 'to456',
+        amount: '500'
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('授权转账成功');
+      expect(result.data.from).toBe('from123');
+      expect(result.data.to).toBe('to456');
+      expect(result.data.spender).toBe('CentralBank_Admin');
+      expect(result.data.amount).toBe(500);
+      expect(result.data.txId).toBe('tx456');
+      expect(tokenService.invokeTransaction).toHaveBeenCalledWith('TransferFrom', 'from123', 'to456', '500');
+    });
+
+    it('应该验证授权转账参数', async () => {
+      const tokenService = new TokenService();
+
+      await expect(tokenService.transferFrom({ from: '', to: 'to456', amount: '500' })).rejects.toThrow('发送者地址不能为空');
+      await expect(tokenService.transferFrom({ from: 'from123', to: '', amount: '500' })).rejects.toThrow('接收者地址不能为空');
+      await expect(tokenService.transferFrom({ from: 'from123', to: 'to456', amount: '' })).rejects.toThrow('转账数量不能为空');
+      await expect(tokenService.transferFrom({ from: 'from123', to: 'to456', amount: 'abc' })).rejects.toThrow('转账数量必须是正整数');
+      await expect(tokenService.transferFrom({ from: 'from123', to: 'to456', amount: '0' })).rejects.toThrow('转账数量必须是正整数');
+    });
+
+    it('应该处理授权转账失败', async () => {
+      const tokenService = new TokenService();
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.invokeTransaction = jest.fn().mockRejectedValue(new Error('授权不足'));
+
+      const result = await tokenService.transferFrom({
+        from: 'from123',
+        to: 'to456',
+        amount: '500'
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('授权转账失败');
+      expect(result.error).toBe('授权不足');
+    });
+  });
+
+  describe('approve', () => {
+    it('应该成功批准授权', async () => {
+      const tokenService = new TokenService();
+      const mockResult = Buffer.from('tx789');
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.invokeTransaction = jest.fn().mockResolvedValue(mockResult);
+
+      const result = await tokenService.approve({
+        spender: 'spender123',
+        amount: '200'
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('授权成功');
+      expect(result.data.owner).toBe('CentralBank_Admin');
+      expect(result.data.spender).toBe('spender123');
+      expect(result.data.amount).toBe(200);
+      expect(result.data.txId).toBe('tx789');
+      expect(tokenService.invokeTransaction).toHaveBeenCalledWith('Approve', 'spender123', '200');
+    });
+
+    it('应该验证授权参数', async () => {
+      const tokenService = new TokenService();
+
+      await expect(tokenService.approve({ spender: '', amount: '200' })).rejects.toThrow('被授权者地址不能为空');
+      await expect(tokenService.approve({ spender: 'spender123', amount: '' })).rejects.toThrow('授权数量不能为空');
+      await expect(tokenService.approve({ spender: 'spender123', amount: 'abc' })).rejects.toThrow('授权数量必须是非负整数');
+      await expect(tokenService.approve({ spender: 'spender123', amount: '-100' })).rejects.toThrow('授权数量必须是非负整数');
+    });
+
+    it('应该处理授权失败', async () => {
+      const tokenService = new TokenService();
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.invokeTransaction = jest.fn().mockRejectedValue(new Error('授权失败'));
+
+      const result = await tokenService.approve({
+        spender: 'spender123',
+        amount: '200'
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('授权失败');
+      expect(result.error).toBe('授权失败');
+    });
+  });
+
+  describe('queryUserTransactions', () => {
+    it('应该成功查询用户交易记录', async () => {
+      const tokenService = new TokenService();
+      const mockResult = Buffer.from(JSON.stringify({
+        userID: 'user123',
+        queryConditions: {
+          minAmount: 100,
+          maxAmount: 1000,
+          transactionType: 'transfer',
+          counterparty: 'counterparty456'
+        },
+        totalCount: 5,
+        transactions: [
+          { txId: 'tx1', from: 'user123', to: 'counterparty456', amount: 500 }
+        ]
+      }));
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.evaluateTransaction = jest.fn().mockResolvedValue(mockResult);
+
+      const result = await tokenService.queryUserTransactions({
+        userId: 'user123',
+        minAmount: '100',
+        maxAmount: '1000',
+        transactionType: 'transfer',
+        counterparty: 'counterparty456'
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('查询成功');
+      expect(result.data.userID).toBe('user123');
+      expect(result.data.totalCount).toBe(5);
+      expect(tokenService.evaluateTransaction).toHaveBeenCalledWith(
+        'QueryUserTransactions',
+        'user123',
+        '100',
+        '1000',
+        'transfer',
+        'counterparty456'
+      );
+    });
+
+    it('应该验证查询参数', async () => {
+      const tokenService = new TokenService();
+
+      await expect(tokenService.queryUserTransactions({ userId: '', minAmount: '100' })).rejects.toThrow('用户ID不能为空');
+      await expect(tokenService.queryUserTransactions({ userId: 'user123', minAmount: '-100' })).rejects.toThrow('最小金额必须是非负整数');
+      await expect(tokenService.queryUserTransactions({ userId: 'user123', maxAmount: '-100' })).rejects.toThrow('最大金额必须是非负整数');
+      await expect(tokenService.queryUserTransactions({ userId: 'user123', minAmount: '1000', maxAmount: '100' })).rejects.toThrow('最小金额不能大于最大金额');
+    });
+
+    it('应该处理查询失败', async () => {
+      const tokenService = new TokenService();
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.evaluateTransaction = jest.fn().mockRejectedValue(new Error('查询失败'));
+
+      const result = await tokenService.queryUserTransactions({
+        userId: 'user123'
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('查询失败');
+      expect(result.error).toBe('查询失败');
+    });
+  });
+
+  describe('queryUserTransactionsWithOffset', () => {
+    it('应该成功执行分页查询', async () => {
+      const tokenService = new TokenService();
+      const mockResult = Buffer.from(JSON.stringify({
+        userID: 'user123',
+        queryConditions: {
+          minAmount: 100,
+          maxAmount: 1000,
+          transactionType: 'transfer',
+          counterparty: 'counterparty456'
+        },
+        pagination: {
+          pageSize: 20,
+          offset: 0,
+          totalCount: 50
+        },
+        totalCount: 50,
+        transactions: [
+          { txId: 'tx1', from: 'user123', to: 'counterparty456', amount: 500 }
+        ]
+      }));
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.evaluateTransaction = jest.fn().mockResolvedValue(mockResult);
+
+      const result = await tokenService.queryUserTransactionsWithOffset({
+        userId: 'user123',
+        minAmount: '100',
+        maxAmount: '1000',
+        transactionType: 'transfer',
+        counterparty: 'counterparty456',
+        pageSize: '20',
+        offset: '0'
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('分页查询成功');
+      expect(result.data.userID).toBe('user123');
+      expect(result.data.pagination.pageSize).toBe(20);
+      expect(tokenService.evaluateTransaction).toHaveBeenCalledWith(
+        'QueryUserTransactionsWithOffset',
+        'user123',
+        '100',
+        '1000',
+        'transfer',
+        'counterparty456',
+        '20',
+        '0'
+      );
+    });
+
+    it('应该验证分页参数', async () => {
+      const tokenService = new TokenService();
+
+      await expect(tokenService.queryUserTransactionsWithOffset({ 
+        userId: 'user123', 
+        pageSize: '0' 
+      })).rejects.toThrow('页面大小必须是1-100之间的正整数');
+      
+      await expect(tokenService.queryUserTransactionsWithOffset({ 
+        userId: 'user123', 
+        pageSize: '101' 
+      })).rejects.toThrow('页面大小必须是1-100之间的正整数');
+      
+      await expect(tokenService.queryUserTransactionsWithOffset({ 
+        userId: 'user123', 
+        offset: '-1' 
+      })).rejects.toThrow('偏移量必须是非负整数');
+    });
+  });
+
+  describe('queryUserTransactionsWithBookmark', () => {
+    it('应该成功执行书签分页查询', async () => {
+      const tokenService = new TokenService();
+      const mockResult = Buffer.from(JSON.stringify({
+        userID: 'user123',
+        queryConditions: {
+          minAmount: 100,
+          maxAmount: 1000,
+          transactionType: 'transfer',
+          counterparty: 'counterparty456'
+        },
+        pagination: {
+          pageSize: 15,
+          nextBookmark: 'bookmark123'
+        },
+        totalCount: 30,
+        transactions: [
+          { txId: 'tx1', from: 'user123', to: 'counterparty456', amount: 500 }
+        ]
+      }));
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.evaluateTransaction = jest.fn().mockResolvedValue(mockResult);
+
+      const result = await tokenService.queryUserTransactionsWithBookmark({
+        userId: 'user123',
+        minAmount: '100',
+        maxAmount: '1000',
+        transactionType: 'transfer',
+        counterparty: 'counterparty456',
+        pageSize: '15',
+        bookmark: 'bookmark123'
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('书签分页查询成功');
+      expect(result.data.userID).toBe('user123');
+      expect(result.data.pagination.nextBookmark).toBe('bookmark123');
+      expect(tokenService.evaluateTransaction).toHaveBeenCalledWith(
+        'QueryUserTransactionsWithBookmark',
+        'user123',
+        '100',
+        '1000',
+        'transfer',
+        'counterparty456',
+        '15',
+        'bookmark123'
+      );
+    });
+  });
+
+  describe('getUserTransactionHistory', () => {
+    it('应该成功获取用户交易历史', async () => {
+      const tokenService = new TokenService();
+      const mockResult = Buffer.from(JSON.stringify({
+        userID: 'user123',
+        pagination: {
+          pageSize: 50,
+          offset: 0,
+          totalCount: 100
+        },
+        totalCount: 100,
+        transactions: [
+          { txId: 'tx1', from: 'user123', to: 'counterparty456', amount: 500 }
+        ]
+      }));
+      
+      tokenService.connect = jest.fn().mockResolvedValue();
+      tokenService.disconnect = jest.fn().mockResolvedValue();
+      tokenService.getCurrentUser = jest.fn().mockReturnValue('CentralBank_Admin');
+      tokenService.showCurrentUserInfo = jest.fn();
+      tokenService.evaluateTransaction = jest.fn().mockResolvedValue(mockResult);
+
+      const result = await tokenService.getUserTransactionHistory({
+        userId: 'user123',
+        pageSize: '50',
+        offset: '0'
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('交易历史查询成功');
+      expect(result.data.userID).toBe('user123');
+      expect(result.data.pagination.pageSize).toBe(50);
+      expect(tokenService.evaluateTransaction).toHaveBeenCalledWith(
+        'GetUserTransactionHistoryWithPagination',
+        'user123',
+        '50',
+        '0'
+      );
+    });
+
+    it('应该验证交易历史查询参数', async () => {
+      const tokenService = new TokenService();
+
+      await expect(tokenService.getUserTransactionHistory({ userId: '' })).rejects.toThrow('用户ID不能为空');
+      await expect(tokenService.getUserTransactionHistory({ 
+        userId: 'user123', 
+        pageSize: '1001' 
+      })).rejects.toThrow('页面大小必须是1-1000之间的正整数');
+    });
+  });
+
   describe('继承 BaseService 方法', () => {
     it('应该能够调用 BaseService 的方法', () => {
       const centralBankInfo = { name: 'CentralBank', msp_id: 'CentralBankMSP' };
