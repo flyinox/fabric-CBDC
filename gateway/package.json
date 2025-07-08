@@ -1,0 +1,51 @@
+{
+  "name": "cbdc-gateway",
+  "version": "1.0.0",
+  "description": "CBDC Gateway Service for Fabric Network",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:init": "jest --testNamePattern='init'",
+    "test:mint": "jest --testNamePattern='mint'",
+    "start": "node index.js"
+  },
+  "keywords": [
+    "fabric",
+    "blockchain",
+    "cbdc",
+    "gateway"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "fabric-ca-client": "^2.2.19",
+    "fabric-network": "^2.2.19",
+    "fabric-protos": "^2.2.19"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.8",
+    "jest": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "services/**/*.js",
+      "!**/node_modules/**",
+      "!**/tests/**"
+    ],
+    "coverageDirectory": "coverage",
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "html"
+    ],
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/setup.js"
+    ]
+  }
+}
