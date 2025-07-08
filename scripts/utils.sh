@@ -194,7 +194,7 @@ function printHelp() {
     println "      \033[0;32mcreateChannel\033[0m - 在网络创建后创建并加入频道"
     println "      \033[0;32mdeployCC\033[0m - 向频道部署智能合约"
           println "      \033[0;32mcc\033[0m - 智能合约功能，使用 \"network.sh cc -h\" 查看选项"
-      println "      \033[0;32mccc\033[0m - CBDC 智能合约管理，使用 \"network.sh ccc help\" 查看选项"
+      println "      \033[0;32mgateway\033[0m - CBDC 智能合约管理，使用 \"cd gateway && npm run help\" 查看选项"
       println "      \033[0;32madduser\033[0m - 用户管理功能，使用 \"network.sh adduser help\" 查看选项"
       println "      \033[0;32mdown\033[0m - 停止网络"
     println "      \033[0;32mclean\033[0m - 完全清理网络 (容器 + 卷 + 配置文件)"

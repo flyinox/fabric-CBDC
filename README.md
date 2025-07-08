@@ -135,56 +135,56 @@ cd bank-network
 
 ```bash
 # 初始化CBDC代币
-./network.sh ccc init -name "Digital Yuan" -symbol "DCEP" -decimals "2"
+cd gateway && npm run init -- -name "Digital Yuan" -symbol "DCEP" -decimals "2"
 
 # 或者使用交互模式
-./network.sh ccc init
+cd gateway && npm run init
 ```
 
 ### 代币操作
 
 ```bash
 # 铸造代币（仅央行）
-./network.sh ccc mint -amount 10000
+cd gateway && npm run mint -- -amount 10000
 
 # 销毁代币（仅央行）
-./network.sh ccc burn -amount 1000
+cd gateway && npm run burn -- -amount 1000
 
 # 转账代币
-./network.sh ccc transfer -to <接收方地址> -amount 100
+cd gateway && npm run transfer -- -to <接收方地址> -amount 100
 
 # 查询余额
-./network.sh ccc balance -account <账户地址>
+cd gateway && npm run balance -- -account <账户地址>
 
 # 查询总供应量
-./network.sh ccc supply
+cd gateway && npm run supply
 ```
 
 ### 授权操作
 
 ```bash
 # 批准授权
-./network.sh ccc approve -spender <被授权地址> -value 500
+cd gateway && npm run approve -- -spender <被授权地址> -value 500
 
 # 查询授权额度
-./network.sh ccc allowance -owner <所有者地址> -spender <被授权地址>
+cd gateway && npm run allowance -- -owner <所有者地址> -spender <被授权地址>
 
 # 使用授权转账
-./network.sh ccc transferFrom -from <所有者地址> -to <接收方地址> -value 200
+cd gateway && npm run transferFrom -- -from <所有者地址> -to <接收方地址> -value 200
 ```
 
 ### 用户信息
 
 ```bash
 # 获取用户信息
-./network.sh ccc userinfo
+cd gateway && npm run userinfo
 
 返回示例：
 {"clientId":"eDUwOTo6Q049QWRtaW5AY2VudHJhbGJhbmsuZXhhbXBsZS5jb20sT1U9YWRtaW4sTD1TYW4gRnJhbmNpc2NvLFNUPUNhbGlmb3JuaWEsQz1VUzo6Q049Y2EuY2VudHJhbGJhbmsuZXhhbXBsZS5jb20sTz1jZW50cmFsYmFuay5leGFtcGxlLmNvbSxMPVNhbiBGcmFuY2lzY28sU1Q9Q2FsaWZvcm5pYSxDPVVT","decodedClientId":"x509::CN=Admin@centralbank.example.com,OU=admin,L=San Francisco,ST=California,C=US::CN=ca.centralbank.example.com,O=centralbank.example.com,L=San Francisco,ST=California,C=US","userName":"Admin","orgName":"centralbank.example.com","orgUnit":"admin","mspId":"CentralBankMSP","txId":"9279fd4d218dd969cf013990cba9cca5f56ae5603c998a7390a7c363c577ce90","channelId":"cbdc-channel"}
 请注意，其中的clientId就是用户的地址
 
 # 获取当前用户账户ID
-./network.sh ccc user
+cd gateway && npm run user
 ```
 
 ### 用户管理
@@ -244,67 +244,67 @@ docker logs peer0.centralbank.example.com
 - **按参与方筛选**：查询与特定用户相关的交易
 - **按时间排序**：按交易时间倒序排列
 
-#### 新增的 CCC 富查询命令
+#### 新增的 Gateway 富查询命令
 
 ##### 1. querytx - 多条件交易查询
 
 ```bash
 # 查询用户的所有交易
-./network.sh ccc querytx -userid "user123" -org PBOC -user admin
+cd gateway && npm run querytx -- -userid "user123"
 
 # 查询金额范围交易
-./network.sh ccc querytx -userid "user123" -minamount 100 -maxamount 1000
+cd gateway && npm run querytx -- -userid "user123" -minamount 100 -maxamount 1000
 
 # 查询特定类型交易
-./network.sh ccc querytx -userid "user123" -type "transfer"
+cd gateway && npm run querytx -- -userid "user123" -type "transfer"
 
 # 查询与特定对手方的交易
-./network.sh ccc querytx -userid "user123" -counterparty "user456"
+cd gateway && npm run querytx -- -userid "user123" -counterparty "user456"
 
 # 组合查询：金额范围 + 交易类型
-./network.sh ccc querytx -userid "user123" -minamount 500 -maxamount 2000 -type "transfer"
+cd gateway && npm run querytx -- -userid "user123" -minamount 500 -maxamount 2000 -type "transfer"
 ```
 
 ##### 2. txhistory - 交易历史查询
 
 ```bash
 # 查询用户最近50笔交易
-./network.sh ccc txhistory -userid "user123" -org PBOC -user admin
+cd gateway && npm run txhistory -- -userid "user123"
 
 # 查询用户最近100笔交易
-./network.sh ccc txhistory -userid "user123" -limit 100
+cd gateway && npm run txhistory -- -userid "user123" -limit 100
 
 # 查询用户最近10笔交易
-./network.sh ccc txhistory -userid "user123" -limit 10
+cd gateway && npm run txhistory -- -userid "userid" -limit 10
 ```
 
 #### 传统查询函数（仍支持）
 
 ```bash
 # 查询用户的交易记录（支持多种筛选条件）
-./network.sh ccc query -c '{"Args":["QueryUserTransactions","<用户ID>","<最小金额>","<最大金额>","<交易类型>","<参与方>"]}'
+cd gateway && npm run query -- -c '{"Args":["QueryUserTransactions","<用户ID>","<最小金额>","<最大金额>","<交易类型>","<参与方>"]}'
 
 # 获取用户的交易历史（简化版本）
-./network.sh ccc query -c '{"Args":["GetUserTransactionHistory","<用户ID>","<限制数量>"]}'
+cd gateway && npm run query -- -c '{"Args":["GetUserTransactionHistory","<用户ID>","<限制数量>"]}'
 ```
 
 #### 查询示例
 
 ```bash
 # 查询用户的所有交易
-./network.sh ccc query -c '{"Args":["QueryUserTransactions","<用户ID>","0","0","",""]}'
+cd gateway && npm run query -- -c '{"Args":["QueryUserTransactions","<用户ID>","0","0","",""]}'
 
 # 查询金额在100-1000之间的交易
-./network.sh ccc query -c '{"Args":["QueryUserTransactions","<用户ID>","100","1000","",""]}'
+cd gateway && npm run query -- -c '{"Args":["QueryUserTransactions","<用户ID>","100","1000","",""]}'
 
 # 查询转账类型的交易
-./network.sh ccc query -c '{"Args":["QueryUserTransactions","<用户ID>","0","0","transfer",""]}'
+cd gateway && npm run query -- -c '{"Args":["QueryUserTransactions","<用户ID>","0","0","transfer",""]}'
 
 # 查询与特定用户相关的交易
-./network.sh ccc query -c '{"Args":["QueryUserTransactions","<用户ID>","0","0","","<参与方ID>"]}'
+cd gateway && npm run query -- -c '{"Args":["QueryUserTransactions","<用户ID>","0","0","","<参与方ID>"]}'
 
 # 获取最近50笔交易
-./network.sh ccc query -c '{"Args":["GetUserTransactionHistory","<用户ID>","50"]}'
+cd gateway && npm run query -- -c '{"Args":["GetUserTransactionHistory","<用户ID>","50"]}'
 ```
 
 #### 权限控制
@@ -409,7 +409,7 @@ docker-compose logs -f
 - **多条件查询**：支持金额范围、交易类型、参与方等多维度筛选
 - **权限控制**：基于用户身份和组织的细粒度权限管理
 - **高性能**：利用 CouchDB 索引优化查询性能
-- **易用性**：提供简化的 CCC 命令接口
+- **易用性**：提供简化的 Gateway 命令接口
 
 ### 快速开始
 
@@ -418,7 +418,7 @@ docker-compose logs -f
 ./network.sh start-couchdb
 
 # 查看富查询命令帮助
-./network.sh ccc help
+cd gateway && npm run help
 
 ```
 

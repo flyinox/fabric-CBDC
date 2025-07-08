@@ -699,10 +699,10 @@ function getUserId() {
     
     infoln "💡 使用示例："
     println "  # 转账到此用户："
-    println "  ./network.sh ccc transfer -org $org_name -user admin -to \"$client_id_base64\" -amount 100"
+    println "  cd gateway && npm run transfer -- -to \"$client_id_base64\" -amount 100"
     println
     println "  # 查询此用户余额："
-    println "  ./network.sh ccc balance -account \"$client_id_base64\""
+    println "  cd gateway && npm run balance -- -account \"$client_id_base64\""
     
     return 0
 }
@@ -832,7 +832,7 @@ function printUserManagementHelp() {
     println
     println "用户 ID 相关:"
     println "  - getid 子命令生成的 base64 编码 ID 可用于转账命令"
-    println "  - 示例: ./network.sh ccc transfer -to \"<base64_id>\" -amount 100"
+    println "  - 示例: cd gateway && npm run transfer -- -to \"<base64_id>\" -amount 100"
     println "  - 可以通过智能合约的 GetUserInfo 函数验证用户身份"
     println
     println "注意:"

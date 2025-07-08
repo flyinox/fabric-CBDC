@@ -73,6 +73,7 @@ npm run burn
 - **销毁**: 央行销毁代币
 - **转账**: 代币转账和授权管理
 - **富查询**: 交易记录查询和分页功能
+- **代币信息**: 查询代币名称、符号、总供应量等
 - **账户查询**: 查询账户信息、余额、用户信息等
 
 ## 🛠️ 命令行工具
@@ -114,6 +115,9 @@ npm run transfer
 # 富查询 (交互模式)
 npm run query
 
+# 代币信息查询 (交互模式)
+npm run token
+
 # 账户查询 (交互模式)
 npm run account
 
@@ -127,6 +131,12 @@ npm run query -- -t transactions -u <用户ID> --minamount 100 --maxamount 1000 
 npm run query -- -t transactionspage -u <用户ID> --pagesize 20 --offset 0                                # 分页查询
 npm run query -- -t transactionsbookmark -u <用户ID> --pagesize 15 --bookmark <书签>                      # 书签分页查询
 npm run query -- -t history -u <用户ID> --pagesize 50 --offset 0                                          # 交易历史查询
+
+# 代币信息查询 (命令行模式)
+npm run token -- name                             # 查询代币名称
+npm run token -- symbol                           # 查询代币符号
+npm run token -- supply                           # 查询代币总供应量
+npm run token -- info                             # 查询代币完整信息
 
 # 账户查询 (命令行模式)
 npm run account -- -t account                    # 查询当前客户端账户信息
@@ -143,6 +153,10 @@ node cli/mint.js -amount "1000"
 node cli/burn.js -amount "500"
 node cli/transfer.js -t transfer -to <接收者地址> -a 100
 node cli/query.js -t transactions -u <用户ID> --minamount 100 --maxamount 1000
+node cli/token.js name
+node cli/token.js symbol
+node cli/token.js supply
+node cli/token.js info
 ```
 
 ## 🏗️ 架构设计
@@ -189,6 +203,7 @@ gateway/
 │   ├── burn.js            # 销毁工具
 │   ├── transfer.js        # 转账工具
 │   ├── query.js           # 富查询工具
+│   ├── token.js           # 代币信息查询工具
 │   ├── account.js         # 账户查询工具
 │   └── selectUser.js      # 用户选择工具
 ├── services/              # 服务层

@@ -1065,6 +1065,50 @@ class TokenService extends BaseService {
       throw new Error('偏移量必须是非负整数');
     }
   }
+
+  /**
+   * 获取代币名称
+   * @returns {Promise<Object>} 代币名称信息
+   */
+  async getName() {
+    try {
+      const nameResult = await this.evaluateTransaction('Name');
+      
+      return {
+        success: true,
+        data: {
+          name: nameResult.toString()
+        }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `获取代币名称失败: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * 获取代币符号
+   * @returns {Promise<Object>} 代币符号信息
+   */
+  async getSymbol() {
+    try {
+      const symbolResult = await this.evaluateTransaction('Symbol');
+      
+      return {
+        success: true,
+        data: {
+          symbol: symbolResult.toString()
+        }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `获取代币符号失败: ${error.message}`
+      };
+    }
+  }
 }
 
 module.exports = TokenService; 

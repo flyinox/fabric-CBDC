@@ -16,6 +16,7 @@
     "account": "node cli/account.js",
     "transfer": "node cli/transfer.js",
     "query": "node cli/query.js",
+    "token": "node cli/token.js",
     "user:list": "node cli/selectUser.js -list",
     "user:current": "node cli/selectUser.js -current",
     "user:select": "node cli/selectUser.js",

@@ -22,8 +22,7 @@ export PATH=${ROOTDIR}/bin:${PWD}/bin:$PATH
 export FABRIC_CFG_PATH=${PWD}/configtx
 export VERBOSE=false
 
-# Load CBDC utility functions
-. scripts/cbdcutil.sh
+# CBDC utility functions have been moved to gateway
 
 # Load user management functions
 . scripts/userManagement.sh
@@ -830,10 +829,7 @@ function startCBDCNetwork() {
   println "  - 使用 './network.sh down' 停止网络"
 }
 
-# CBDC Chaincode Management Functions
-# ===================================
-
-# Get available organizations for CBDC network
+# CBDC Chaincode Management Functions have been moved to gateway
 
 
 
@@ -930,8 +926,8 @@ if [ "$MODE" == "cc" ] && [[ $# -lt 1 ]]; then
   printHelp $MODE
   exit 0
 elif [ "$MODE" == "ccc" ] && [[ $# -lt 1 ]]; then
-  printCBDCHelp
-  exit 0
+  errorln "ccc command has been moved to gateway. Please use gateway CLI tools instead."
+  exit 1
 elif [ "$MODE" == "adduser" ] && [[ $# -lt 1 ]]; then
   printUserManagementHelp
   exit 0
@@ -950,12 +946,10 @@ if [[ $# -ge 1 ]] ; then
       export SUBCOMMAND=$key
       shift
     fi
-  # check for the ccc command
+  # check for the ccc command (moved to gateway)
   elif [[ "$MODE" == "ccc" ]]; then
-    if [ "$1" != "-h" ]; then
-      export CCC_SUBCOMMAND=$key
-      shift
-    fi
+    errorln "ccc command has been moved to gateway. Please use gateway CLI tools instead."
+    exit 1
   # check for the adduser command
   elif [[ "$MODE" == "adduser" ]]; then
     if [ "$1" != "-h" ]; then
@@ -1034,14 +1028,15 @@ while [[ $# -ge 1 ]] ; do
     VERBOSE=true
     ;;
   -org )
-    # Only process -org for non-ccc commands
-    if [ "$MODE" != "ccc" ]; then
-      ORG="$2"
-      shift
-    else
-      # For ccc commands, keep the -org parameter for cbdcChaincode function
-      break
-    fi
+      # Only process -org for non-ccc commands
+  if [ "$MODE" != "ccc" ]; then
+    ORG="$2"
+    shift
+  else
+    # ccc command has been moved to gateway
+    errorln "ccc command has been moved to gateway. Please use gateway CLI tools instead."
+    exit 1
+  fi
     ;;
   -i )
     IMAGETAG="$2"
@@ -1085,10 +1080,10 @@ while [[ $# -ge 1 ]] ; do
     continue
     ;;    
   * )
-    # Skip unknown flags for ccc and adduser commands, they will be handled by respective functions
-    if [ "$MODE" == "ccc" ] || [ "$MODE" == "adduser" ]; then
-      break
-    fi
+      # Skip unknown flags for adduser commands, they will be handled by respective functions
+  if [ "$MODE" == "adduser" ]; then
+    break
+  fi
     errorln "Unknown flag: $key"
     printHelp
     exit 1
@@ -1145,9 +1140,8 @@ elif [ "$MODE" == "start" ]; then
   infoln "启动完整的 CBDC 网络（包含网络启动、频道创建和智能合约部署）"
   startCBDCNetwork
 elif [ "$MODE" == "ccc" ]; then
-  # Rebuild the argument list for ccc command
-  set -- "$CCC_SUBCOMMAND" "$@"
-  cbdcChaincode "$@"
+  errorln "ccc command has been moved to gateway. Please use gateway CLI tools instead."
+  exit 1
 elif [ "$MODE" == "adduser" ]; then
   # Rebuild the argument list for adduser command
   set -- "$ADDUSER_SUBCOMMAND" "$@"

@@ -1032,6 +1032,54 @@ describe('TokenService', () => {
     });
   });
 
+  describe('getName', () => {
+    it('应该成功获取代币名称', async () => {
+      const mockName = 'Digital Yuan';
+      mockBaseService.evaluateTransaction.mockResolvedValue(Buffer.from(mockName));
+
+      const result = await tokenService.getName();
+
+      expect(result.success).toBe(true);
+      expect(result.data.name).toBe(mockName);
+      expect(mockBaseService.evaluateTransaction).toHaveBeenCalledWith('Name');
+    });
+
+    it('应该处理获取代币名称失败的情况', async () => {
+      const errorMessage = 'Failed to get name';
+      mockBaseService.evaluateTransaction.mockRejectedValue(new Error(errorMessage));
+
+      const result = await tokenService.getName();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('获取代币名称失败');
+      expect(result.error).toContain(errorMessage);
+    });
+  });
+
+  describe('getSymbol', () => {
+    it('应该成功获取代币符号', async () => {
+      const mockSymbol = 'DCEP';
+      mockBaseService.evaluateTransaction.mockResolvedValue(Buffer.from(mockSymbol));
+
+      const result = await tokenService.getSymbol();
+
+      expect(result.success).toBe(true);
+      expect(result.data.symbol).toBe(mockSymbol);
+      expect(mockBaseService.evaluateTransaction).toHaveBeenCalledWith('Symbol');
+    });
+
+    it('应该处理获取代币符号失败的情况', async () => {
+      const errorMessage = 'Failed to get symbol';
+      mockBaseService.evaluateTransaction.mockRejectedValue(new Error(errorMessage));
+
+      const result = await tokenService.getSymbol();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('获取代币符号失败');
+      expect(result.error).toContain(errorMessage);
+    });
+  });
+
   describe('继承 BaseService 方法', () => {
     it('应该能够调用 BaseService 的方法', () => {
       const centralBankInfo = { name: 'CentralBank', msp_id: 'CentralBankMSP' };
