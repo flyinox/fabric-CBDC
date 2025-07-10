@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Toast, Card, Button, Grid } from 'antd-mobile';
 import type { User } from '../../types';
-import { getUsers } from '../../services/walletApi';
+import { getUsersWithBalances, getUserBalance } from '../../services/walletApi';
 import './index.css';
 import UserRecords from './UserRecords';
 
@@ -16,7 +16,7 @@ const WalletPage: React.FC = () => {
 
   const loadUsers = async () => {
     try {
-      const userList = await getUsers();
+      const userList = await getUsersWithBalances();
       setUsers(userList);
       if (userList.length > 0) {
         setCurrentUser(userList[0]);
@@ -28,9 +28,17 @@ const WalletPage: React.FC = () => {
     }
   };
 
-  const handleUserChange = (user: User) => {
+  const handleUserChange = async (user: User) => {
     setCurrentUser(user);
     Toast.show(`已切换到 ${user.name}`);
+    
+    // 更新当前用户的余额
+    try {
+      const balance = await getUserBalance(user.id);
+      setCurrentUser(prev => prev ? { ...prev, balance: balance.toString() } : null);
+    } catch (error) {
+      console.error('更新用户余额失败:', error);
+    }
   };
 
   const handleCopyAddress = () => {

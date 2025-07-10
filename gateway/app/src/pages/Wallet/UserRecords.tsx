@@ -18,11 +18,19 @@ const UserRecords: React.FC<UserRecordsProps> = ({ user }) => {
   }, [user]);
 
   const loadUserTransactions = async () => {
+    if (!user) return;
+    
     setLoading(true);
-    const allTx = await getTransactions();
-    const userTx = allTx.filter(tx => tx.from === user?.address || tx.to === user?.address);
-    setTransactions(userTx.sort((a, b) => b.timestamp - a.timestamp));
-    setLoading(false);
+    try {
+      // 只传递 identityName，让 getTransactions 自动获取真实 userId
+      const userTx = await getTransactions(undefined, user.id);
+      setTransactions(userTx.sort((a, b) => b.timestamp - a.timestamp));
+    } catch (error) {
+      console.error('加载用户交易记录失败:', error);
+      setTransactions([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

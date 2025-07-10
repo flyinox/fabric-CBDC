@@ -76,6 +76,7 @@ function showHelp() {
   transactionspage - 查询用户交易记录（分页查询，使用偏移量）
   transactionsbookmark - 查询用户交易记录（分页查询，使用书签）
   history          - 获取用户交易历史（分页查询）
+  balance          - 查询用户余额
 
 选项:
   -t, --type <类型>           - 查询类型 (必需)
@@ -102,6 +103,9 @@ function showHelp() {
 
   # 交易历史查询
   node query.js -t history -u <用户ID> --pagesize 50 --offset 0
+
+  # 余额查询
+  node query.js -t balance -i <身份名称>
 
   # 交互模式
   node query.js
@@ -249,6 +253,32 @@ async function executeHistoryQuery(options) {
   }
 }
 
+// 执行余额查询
+async function executeBalanceQuery(options) {
+  const tokenService = new TokenService();
+  
+  try {
+    const result = await tokenService.getBalance({
+      identityName: options.identityName
+    });
+
+    if (result.success) {
+      console.log('\n✅ 余额查询成功:');
+      console.log('账户:', result.data.account);
+      console.log('余额:', result.data.balance);
+      // 输出JSON格式供API调用
+      console.log(JSON.stringify(result));
+    } else {
+      console.error('\n❌ 余额查询失败:', result.message);
+      if (result.error) {
+        console.error('错误详情:', result.error);
+      }
+    }
+  } catch (error) {
+    console.error('\n❌ 余额查询过程中发生错误:', error.message);
+  }
+}
+
 // 交互式查询
 async function interactiveQuery() {
   console.log('\n🔍 CBDC 富查询工具 (交互模式)');
@@ -257,9 +287,10 @@ async function interactiveQuery() {
   console.log('2. 分页查询 (使用偏移量)');
   console.log('3. 书签分页查询 (使用书签)');
   console.log('4. 交易历史查询 (简化分页)');
+  console.log('5. 余额查询');
   console.log('0. 退出');
 
-  const choice = await askQuestion('\n请输入选择 (0-4): ');
+  const choice = await askQuestion('\n请输入选择 (0-5): ');
 
   switch (choice) {
     case '1':
@@ -273,6 +304,9 @@ async function interactiveQuery() {
       break;
     case '4':
       await interactiveHistoryQuery();
+      break;
+    case '5':
+      await interactiveBalanceQuery();
       break;
     case '0':
       console.log('再见!');
@@ -396,6 +430,21 @@ async function interactiveHistoryQuery() {
   });
 }
 
+// 交互式余额查询
+async function interactiveBalanceQuery() {
+  console.log('\n💰 余额查询');
+  
+  const identityName = await askQuestion('请输入身份名称: ');
+  if (!identityName) {
+    console.log('❌ 身份名称不能为空');
+    return;
+  }
+  
+  await executeBalanceQuery({
+    identityName
+  });
+}
+
 // 主函数
 async function main() {
   const options = parseArgs();
@@ -407,8 +456,13 @@ async function main() {
   }
 
   // 验证必需参数
-  if (!options.userId) {
+  if (options.type.toLowerCase() !== 'balance' && !options.userId) {
     console.error('❌ 用户ID是必需参数');
+    process.exit(1);
+  }
+  
+  if (options.type.toLowerCase() === 'balance' && !options.identityName) {
+    console.error('❌ 余额查询需要指定身份名称 (--identity)');
     process.exit(1);
   }
 
@@ -425,6 +479,9 @@ async function main() {
       break;
     case 'history':
       await executeHistoryQuery(options);
+      break;
+    case 'balance':
+      await executeBalanceQuery(options);
       break;
     default:
       console.error(`❌ 未知的查询类型: ${options.type}`);

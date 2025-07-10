@@ -1,26 +1,57 @@
 import React, { useState, useEffect } from 'react';
-import { Toast, List, Tag } from 'antd-mobile';
-import type { Transaction } from '../../types';
-import { getTransactions } from '../../services/mockData';
+import { Toast, List, Tag, Selector } from 'antd-mobile';
+import type { Transaction, User } from '../../types';
+import { getTransactions, getUsersWithBalances } from '../../services/walletApi';
 import './index.css';
 
 const RecordsPage: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadTransactions();
+    loadUsers();
   }, []);
 
-  const loadTransactions = async () => {
+  useEffect(() => {
+    if (currentUser) {
+      loadTransactions();
+    }
+  }, [currentUser]);
+
+  const loadUsers = async () => {
     try {
-      const txList = await getTransactions();
+      const userList = await getUsersWithBalances();
+      setUsers(userList);
+      if (userList.length > 0) {
+        setCurrentUser(userList[0]);
+      }
+    } catch (error) {
+      Toast.show('加载用户失败');
+    }
+  };
+
+  const loadTransactions = async () => {
+    if (!currentUser) return;
+    
+    try {
+      setLoading(true);
+      const txList = await getTransactions(undefined, currentUser.id);
       const sortedTx = txList.sort((a, b) => b.timestamp - a.timestamp);
       setTransactions(sortedTx);
     } catch (error) {
       Toast.show('加载交易记录失败');
+      setTransactions([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUserChange = (userId: string) => {
+    const user = users.find(u => u.id === userId);
+    if (user) {
+      setCurrentUser(user);
     }
   };
 
@@ -88,6 +119,18 @@ const RecordsPage: React.FC = () => {
         <div className="records-summary">
           共 {transactions.length} 笔交易
         </div>
+      </div>
+
+      {/* 用户选择器 */}
+      <div style={{ padding: '0 16px 16px' }}>
+        <Selector
+          options={users.map(user => ({
+            label: user.name,
+            value: user.id
+          }))}
+          value={currentUser ? [currentUser.id] : []}
+          onChange={(arr) => handleUserChange(arr[0])}
+        />
       </div>
 
       <div className="transaction-list">

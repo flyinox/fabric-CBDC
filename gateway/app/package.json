@@ -32,6 +32,7 @@
     "antd-mobile": "^5.39.0",
     "antd-mobile-icons": "^0.3.0",
     "koa": "^3.0.0",
+    "koa-bodyparser": "^4.4.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.6.3"
