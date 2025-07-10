@@ -1,0 +1,86 @@
+.app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f8f9fa;
+  overflow: hidden;
+}
+
+.app-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid #f0f0f0;
+  z-index: 1000;
+  height: 50px;
+}
+
+/* 全局样式重置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+#root {
+  height: 100vh;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #f8f9fa;
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+html {
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .app-content {
+    padding-bottom: 50px;
+  }
+  
+  .app-tabbar {
+    height: 50px;
+  }
+  
+  /* 防止移动端滚动回弹 */
+  body {
+    position: fixed;
+    width: 100%;
+  }
+  
+  .app {
+    position: relative;
+    width: 100%;
+  }
+}
+
+/* 针对iPhone等设备的安全区域适配 */
+@supports (padding: max(0px)) {
+  .app-tabbar {
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+}
