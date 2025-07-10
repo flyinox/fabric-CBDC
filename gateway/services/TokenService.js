@@ -1068,10 +1068,20 @@ class TokenService extends BaseService {
 
   /**
    * 获取代币名称
+   * @param {string} identityName - 身份名称，默认为当前选择的用户
    * @returns {Promise<Object>} 代币名称信息
    */
-  async getName() {
+  async getName(identityName) {
+    // 获取当前用户或使用指定用户
+    const currentUser = identityName || this.getCurrentUser() || 'admin';
+    
+    // 显示当前用户信息
+    this.showCurrentUserInfo();
+
     try {
+      // 连接网络
+      await this.connect(currentUser);
+
       const nameResult = await this.evaluateTransaction('Name');
       
       return {
@@ -1085,15 +1095,27 @@ class TokenService extends BaseService {
         success: false,
         error: `获取代币名称失败: ${error.message}`
       };
+    } finally {
+      this.disconnect();
     }
   }
 
   /**
    * 获取代币符号
+   * @param {string} identityName - 身份名称，默认为当前选择的用户
    * @returns {Promise<Object>} 代币符号信息
    */
-  async getSymbol() {
+  async getSymbol(identityName) {
+    // 获取当前用户或使用指定用户
+    const currentUser = identityName || this.getCurrentUser() || 'admin';
+    
+    // 显示当前用户信息
+    this.showCurrentUserInfo();
+
     try {
+      // 连接网络
+      await this.connect(currentUser);
+
       const symbolResult = await this.evaluateTransaction('Symbol');
       
       return {
@@ -1107,6 +1129,42 @@ class TokenService extends BaseService {
         success: false,
         error: `获取代币符号失败: ${error.message}`
       };
+    } finally {
+      this.disconnect();
+    }
+  }
+
+  /**
+   * 获取代币总供应量
+   * @param {string} identityName - 身份名称，默认为当前选择的用户
+   * @returns {Promise<Object>} 代币总供应量信息
+   */
+  async getTotalSupply(identityName) {
+    // 获取当前用户或使用指定用户
+    const currentUser = identityName || this.getCurrentUser() || 'admin';
+    
+    // 显示当前用户信息
+    this.showCurrentUserInfo();
+
+    try {
+      // 连接网络
+      await this.connect(currentUser);
+
+      const totalSupplyResult = await this.evaluateTransaction('TotalSupply');
+      
+      return {
+        success: true,
+        data: {
+          totalSupply: totalSupplyResult.toString()
+        }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `获取代币总供应量失败: ${error.message}`
+      };
+    } finally {
+      this.disconnect();
     }
   }
 }

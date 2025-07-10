@@ -1,12 +1,29 @@
 #!/usr/bin/env node
 
-const { BaseService } = require('../services/BaseService');
-const { TokenService } = require('../services/TokenService');
+const BaseService = require('../services/BaseService');
+const TokenService = require('../services/TokenService');
+const readline = require('readline');
 
 class TokenCLI {
   constructor(baseService = null, tokenService = null) {
     this.baseService = baseService || new BaseService();
     this.tokenService = tokenService || new TokenService();
+    this.rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+  }
+
+  // 关闭 readline 接口
+  close() {
+    this.rl.close();
+  }
+
+  // 询问用户输入
+  question(prompt) {
+    return new Promise((resolve) => {
+      this.rl.question(prompt, resolve);
+    });
   }
 
   /**
@@ -113,32 +130,20 @@ class TokenCLI {
     try {
       console.log('🔍 查询代币完整信息...');
       
-      const [nameResult, symbolResult, supplyResult] = await Promise.all([
-        this.tokenService.getName(),
-        this.tokenService.getSymbol(),
-        this.tokenService.getTotalSupply()
-      ]);
+      // 使用 getTokenInfo 方法一次性获取所有信息
+      const result = await this.tokenService.getTokenInfo();
       
-      console.log('✅ 查询成功');
-      console.log();
-      console.log('📋 代币信息:');
-      
-      if (nameResult.success) {
-        console.log(`   名称: ${nameResult.data.name}`);
+      if (result.success) {
+        console.log('✅ 查询成功');
+        console.log();
+        console.log('📋 代币信息:');
+        console.log(`   名称: ${result.data.name}`);
+        console.log(`   符号: ${result.data.symbol}`);
+        console.log(`   小数位数: ${result.data.decimals}`);
+        console.log(`   总供应量: ${result.data.totalSupply}`);
       } else {
-        console.log(`   名称: 查询失败 - ${nameResult.error}`);
-      }
-      
-      if (symbolResult.success) {
-        console.log(`   符号: ${symbolResult.data.symbol}`);
-      } else {
-        console.log(`   符号: 查询失败 - ${symbolResult.error}`);
-      }
-      
-      if (supplyResult.success) {
-        console.log(`   总供应量: ${supplyResult.data.totalSupply}`);
-      } else {
-        console.log(`   总供应量: 查询失败 - ${supplyResult.error}`);
+        console.log('❌ 查询失败');
+        console.log(`   错误: ${result.error}`);
       }
     } catch (error) {
       console.log('❌ 查询失败');
@@ -160,7 +165,7 @@ class TokenCLI {
     console.log('5. 退出');
     console.log();
     
-    const choice = await this.baseService.question('请输入选择 (1-5): ');
+    const choice = await this.question('请输入选择 (1-5): ');
     
     switch (choice.trim()) {
       case '1':
@@ -185,7 +190,7 @@ class TokenCLI {
     }
     
     console.log();
-    const continueChoice = await this.baseService.question('是否继续查询？(y/n): ');
+    const continueChoice = await this.question('是否继续查询？(y/n): ');
     if (continueChoice.toLowerCase() === 'y' || continueChoice.toLowerCase() === 'yes') {
       await this.interactiveQuery();
     } else {
@@ -278,6 +283,8 @@ if (require.main === module) {
   cli.execute(process.argv.slice(2)).catch(error => {
     console.error('❌ 执行失败:', error.message);
     process.exit(1);
+  }).finally(() => {
+    cli.close();
   });
 }
 
