@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { User, Transaction } from '../../types';
-import { getTransactions } from '../../services/mockData';
+import { getTransactions } from '../../services/walletApi';
 import TransactionList from '../../components/TransactionList';
 
 interface UserRecordsProps {

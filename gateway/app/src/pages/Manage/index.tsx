@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Toast } from 'antd-mobile';
 import type { User, Transaction } from '../../types';
-import { getUsers, getTransactions } from '../../services/mockData';
+import { getUsers, getTransactions } from '../../services/walletApi';
 import TransactionList from '../../components/TransactionList';
 import './index.css';
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Toast, Card, Button, Grid } from 'antd-mobile';
 import type { User } from '../../types';
-import { getUsers } from '../../services/mockData';
+import { getUsers } from '../../services/walletApi';
 import './index.css';
 import UserRecords from './UserRecords';
 
