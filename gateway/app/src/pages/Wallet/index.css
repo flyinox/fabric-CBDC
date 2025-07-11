@@ -1,101 +1,256 @@
 .wallet-page {
-  height: 100%;
-  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
-  padding-bottom: 20px;
+  padding: 16px;
+  background-color: #f5f5f5;
+  min-height: 100vh;
 }
 
 .wallet-page.loading {
   display: flex;
-  align-items: center;
   justify-content: center;
-  font-size: 16px;
-  color: #666;
-}
-
-.wallet-header-container {
-  background: linear-gradient(135deg, #4A90E2 0%, #7BB3F0 100%);
-  padding: 16px 16px 20px;
-  border-radius: 0 0 20px 20px;
-  margin-bottom: 16px;
-}
-
-.user-selector-container {
-  margin-bottom: 16px;
-}
-
-.user-selector {
-  width: 100%;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  border-radius: 20px;
-  color: white;
-  font-size: 14px;
-}
-
-.user-selector option {
-  color: #333;
-  background: white;
-}
-
-.balance-card {
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  border-radius: 16px;
-  color: white;
-}
-
-.balance-amount {
-  font-size: 32px;
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: white;
-}
-
-.address-info {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
+  height: 100vh;
+}
+
+/* 用户选择器 */
+.user-selector {
+  margin-bottom: 20px;
+}
+
+.user-selector-label {
+  font-size: 16px;
+  color: #333;
   margin-bottom: 12px;
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.address-text {
-  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.copy-hint {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.currency-tag {
-  display: inline-block;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
   font-weight: 500;
-  color: white;
 }
 
-.action-buttons {
+.user-selector-dropdown {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.user-selector-dropdown .adm-selector-item {
+  font-size: 16px;
   padding: 16px;
 }
 
+/* 用户卡片 */
+.user-card {
+  margin-bottom: 20px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  border: none;
+}
+
+.user-info {
+  padding: 20px;
+}
+
+.user-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.user-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.user-org {
+  font-size: 14px;
+  color: #666;
+  background: #f0f0f0;
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+
+.user-balance {
+  margin-bottom: 20px;
+}
+
+.balance-label {
+  font-size: 16px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.balance-amount {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1677ff;
+}
+
+.user-address {
+  border-top: 1px solid #f0f0f0;
+  padding-top: 20px;
+}
+
+.address-label {
+  font-size: 16px;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.address-value {
+  font-size: 14px;
+  color: #999;
+  word-break: break-all;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #f8f8f8;
+  border-radius: 8px;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+}
+
+.copy-icon {
+  font-size: 16px;
+  color: #1677ff;
+}
+
+/* 操作按钮 */
+.action-buttons {
+  margin-bottom: 24px;
+}
+
+.action-buttons .adm-grid-item {
+  padding: 0;
+}
+
+.action-buttons .adm-button {
+  height: 48px;
+  font-size: 16px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+/* 交易记录区域 */
 .user-records-section {
-  margin: 16px 0 0 0;
-  padding: 0 16px;
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
 .user-records-title {
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 600;
   color: #333;
-  margin-bottom: 8px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* 优化后的钱包卡片样式 */
+.user-card {
+  background: linear-gradient(135deg, #4f8aff 0%, #70cfff 100%);
+  color: #fff;
+  border-radius: 24px;
+  box-shadow: 0 6px 32px 0 rgba(79, 138, 255, 0.15);
+  padding: 40px 5vw 36px 5vw;
+  margin-bottom: 32px;
+  position: relative;
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.user-card .user-title {
+  font-size: clamp(18px, 2.5vw, 32px);
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #fff;
+  word-break: break-all;
+}
+
+.user-card .user-org {
+  display: inline-block;
+  background: rgba(255,255,255,0.18);
+  color: #e3edff;
+  font-size: clamp(14px, 1.5vw, 20px);
+  font-weight: 500;
+  border-radius: 12px;
+  padding: 4px 20px;
+  margin-bottom: 24px;
+  margin-left: 10px;
+}
+
+.user-card .user-balance {
+  margin-bottom: 18px;
+}
+.user-card .balance-label {
+  font-size: clamp(14px, 1.5vw, 20px);
+  color: #e3edff;
+  margin-bottom: 4px;
+}
+.user-card .balance-amount {
+  font-size: clamp(24px, 4vw, 48px);
+  font-weight: bold;
+  color: #fff;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+
+.user-card .user-address {
+  margin-bottom: 0;
+}
+.user-card .address-label {
+  font-size: clamp(12px, 1.2vw, 18px);
+  color: #e3edff;
+  margin-bottom: 2px;
+}
+.user-card .address-value {
+  font-size: clamp(12px, 1.5vw, 20px);
+  color: #e3edff;
+  background: rgba(255,255,255,0.10);
+  border-radius: 8px;
+  padding: 6px 16px;
+  margin-bottom: 0;
+  width: fit-content;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  word-break: break-all;
+}
+.user-card .copy-icon {
+  margin-left: 8px;
+  font-size: 1em;
+  color: #b3d1ff;
+  cursor: pointer;
+}
+
+/* Dropdown按钮和下拉项字体靠左 */
+.user-selector-dropdown .adm-dropdown-item-title {
+  text-align: left;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  padding-left: 18px;
+}
+.dropdown-user-item {
+  text-align: left;
+  font-size: 16px;
+  padding-left: 18px;
+}
+
+@media (max-width: 600px) {
+  .user-card {
+    padding: 18px 2vw 14px 2vw;
+    width: 100%;
+  }
+  .user-card .balance-amount {
+    font-size: 28px;
+  }
+  .user-card .user-title {
+    font-size: 18px;
+  }
 } 

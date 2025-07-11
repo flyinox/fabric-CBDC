@@ -263,6 +263,140 @@ router.post('/api/transactions', async (ctx) => {
   }
 });
 
+// 转账API
+router.post('/api/transfer', async (ctx) => {
+  const { 
+    recipient, 
+    amount, 
+    identityName 
+  } = ctx.request.body;
+  
+  if (!recipient || !amount || !identityName) {
+    ctx.status = 400;
+    ctx.body = { success: false, message: 'recipient、amount、identityName都是必需的' };
+    return;
+  }
+  
+  try {
+    const tokenService = new TokenService();
+    const result = await tokenService.transfer({
+      recipient,
+      amount,
+      identityName
+    });
+    
+    ctx.body = result;
+  } catch (error) {
+    ctx.status = 500;
+    ctx.body = {
+      success: false,
+      message: '转账失败',
+      error: error.message
+    };
+  }
+});
+
+// 授权转账API
+router.post('/api/transferFrom', async (ctx) => {
+  const { 
+    from, 
+    to, 
+    amount, 
+    identityName 
+  } = ctx.request.body;
+  
+  if (!from || !to || !amount || !identityName) {
+    ctx.status = 400;
+    ctx.body = { success: false, message: 'from、to、amount、identityName都是必需的' };
+    return;
+  }
+  
+  try {
+    const tokenService = new TokenService();
+    const result = await tokenService.transferFrom({
+      from,
+      to,
+      amount,
+      identityName
+    });
+    
+    ctx.body = result;
+  } catch (error) {
+    ctx.status = 500;
+    ctx.body = {
+      success: false,
+      message: '授权转账失败',
+      error: error.message
+    };
+  }
+});
+
+// 授权批准API
+router.post('/api/approve', async (ctx) => {
+  const { 
+    spender, 
+    amount, 
+    identityName 
+  } = ctx.request.body;
+  
+  if (!spender || !amount || !identityName) {
+    ctx.status = 400;
+    ctx.body = { success: false, message: 'spender、amount、identityName都是必需的' };
+    return;
+  }
+  
+  try {
+    const tokenService = new TokenService();
+    const result = await tokenService.approve({
+      spender,
+      amount,
+      identityName
+    });
+    
+    ctx.body = result;
+  } catch (error) {
+    ctx.status = 500;
+    ctx.body = {
+      success: false,
+      message: '授权批准失败',
+      error: error.message
+    };
+  }
+});
+
+// 查询授权额度API
+router.post('/api/allowance', async (ctx) => {
+  const { 
+    owner, 
+    spender, 
+    identityName 
+  } = ctx.request.body;
+  
+  if (!owner || !spender || !identityName) {
+    ctx.status = 400;
+    ctx.body = { success: false, message: 'owner、spender、identityName都是必需的' };
+    return;
+  }
+  
+  try {
+    const tokenService = new TokenService();
+    const result = await tokenService.getAllowance({
+      owner,
+      spender,
+      identityName
+    });
+    
+    ctx.body = result;
+  } catch (error) {
+    ctx.status = 500;
+    ctx.body = {
+      success: false,
+      message: '查询授权额度失败',
+      error: error.message
+    };
+  }
+});
+
 app.use(cors());
 app.use(bodyParser());
 app.use(router.routes()).use(router.allowedMethods());

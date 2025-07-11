@@ -1,0 +1,164 @@
+.authorization-page {
+  padding: 16px;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+}
+
+.authorization-page.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+/* 用户选择器 */
+.user-selector {
+  margin-bottom: 20px;
+}
+
+.user-selector-label {
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+.user-selector-dropdown {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.user-selector-dropdown .adm-selector-item {
+  font-size: 16px;
+  padding: 16px;
+}
+
+/* 用户卡片 */
+.user-card {
+  margin-bottom: 20px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  border: none;
+}
+
+.user-info {
+  padding: 20px;
+}
+
+.user-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.user-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.user-org {
+  font-size: 14px;
+  color: #666;
+  background: #f0f0f0;
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+
+.user-balance {
+  margin-bottom: 20px;
+}
+
+.balance-label {
+  font-size: 16px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.balance-amount {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1677ff;
+}
+
+/* 授权操作按钮 */
+.authorization-actions {
+  margin-bottom: 24px;
+}
+
+.authorization-actions .adm-grid-item {
+  padding: 0;
+}
+
+.authorization-actions .adm-button {
+  height: 48px;
+  font-size: 16px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+/* 授权记录区域 */
+.allowance-section {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.allowance-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.allowance-list {
+  --border-top: none;
+  --border-bottom: none;
+}
+
+.allowance-item {
+  padding: 16px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.allowance-item:last-child {
+  border-bottom: none;
+}
+
+.allowance-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.allowance-owner,
+.allowance-spender {
+  font-size: 15px;
+  color: #666;
+}
+
+.allowance-owner {
+  font-weight: 500;
+  color: #333;
+}
+
+.no-allowance {
+  text-align: center;
+  padding: 40px 16px;
+  color: #999;
+}
+
+.no-allowance p {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+}
+
+.no-allowance p:last-child {
+  margin-bottom: 0;
+  font-size: 14px;
+} 

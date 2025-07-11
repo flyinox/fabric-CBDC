@@ -1,35 +1,76 @@
 .manage-page {
+  padding: 16px;
+  background-color: #f5f5f5;
   min-height: 100vh;
-  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
-  padding: 16px 0 20px;
 }
 
-.manage-actions {
+.manage-page.loading {
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  margin-bottom: 16px;
-  padding: 0 16px;
-}
-
-.manage-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
-  margin: 0 0 12px 16px;
-}
-
-.manage-noauth {
-  color: #999;
-  font-size: 16px;
-  text-align: center;
-  margin-top: 40px;
-}
-
-.loading {
-  display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  height: 100vh;
   font-size: 16px;
   color: #666;
+}
+
+/* 用户选择器 */
+.user-selector {
+  margin-bottom: 20px;
+}
+
+.user-selector-label {
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+.user-selector-dropdown {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.user-selector-dropdown .adm-selector-item {
+  font-size: 16px;
+  padding: 16px;
+}
+
+/* 管理操作按钮 */
+.manage-actions {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.manage-actions .adm-button {
+  height: 48px;
+  font-size: 16px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+/* 管理标题 */
+.manage-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20px;
+  padding: 20px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* 无权限提示 */
+.manage-noauth {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  color: #999;
+  font-size: 16px;
 } 

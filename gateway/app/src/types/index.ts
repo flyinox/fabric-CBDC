@@ -22,4 +22,11 @@ export interface WalletState {
   users: User[];
   transactions: Transaction[];
   loading: boolean;
+}
+
+export interface UserContextType {
+  users: User[];
+  currentUser: User | null;
+  setCurrentUser: (user: User) => void;
+  loading: boolean;
 } 

@@ -1,0 +1,51 @@
+.transfer-modal {
+  padding: 16px;
+}
+
+.transfer-type-selector {
+  margin-bottom: 20px;
+}
+
+.transfer-type-label {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.transfer-form {
+  margin-top: 16px;
+}
+
+.transfer-form .adm-form-item {
+  margin-bottom: 16px;
+}
+
+.transfer-form .adm-form-item-label {
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.transfer-actions {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.transfer-actions .adm-button {
+  height: 44px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.transfer-actions .adm-button:last-child {
+  margin-top: 12px;
+  background-color: #f5f5f5;
+  color: #666;
+  border: 1px solid #d9d9d9;
+}
+
+.transfer-actions .adm-button:last-child:hover {
+  background-color: #e6e6e6;
+  border-color: #bfbfbf;
+} 

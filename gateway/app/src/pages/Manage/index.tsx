@@ -1,37 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Toast, Selector } from 'antd-mobile';
 import type { User, Transaction } from '../../types';
-import { getUsersWithBalances, getTransactions } from '../../services/walletApi';
+import { getTransactions } from '../../services/walletApi';
+import { useUserContext } from '../../context/UserContext';
 import TransactionList from '../../components/TransactionList';
 import './index.css';
 
 const ManagePage: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
+  const { currentUser } = useUserContext();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadUsers();
-  }, []);
 
   useEffect(() => {
     if (currentUser) {
       loadTransactions();
     }
   }, [currentUser]);
-
-  const loadUsers = async () => {
-    try {
-      const userList = await getUsersWithBalances();
-      setUsers(userList);
-      if (userList.length > 0) {
-        setCurrentUser(userList[0]); // 默认第一个
-      }
-    } catch (error) {
-      console.error('加载用户失败:', error);
-    }
-  };
 
   const loadTransactions = async () => {
     if (!currentUser) return;
@@ -45,13 +29,6 @@ const ManagePage: React.FC = () => {
       setTransactions([]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleUserChange = (userId: string) => {
-    const user = users.find(u => u.id === userId);
-    if (user) {
-      setCurrentUser(user);
     }
   };
 
@@ -86,7 +63,7 @@ const ManagePage: React.FC = () => {
   } else if (isOrgAdmin) {
     const orgTx = transactions.filter(tx => {
       // 只要from或to是本组织的用户
-      return users.some(u => u.organization === currentUser.organization && (u.address === tx.from || u.address === tx.to));
+      return users.some(u => u.organization === currentUser.organization && (u.id === tx.from || u.id === tx.to));
     });
     content = (
       <>
@@ -105,19 +82,6 @@ const ManagePage: React.FC = () => {
 
   return (
     <div className="manage-page">
-      {/* 用户选择器 */}
-      <div style={{ padding: '16px', background: 'white', marginBottom: '16px' }}>
-        <div style={{ marginBottom: '8px', fontSize: '14px', color: '#666' }}>选择用户:</div>
-        <Selector
-          options={users.map(user => ({
-            label: user.name,
-            value: user.id
-          }))}
-          value={currentUser ? [currentUser.id] : []}
-          onChange={(arr) => handleUserChange(arr[0])}
-        />
-      </div>
-      
       {content}
     </div>
   );

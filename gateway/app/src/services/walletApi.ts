@@ -230,3 +230,135 @@ export async function getUsersWithBalances(): Promise<User[]> {
     return [];
   }
 } 
+
+// 转账相关API
+export async function transfer(recipient: string, amount: string, identityName: string): Promise<any> {
+  if (useMock) {
+    // 返回mock转账结果
+    return {
+      success: true,
+      message: '转账成功',
+      data: {
+        from: identityName,
+        to: recipient,
+        amount: parseInt(amount),
+        txId: 'mock-tx-id-' + Date.now()
+      }
+    };
+  } else {
+    try {
+      const res = await fetch(`${apiBase}/transfer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipient, amount, identityName })
+      });
+      const data = await res.json();
+      return data;
+    } catch (error: any) {
+      console.error('转账请求失败:', error);
+      return {
+        success: false,
+        message: '转账失败',
+        error: error.message
+      };
+    }
+  }
+}
+
+export async function transferFrom(from: string, to: string, amount: string, identityName: string): Promise<any> {
+  if (useMock) {
+    // 返回mock授权转账结果
+    return {
+      success: true,
+      message: '授权转账成功',
+      data: {
+        from,
+        to,
+        spender: identityName,
+        amount: parseInt(amount),
+        txId: 'mock-tx-id-' + Date.now()
+      }
+    };
+  } else {
+    try {
+      const res = await fetch(`${apiBase}/transferFrom`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from, to, amount, identityName })
+      });
+      const data = await res.json();
+      return data;
+    } catch (error: any) {
+      console.error('授权转账请求失败:', error);
+      return {
+        success: false,
+        message: '授权转账失败',
+        error: error.message
+      };
+    }
+  }
+}
+
+export async function approve(spender: string, amount: string, identityName: string): Promise<any> {
+  if (useMock) {
+    // 返回mock授权结果
+    return {
+      success: true,
+      message: '授权成功',
+      data: {
+        owner: identityName,
+        spender,
+        amount: parseInt(amount),
+        txId: 'mock-tx-id-' + Date.now()
+      }
+    };
+  } else {
+    try {
+      const res = await fetch(`${apiBase}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ spender, amount, identityName })
+      });
+      const data = await res.json();
+      return data;
+    } catch (error: any) {
+      console.error('授权请求失败:', error);
+      return {
+        success: false,
+        message: '授权失败',
+        error: error.message
+      };
+    }
+  }
+}
+
+export async function getAllowance(owner: string, spender: string, identityName: string): Promise<any> {
+  if (useMock) {
+    // 返回mock授权额度
+    return {
+      success: true,
+      data: {
+        owner,
+        spender,
+        allowance: Math.floor(Math.random() * 1000) + 100
+      }
+    };
+  } else {
+    try {
+      const res = await fetch(`${apiBase}/allowance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ owner, spender, identityName })
+      });
+      const data = await res.json();
+      return data;
+    } catch (error: any) {
+      console.error('查询授权额度失败:', error);
+      return {
+        success: false,
+        message: '查询授权额度失败',
+        error: error.message
+      };
+    }
+  }
+}
