@@ -59,25 +59,28 @@ const WalletPage: React.FC = () => {
     <div className="wallet-page">
       {/* 当前用户信息 */}
       {currentUser && (
-        <Card className="user-card">
-          <div className="user-info">
-            <div className="user-header">
-              <div className="user-title">{currentUser.name}</div>
-              <div className="user-org">{currentUser.organization}</div>
-            </div>
-            <div className="user-balance">
-              <div className="balance-label">余额</div>
-              <div className="balance-amount">¥{currentUser.balance}</div>
-            </div>
-            <div className="user-address">
-              <div className="address-label">用户地址</div>
-              <div className="address-value" onClick={handleCopyAddress} style={{wordBreak: 'break-all'}}>
-                {accountId || '加载中...'}
-                <span className="copy-icon">📋</span>
+        <div className="user-card-modern">
+          <div className="user-card-row">
+            <div className="user-card-main">
+              <div className="user-card-amount">¥{currentUser.balance}</div>
+              <div className="user-card-address-row">
+                <span className="user-card-address">
+                  {accountId ? `${accountId.slice(0, 8)}...${accountId.slice(-8)}` : '加载中...'}
+                </span>
+                <span className="user-card-copy" onClick={handleCopyAddress} title="复制地址">📋</span>
               </div>
             </div>
+            <div className="user-card-action">
+              <button className="user-card-arrow-btn" tabIndex={-1} aria-label="更多操作">
+                <span style={{fontSize: 20, color: '#1677ff'}}>&gt;</span>
+              </button>
+            </div>
           </div>
-        </Card>
+          <div className="user-card-footer-row">
+            <span className="user-card-bank-tag">{currentUser.organization}</span>
+            <span className="user-card-username">{currentUser.name}</span>
+          </div>
+        </div>
       )}
 
       <div className="action-buttons">
@@ -120,7 +123,7 @@ const WalletPage: React.FC = () => {
       {/* 本用户交易记录 */}
       <div className="user-records-section">
         <div className="user-records-title">我的交易记录</div>
-        <UserRecords user={currentUser} />
+        <UserRecords user={currentUser} pageSize={10} />
       </div>
 
       {/* 转账模态框 */}

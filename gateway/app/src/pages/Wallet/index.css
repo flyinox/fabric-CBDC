@@ -1,7 +1,8 @@
 .wallet-page {
   padding: 16px;
   background-color: #f5f5f5;
-  min-height: 100vh;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .wallet-page.loading {
@@ -150,6 +151,10 @@
   border-radius: 16px;
   padding: 20px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  height: 400px; /* 调整为更适合移动端的高度 */
+  display: flex;
+  flex-direction: column;
 }
 
 .user-records-title {
@@ -159,6 +164,66 @@
   margin-bottom: 20px;
   padding-bottom: 12px;
   border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0; /* 防止标题被压缩 */
+}
+
+/* 瀑布流优化 */
+.user-records-section .transaction-list {
+  margin: 0;
+  box-shadow: none;
+  border-radius: 0;
+  flex: 1; /* 占据剩余空间 */
+  overflow: hidden; /* 确保滚动容器 */
+  display: flex;
+  flex-direction: column;
+}
+
+.user-records-section .transaction-list .adm-list {
+  background: transparent;
+  flex: 1; /* 占据剩余空间 */
+  overflow-y: auto; /* 启用垂直滚动 */
+}
+
+.user-records-section .transaction-list .adm-list-item {
+  background: white;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.user-records-section .transaction-list .adm-list-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.user-records-section .transaction-list .transaction-item {
+  border-bottom: none;
+  padding: 16px !important;
+}
+
+.user-records-section .transaction-list .transaction-item:last-child {
+  margin-bottom: 0;
+}
+
+/* 加载状态优化 */
+.user-records-section .transaction-list-loading {
+  margin: 0;
+  box-shadow: none;
+  border-radius: 0;
+  background: transparent;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-records-section .loading-more {
+  background: white;
+  border-radius: 12px;
+  margin: 8px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0; /* 防止被压缩 */
 }
 
 /* 优化后的钱包卡片样式 */
@@ -257,6 +322,7 @@
   padding-left: 18px;
 }
 
+/* 响应式设计 */
 @media (max-width: 600px) {
   .user-card {
     padding: 18px 2vw 14px 2vw;
@@ -267,5 +333,163 @@
   }
   .user-card .user-title {
     font-size: 18px;
+  }
+  
+  /* 移动端优化交易记录区域 */
+  .user-records-section {
+    height: 350px;
+    padding: 16px;
+  }
+  
+  .user-records-title {
+    font-size: 16px;
+    margin-bottom: 16px;
+  }
+}
+
+/* 桌面端优化 */
+@media (min-width: 768px) {
+  .user-records-section {
+    height: 500px;
+  }
+} 
+
+.user-card-modern {
+  background: linear-gradient(135deg, #4f8aff 0%, #70cfff 100%);
+  border-radius: 24px;
+  box-shadow: 0 6px 32px 0 rgba(79, 138, 255, 0.15);
+  padding: 28px 20px 18px 20px;
+  margin-bottom: 24px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 140px;
+}
+
+.user-card-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.user-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.user-card-amount {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.user-card-address-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  color: #e3edff;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  background: rgba(255,255,255,0.10);
+  border-radius: 8px;
+  padding: 4px 12px;
+  max-width: 260px;
+  word-break: break-all;
+}
+
+.user-card-address {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+  display: inline-block;
+}
+
+.user-card-copy {
+  font-size: 16px;
+  color: #b3d1ff;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.user-card-copy:hover {
+  color: #fff;
+}
+
+.user-card-action {
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+}
+.user-card-arrow-btn {
+  background: rgba(255,255,255,0.18);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.user-card-arrow-btn:hover {
+  background: rgba(255,255,255,0.28);
+}
+
+.user-card-footer-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+.user-card-bank-tag {
+  background: rgba(255,255,255,0.18);
+  color: #e3edff;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 12px;
+  padding: 2px 16px;
+  margin-right: 8px;
+}
+.user-card-username {
+  font-size: 13px;
+  color: #e3edff;
+  opacity: 0.85;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+}
+
+@media (max-width: 600px) {
+  .user-card-modern {
+    padding: 16px 8px 12px 8px;
+    min-height: 110px;
+  }
+  .user-card-amount {
+    font-size: 22px;
+  }
+  .user-card-address-row {
+    font-size: 13px;
+    max-width: 180px;
+    padding: 2px 8px;
+  }
+  .user-card-address {
+    max-width: 90px;
+  }
+  .user-card-arrow-btn {
+    width: 28px;
+    height: 28px;
+  }
+  .user-card-bank-tag {
+    font-size: 12px;
+    padding: 2px 10px;
+  }
+  .user-card-username {
+    font-size: 11px;
   }
 } 

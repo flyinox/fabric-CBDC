@@ -1,5 +1,5 @@
-import React from 'react';
-import { List, Tag, InfiniteScroll } from 'antd-mobile';
+import React, { useState } from 'react';
+import { List, Tag, InfiniteScroll, SpinLoading } from 'antd-mobile';
 import type { Transaction } from '../../types';
 import './index.css';
 
@@ -8,18 +8,43 @@ interface TransactionListProps {
   loading: boolean;
   hasMore: boolean;
   onLoadMore: () => Promise<void>;
+  pageSize?: number; // 新增：每页显示数量
 }
 
 const TransactionList: React.FC<TransactionListProps> = ({
   transactions,
   loading,
   hasMore,
-  onLoadMore
+  onLoadMore,
+  pageSize = 10
 }) => {
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const handleLoadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    
+    console.log('🔄 TransactionList: 开始加载更多...', {
+      loadingMore,
+      hasMore,
+      transactionsCount: transactions.length
+    });
+    
+    setLoadingMore(true);
+    try {
+      await onLoadMore();
+      console.log('✅ TransactionList: 加载更多完成');
+    } catch (error) {
+      console.error('❌ TransactionList: 加载更多交易记录失败:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   const getTransactionTypeText = (type: string) => {
     const typeMap = {
       'transfer': '转账',
       'approve': '授权',
+      'transferFrom': '授权转账',
       'mint': '铸币',
       'burn': '销毁'
     };
@@ -64,6 +89,17 @@ const TransactionList: React.FC<TransactionListProps> = ({
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
+  if (loading && transactions.length === 0) {
+    return (
+      <div className="transaction-list-loading">
+        <div className="loading-container">
+          <SpinLoading color="#1677ff" />
+          <div className="loading-text">加载交易记录中...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="transaction-list">
       <List>
@@ -92,9 +128,30 @@ const TransactionList: React.FC<TransactionListProps> = ({
               </div>
               <div className="transaction-details">
                 <div className="transaction-addresses">
-                  <span>从 {formatAddress(tx.from)}</span>
-                  <span> → </span>
-                  <span>到 {formatAddress(tx.to)}</span>
+                  {tx.type === 'approve' ? (
+                    <>
+                      <span>授权者 {formatAddress(tx.from)}</span>
+                      <span> → </span>
+                      <span>被授权者 {formatAddress(tx.to)}</span>
+                    </>
+                  ) : tx.type === 'transferFrom' ? (
+                    <>
+                      <span>从 {formatAddress(tx.from)}</span>
+                      <span> → </span>
+                      <span>到 {formatAddress(tx.to)}</span>
+                      {tx.spender && (
+                        <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                          执行者: {formatAddress(tx.spender)}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <span>从 {formatAddress(tx.from)}</span>
+                      <span> → </span>
+                      <span>到 {formatAddress(tx.to)}</span>
+                    </>
+                  )}
                 </div>
                 <div className="transaction-time">
                   {formatTime(tx.timestamp)}
@@ -104,16 +161,20 @@ const TransactionList: React.FC<TransactionListProps> = ({
           </List.Item>
         ))}
       </List>
+      
       <InfiniteScroll
-        loadMore={onLoadMore}
+        loadMore={handleLoadMore}
         hasMore={hasMore}
-        threshold={10}
+        threshold={50}
       >
-        {hasMore ? (
-          <span>加载中...</span>
-        ) : (
-          <span>没有更多了</span>
-        )}
+        {(hasMore, failed, retry) =>
+          loadingMore ? (
+            <div className="loading-more">
+              <SpinLoading color="#1677ff" style={{ '--size': '16px' }} />
+              <span>加载更多...</span>
+            </div>
+          ) : null
+        }
       </InfiniteScroll>
     </div>
   );
