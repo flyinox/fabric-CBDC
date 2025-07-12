@@ -59,10 +59,22 @@ export const mockTransactions: Transaction[] = [
     to: '0xB9876543...e10d2f5100',
     timestamp: Date.now() - 1000 * 60 * 60 * 2,
     status: 'success',
-    hash: '0x2345678901bcdef0'
+    hash: '0x2345678901bcdef0',
+    spender: '0xB9876543...e10d2f5100'
   },
   {
     id: 'tx3',
+    type: 'transferFrom',
+    amount: '200.00',
+    from: '0xE7762F60...c08b0d3088',
+    to: '0xC5555555...f11e3g6111',
+    timestamp: Date.now() - 1000 * 60 * 60 * 4,
+    status: 'success',
+    hash: '0x3456789012cdef01',
+    spender: '0xB9876543...e10d2f5100'
+  },
+  {
+    id: 'tx4',
     type: 'mint',
     amount: '1000.00',
     from: '0xD1098765...g32f4h7322',

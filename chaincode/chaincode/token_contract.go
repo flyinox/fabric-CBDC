@@ -50,14 +50,16 @@ type event struct {
 
 // PrivateTransactionData 完整的私有交易数据结构
 type PrivateTransactionData struct {
-	TxID        string `json:"txId"`
-	From        string `json:"from"`
-	To          string `json:"to"`
-	FromMSP     string `json:"fromMsp"`
-	ToMSP       string `json:"toMsp"`
-	Amount      int    `json:"amount"`
-	BlockNumber uint64 `json:"blockNumber"`
-	TxIndex     uint32 `json:"txIndex"`
+	TxID            string `json:"txId"`
+	From            string `json:"from"`
+	To              string `json:"to"`
+	FromMSP         string `json:"fromMsp"`
+	ToMSP           string `json:"toMsp"`
+	Amount          int    `json:"amount"`
+	TransactionType string `json:"transactionType"` // 新增：交易类型 (transfer, approve, transferFrom, mint, burn)
+	Spender         string `json:"spender"`         // 新增：授权转账中的spender
+	BlockNumber     uint64 `json:"blockNumber"`
+	TxIndex         uint32 `json:"txIndex"`
 }
 
 // UserBalance 用户余额记录
@@ -138,6 +140,67 @@ func (s *SmartContract) Mint(ctx contractapi.TransactionContextInterface, amount
 	err = s.updateTotalSupplyInPrivateCollection(ctx, totalSupply)
 	if err != nil {
 		return fmt.Errorf("failed to update total supply in private collection: %v", err)
+	}
+
+	// 创建完整的私有交易数据
+	txID := ctx.GetStub().GetTxID()
+	timestamp, err := ctx.GetStub().GetTxTimestamp()
+	if err != nil {
+		return fmt.Errorf("failed to get transaction timestamp: %v", err)
+	}
+
+	privateData := PrivateTransactionData{
+		TxID:            txID,
+		From:            "0x0", // 铸币从零地址
+		To:              minter,
+		FromMSP:         "", // 简化实现
+		ToMSP:           "", // 简化实现
+		Amount:          amount,
+		TransactionType: "mint",
+		Spender:         "",
+		BlockNumber:     0, // 简化实现
+		TxIndex:         0, // 简化实现
+	}
+
+	// 创建用于查询的扩展交易数据
+	queryData := map[string]interface{}{
+		"docType":         "transaction",
+		"txId":            txID,
+		"from":            "0x0",
+		"to":              minter,
+		"fromMsp":         "",
+		"amount":          amount,
+		"transactionType": "mint",
+		"spender":         "",
+		"timestamp":       timestamp.Seconds,
+		"blockNumber":     0, // 简化实现
+		"txIndex":         0, // 简化实现
+	}
+
+	// 序列化私有数据
+	privateDataBytes, err := json.Marshal(privateData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal private data: %v", err)
+	}
+
+	// 序列化查询数据
+	queryDataBytes, err := json.Marshal(queryData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal query data: %v", err)
+	}
+
+	// 央行存储完整数据
+	privateDataKey := transactionPrefix + txID
+	err = ctx.GetStub().PutPrivateData(centralBankCollection, privateDataKey, privateDataBytes)
+	if err != nil {
+		return fmt.Errorf("failed to store private data: %v", err)
+	}
+
+	// 存储用于查询的数据
+	queryDataKey := "query_" + txID
+	err = ctx.GetStub().PutPrivateData(centralBankCollection, queryDataKey, queryDataBytes)
+	if err != nil {
+		return fmt.Errorf("failed to store query data: %v", err)
 	}
 
 	// 发出 Transfer 事件
@@ -225,6 +288,67 @@ func (s *SmartContract) Burn(ctx contractapi.TransactionContextInterface, amount
 		return fmt.Errorf("failed to update total supply in private collection: %v", err)
 	}
 
+	// 创建完整的私有交易数据
+	txID := ctx.GetStub().GetTxID()
+	timestamp, err := ctx.GetStub().GetTxTimestamp()
+	if err != nil {
+		return fmt.Errorf("failed to get transaction timestamp: %v", err)
+	}
+
+	privateData := PrivateTransactionData{
+		TxID:            txID,
+		From:            minter,
+		To:              "0x0", // 销毁到零地址
+		FromMSP:         "",    // 简化实现
+		ToMSP:           "",    // 简化实现
+		Amount:          amount,
+		TransactionType: "burn",
+		Spender:         "",
+		BlockNumber:     0, // 简化实现
+		TxIndex:         0, // 简化实现
+	}
+
+	// 创建用于查询的扩展交易数据
+	queryData := map[string]interface{}{
+		"docType":         "transaction",
+		"txId":            txID,
+		"from":            minter,
+		"to":              "0x0",
+		"fromMsp":         "",
+		"amount":          amount,
+		"transactionType": "burn",
+		"spender":         "",
+		"timestamp":       timestamp.Seconds,
+		"blockNumber":     0, // 简化实现
+		"txIndex":         0, // 简化实现
+	}
+
+	// 序列化私有数据
+	privateDataBytes, err := json.Marshal(privateData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal private data: %v", err)
+	}
+
+	// 序列化查询数据
+	queryDataBytes, err := json.Marshal(queryData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal query data: %v", err)
+	}
+
+	// 央行存储完整数据
+	privateDataKey := transactionPrefix + txID
+	err = ctx.GetStub().PutPrivateData(centralBankCollection, privateDataKey, privateDataBytes)
+	if err != nil {
+		return fmt.Errorf("failed to store private data: %v", err)
+	}
+
+	// 存储用于查询的数据
+	queryDataKey := "query_" + txID
+	err = ctx.GetStub().PutPrivateData(centralBankCollection, queryDataKey, queryDataBytes)
+	if err != nil {
+		return fmt.Errorf("failed to store query data: %v", err)
+	}
+
 	// 发出 Transfer 事件
 	transferEvent := event{minter, "0x0", amount}
 	transferEventJSON, err := json.Marshal(transferEvent)
@@ -308,13 +432,15 @@ func (s *SmartContract) Transfer(ctx contractapi.TransactionContextInterface, re
 	}
 
 	privateData := PrivateTransactionData{
-		TxID:        txID,
-		From:        sender,
-		To:          recipient,
-		FromMSP:     senderMSP,
-		Amount:      amount,
-		BlockNumber: 0, // 简化实现
-		TxIndex:     0, // 简化实现
+		TxID:            txID,
+		From:            sender,
+		To:              recipient,
+		FromMSP:         senderMSP,
+		Amount:          amount,
+		TransactionType: "transfer",
+		Spender:         "",
+		BlockNumber:     0, // 简化实现
+		TxIndex:         0, // 简化实现
 	}
 
 	// 创建用于查询的扩展交易数据
@@ -650,6 +776,67 @@ func (s *SmartContract) Approve(ctx contractapi.TransactionContextInterface, spe
 		return fmt.Errorf("failed to update state of smart contract for key %s: %v", allowanceKey, err)
 	}
 
+	// 创建完整的私有交易数据
+	txID := ctx.GetStub().GetTxID()
+	timestamp, err := ctx.GetStub().GetTxTimestamp()
+	if err != nil {
+		return fmt.Errorf("failed to get transaction timestamp: %v", err)
+	}
+
+	privateData := PrivateTransactionData{
+		TxID:            txID,
+		From:            owner,
+		To:              spender,
+		FromMSP:         "", // 简化实现
+		ToMSP:           "", // 简化实现
+		Amount:          value,
+		TransactionType: "approve",
+		Spender:         spender,
+		BlockNumber:     0, // 简化实现
+		TxIndex:         0, // 简化实现
+	}
+
+	// 创建用于查询的扩展交易数据
+	queryData := map[string]interface{}{
+		"docType":         "transaction",
+		"txId":            txID,
+		"from":            owner,
+		"to":              spender,
+		"fromMsp":         "",
+		"amount":          value,
+		"transactionType": "approve",
+		"spender":         spender,
+		"timestamp":       timestamp.Seconds,
+		"blockNumber":     0, // 简化实现
+		"txIndex":         0, // 简化实现
+	}
+
+	// 序列化私有数据
+	privateDataBytes, err := json.Marshal(privateData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal private data: %v", err)
+	}
+
+	// 序列化查询数据
+	queryDataBytes, err := json.Marshal(queryData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal query data: %v", err)
+	}
+
+	// 央行存储完整数据
+	privateDataKey := transactionPrefix + txID
+	err = ctx.GetStub().PutPrivateData(centralBankCollection, privateDataKey, privateDataBytes)
+	if err != nil {
+		return fmt.Errorf("failed to store private data: %v", err)
+	}
+
+	// 存储用于查询的数据
+	queryDataKey := "query_" + txID
+	err = ctx.GetStub().PutPrivateData(centralBankCollection, queryDataKey, queryDataBytes)
+	if err != nil {
+		return fmt.Errorf("failed to store query data: %v", err)
+	}
+
 	// 发出 Approval 事件
 	approvalEvent := struct {
 		Owner   string `json:"owner"`
@@ -797,6 +984,67 @@ func (s *SmartContract) TransferFrom(ctx contractapi.TransactionContextInterface
 	err = ctx.GetStub().PutPrivateData(centralBankCollection, allowanceKey, allowanceRecordBytes)
 	if err != nil {
 		return err
+	}
+
+	// 创建完整的私有交易数据
+	txID := ctx.GetStub().GetTxID()
+	timestamp, err := ctx.GetStub().GetTxTimestamp()
+	if err != nil {
+		return fmt.Errorf("failed to get transaction timestamp: %v", err)
+	}
+
+	privateData := PrivateTransactionData{
+		TxID:            txID,
+		From:            from,
+		To:              to,
+		FromMSP:         "", // 简化实现
+		ToMSP:           "", // 简化实现
+		Amount:          value,
+		TransactionType: "transferFrom",
+		Spender:         spender,
+		BlockNumber:     0, // 简化实现
+		TxIndex:         0, // 简化实现
+	}
+
+	// 创建用于查询的扩展交易数据
+	queryData := map[string]interface{}{
+		"docType":         "transaction",
+		"txId":            txID,
+		"from":            from,
+		"to":              to,
+		"fromMsp":         "",
+		"amount":          value,
+		"transactionType": "transferFrom",
+		"spender":         spender,
+		"timestamp":       timestamp.Seconds,
+		"blockNumber":     0, // 简化实现
+		"txIndex":         0, // 简化实现
+	}
+
+	// 序列化私有数据
+	privateDataBytes, err := json.Marshal(privateData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal private data: %v", err)
+	}
+
+	// 序列化查询数据
+	queryDataBytes, err := json.Marshal(queryData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal query data: %v", err)
+	}
+
+	// 央行存储完整数据
+	privateDataKey := transactionPrefix + txID
+	err = ctx.GetStub().PutPrivateData(centralBankCollection, privateDataKey, privateDataBytes)
+	if err != nil {
+		return fmt.Errorf("failed to store private data: %v", err)
+	}
+
+	// 存储用于查询的数据
+	queryDataKey := "query_" + txID
+	err = ctx.GetStub().PutPrivateData(centralBankCollection, queryDataKey, queryDataBytes)
+	if err != nil {
+		return fmt.Errorf("failed to store query data: %v", err)
 	}
 
 	// 发出 Transfer 事件

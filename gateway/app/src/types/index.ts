@@ -8,13 +8,14 @@ export interface User {
 
 export interface Transaction {
   id: string;
-  type: 'transfer' | 'approve' | 'mint' | 'burn';
+  type: 'transfer' | 'approve' | 'transferFrom' | 'mint' | 'burn';
   amount: string;
   from: string;
   to: string;
   timestamp: number;
   status: 'pending' | 'success' | 'failed';
   hash?: string;
+  spender?: string; // 新增：授权转账中的spender
 }
 
 export interface WalletState {

@@ -226,7 +226,8 @@ export async function getTransactions(userId?: string, identityName?: string): P
           to: tx.to,
           timestamp: (typeof tx.timestamp === 'number' && tx.timestamp > 1e12) ? tx.timestamp : (tx.timestamp * 1000),
           status: 'success',
-          hash: tx.txId || tx.key
+          hash: tx.txId || tx.key,
+          spender: tx.spender // 新增：支持spender字段
         }));
       }
       return [];

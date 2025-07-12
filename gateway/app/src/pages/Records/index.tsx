@@ -59,6 +59,7 @@ const RecordsPage: React.FC = () => {
     const typeMap = {
       'transfer': '转账',
       'approve': '授权',
+      'transferFrom': '授权转账',
       'mint': '铸币',
       'burn': '销毁'
     };
@@ -157,9 +158,30 @@ const RecordsPage: React.FC = () => {
                 
                 <div className="transaction-details">
                   <div className="transaction-addresses">
-                    <span>从 {formatAddress(tx.from)}</span>
-                    <span> → </span>
-                    <span>到 {formatAddress(tx.to)}</span>
+                    {tx.type === 'approve' ? (
+                      <>
+                        <span>授权者 {formatAddress(tx.from)}</span>
+                        <span> → </span>
+                        <span>被授权者 {formatAddress(tx.to)}</span>
+                      </>
+                    ) : tx.type === 'transferFrom' ? (
+                      <>
+                        <span>从 {formatAddress(tx.from)}</span>
+                        <span> → </span>
+                        <span>到 {formatAddress(tx.to)}</span>
+                        {tx.spender && (
+                          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                            执行者: {formatAddress(tx.spender)}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <span>从 {formatAddress(tx.from)}</span>
+                        <span> → </span>
+                        <span>到 {formatAddress(tx.to)}</span>
+                      </>
+                    )}
                   </div>
                   <div className="transaction-time">
                     {formatTime(tx.timestamp)}
