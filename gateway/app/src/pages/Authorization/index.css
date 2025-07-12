@@ -9,6 +9,21 @@
   justify-content: center;
   align-items: center;
   height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.authorization-page.loading::before {
+  content: '';
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 12px;
 }
 
 /* 用户选择器 */
@@ -83,6 +98,36 @@
   color: #1677ff;
 }
 
+.user-address {
+  border-top: 1px solid #f0f0f0;
+  padding-top: 20px;
+}
+
+.address-label {
+  font-size: 16px;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.address-value {
+  font-size: 14px;
+  color: #999;
+  word-break: break-all;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #f8f8f8;
+  border-radius: 8px;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+}
+
+.copy-icon {
+  font-size: 16px;
+  color: #1677ff;
+}
+
 /* 授权操作按钮 */
 .authorization-actions {
   margin-bottom: 24px;
@@ -97,6 +142,185 @@
   font-size: 16px;
   border-radius: 12px;
   font-weight: 500;
+}
+
+/* 授权统计卡片 */
+.stats-card {
+  margin-bottom: 20px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  border: none;
+}
+
+.stats-header {
+  padding: 20px 20px 0 20px;
+}
+
+.stats-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.stats-content {
+  padding: 20px;
+}
+
+.stats-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 16px;
+}
+
+.stats-item {
+  flex: 1;
+  text-align: center;
+}
+
+.stats-label {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.stats-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.stats-value.highlight {
+  color: #1677ff;
+}
+
+.stats-value.success {
+  color: #52c41a;
+}
+
+.stats-description {
+  margin-top: 16px;
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #1677ff;
+}
+
+.stats-description p {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+}
+
+.stats-description ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.stats-description li {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+.stats-description li:last-child {
+  margin-bottom: 0;
+}
+
+/* 自定义进度条样式 */
+.custom-progress-bar {
+  width: 100%;
+  height: 8px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.custom-progress-fill {
+  height: 100%;
+  background-color: #1677ff;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.custom-progress-bar[style*="height: 4px"] {
+  height: 4px;
+}
+
+.custom-progress-bar[style*="height: 4px"] .custom-progress-fill {
+  border-radius: 2px;
+}
+
+/* 授权操作按钮 */
+.authorization-actions {
+  margin-bottom: 24px;
+}
+
+.authorization-actions .adm-grid-item {
+  padding: 0;
+}
+
+.authorization-actions .adm-button {
+  height: 48px;
+  font-size: 16px;
+  border-radius: 12px;
+  font-weight: 500;
+  position: relative;
+}
+
+.button-subtitle {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 4px;
+  font-weight: normal;
+}
+
+/* 帮助卡片 */
+.help-card {
+  margin-bottom: 20px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  border: none;
+  background-color: #f8f9fa;
+}
+
+.help-header {
+  padding: 16px 20px 0 20px;
+}
+
+.help-header h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.help-content {
+  padding: 16px 20px 20px 20px;
+}
+
+.help-section {
+  margin-bottom: 16px;
+}
+
+.help-section:last-child {
+  margin-bottom: 0;
+}
+
+.help-section h5 {
+  font-size: 14px;
+  color: #333;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.help-section p {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.5;
+  margin: 0;
 }
 
 /* 授权记录区域 */
@@ -130,10 +354,24 @@
   border-bottom: none;
 }
 
+.allowance-extra {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.allowance-amount {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1677ff;
+}
+
 .allowance-info {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  flex: 1;
 }
 
 .allowance-owner,
@@ -145,6 +383,18 @@
 .allowance-owner {
   font-weight: 500;
   color: #333;
+}
+
+.allowance-usage {
+  margin-top: 8px;
+}
+
+.usage-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 6px;
 }
 
 .no-allowance {

@@ -1,40 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Button, Toast, Selector } from 'antd-mobile';
+import React, { useState } from 'react';
+import { Modal, Form, Input, Button, Toast } from 'antd-mobile';
 import type { User } from '../../types';
-import { transferFrom, getUsersWithBalances } from '../../services/walletApi';
+import { transferFrom } from '../../services/walletApi';
+import { useUserContext } from '../../context/UserContext';
 import './index.css';
 
 interface TransferFromModalProps {
   visible: boolean;
   onClose: () => void;
-  currentUser: User | null;
   onSuccess?: () => void;
 }
 
 const TransferFromModal: React.FC<TransferFromModalProps> = ({
   visible,
   onClose,
-  currentUser,
   onSuccess
 }) => {
+  const { currentUser, refreshUserBalances } = useUserContext();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [users, setUsers] = useState<User[]>([]);
-
-  useEffect(() => {
-    if (visible) {
-      loadUsers();
-    }
-  }, [visible]);
-
-  const loadUsers = async () => {
-    try {
-      const userList = await getUsersWithBalances();
-      setUsers(userList);
-    } catch (error) {
-      console.error('加载用户列表失败:', error);
-    }
-  };
 
   const handleSubmit = async (values: any) => {
     if (!currentUser) {
@@ -52,6 +36,10 @@ const TransferFromModal: React.FC<TransferFromModalProps> = ({
           icon: 'success'
         });
         form.resetFields();
+        
+        // 刷新用户余额
+        await refreshUserBalances();
+        
         onSuccess?.();
         onClose();
       } else {
@@ -60,8 +48,7 @@ const TransferFromModal: React.FC<TransferFromModalProps> = ({
           icon: 'fail'
         });
       }
-    } catch (error) {
-      console.error('授权转账失败:', error);
+    } catch (error: any) {
       Toast.show({
         content: '授权转账失败',
         icon: 'fail'
@@ -71,16 +58,19 @@ const TransferFromModal: React.FC<TransferFromModalProps> = ({
     }
   };
 
-  const handleFromChange = (value: string[]) => {
-    if (value.length > 0) {
-      form.setFieldValue('from', value[0]);
+  // 验证地址格式
+  const validateAddress = (address: string, fieldName: string) => {
+    // 简单的地址格式验证，可以根据实际需求调整
+    if (!address || address.trim() === '') {
+      return `请输入${fieldName}地址`;
     }
-  };
-
-  const handleToChange = (value: string[]) => {
-    if (value.length > 0) {
-      form.setFieldValue('to', value[0]);
+    if (address.length < 50) {
+      return '地址长度不能少于50个字符';
     }
+    if (address === currentUser?.id) {
+      return `不能使用自己的地址作为${fieldName}`;
+    }
+    return null;
   };
 
   return (
@@ -103,40 +93,48 @@ const TransferFromModal: React.FC<TransferFromModalProps> = ({
             className="transfer-from-form"
           >
             <Form.Item
-              label="代币所有者"
+              label="代币所有者地址"
               name="from"
-              rules={[{ required: true, message: '请选择代币所有者' }]}
+              rules={[
+                { required: true, message: '请输入代币所有者地址' },
+                {
+                  validator: (_, value) => {
+                    const error = validateAddress(value, '代币所有者');
+                    return error ? Promise.reject(new Error(error)) : Promise.resolve();
+                  }
+                }
+              ]}
             >
-              <Selector
-                options={users
-                  .filter(user => user.id !== currentUser?.id)
-                  .map(user => ({
-                    label: `${user.name} (${user.organization})`,
-                    value: user.id
-                  }))}
-                onChange={handleFromChange}
+              <Input
+                placeholder="请输入代币所有者地址"
+                type="text"
+                maxLength={500}
               />
             </Form.Item>
-
+            
             <Form.Item
-              label="接收者"
+              label="接收者地址"
               name="to"
-              rules={[{ required: true, message: '请选择接收者' }]}
+              rules={[
+                { required: true, message: '请输入接收者地址' },
+                {
+                  validator: (_, value) => {
+                    const error = validateAddress(value, '接收者');
+                    return error ? Promise.reject(new Error(error)) : Promise.resolve();
+                  }
+                }
+              ]}
             >
-              <Selector
-                options={users
-                  .filter(user => user.id !== currentUser?.id)
-                  .map(user => ({
-                    label: `${user.name} (${user.organization})`,
-                    value: user.id
-                  }))}
-                onChange={handleToChange}
+              <Input
+                placeholder="请输入接收者地址"
+                type="text"
+                maxLength={500}
               />
             </Form.Item>
-
+            
             <Form.Item
-              label="转账金额"
-              name="amount"
+              name='amount'
+              label='转账金额'
               rules={[
                 { required: true, message: '请输入转账金额' },
                 { pattern: /^[1-9]\d*$/, message: '请输入正整数' }
@@ -148,7 +146,7 @@ const TransferFromModal: React.FC<TransferFromModalProps> = ({
                 inputMode="numeric"
               />
             </Form.Item>
-
+            
             <div className="transfer-from-actions">
               <Button
                 block

@@ -244,6 +244,26 @@ func (s *SmartContract) Burn(ctx contractapi.TransactionContextInterface, amount
 // Transfer 将代币从客户端账户转移到接收者账户（隐私版本）
 // 此函数触发 Transfer 事件，但所有数据都通过隐私机制处理
 func (s *SmartContract) Transfer(ctx contractapi.TransactionContextInterface, recipient string, amount int) error {
+	// 🔍 添加链码地址跟踪日志
+	log.Printf("🔍 CHAINCODE TRANSFER 地址跟踪开始:")
+	log.Printf("  📥 链码接收到的 recipient: %s", recipient)
+	log.Printf("  📥 recipient 类型: %T", recipient)
+	log.Printf("  📥 recipient 长度: %d", len(recipient))
+	log.Printf("  📥 recipient 是否为空: %t", recipient == "")
+	log.Printf("  📥 recipient 是否只包含空格: %t", strings.TrimSpace(recipient) == "")
+	log.Printf("  📥 recipient 前10个字符: %s", func() string {
+		if len(recipient) > 10 {
+			return recipient[:10]
+		}
+		return recipient
+	}())
+	log.Printf("  📥 recipient 后10个字符: %s", func() string {
+		if len(recipient) > 10 {
+			return recipient[len(recipient)-10:]
+		}
+		return recipient
+	}())
+
 	// 检查合约初始化
 	initialized, err := checkInitialized(ctx)
 	if err != nil {
@@ -268,6 +288,11 @@ func (s *SmartContract) Transfer(ctx contractapi.TransactionContextInterface, re
 	if amount <= 0 {
 		return fmt.Errorf("transfer amount must be positive")
 	}
+
+	log.Printf("🔍 准备执行转账:")
+	log.Printf("  📤 发送方: %s", sender)
+	log.Printf("  📤 接收方: %s", recipient)
+	log.Printf("  📤 金额: %d", amount)
 
 	// 执行隐私余额转账
 	err = s.transferHelperPrivate(ctx, sender, recipient, amount)

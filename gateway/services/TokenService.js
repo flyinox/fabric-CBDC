@@ -525,6 +525,15 @@ class TokenService extends BaseService {
       identityName
     } = options;
 
+    // 🔍 添加详细的地址跟踪日志
+    console.log('🔍 TRANSFER 地址跟踪开始:');
+    console.log('  📥 接收到的 recipient 参数:', recipient);
+    console.log('  📥 recipient 类型:', typeof recipient);
+    console.log('  📥 recipient 长度:', recipient ? recipient.length : 0);
+    console.log('  📥 recipient 是否为空:', !recipient);
+    console.log('  📥 recipient 是否为空字符串:', recipient === '');
+    console.log('  📥 recipient 是否只包含空格:', recipient && recipient.trim() === '');
+
     // 参数验证
     this._validateTransferParams(recipient, amount);
 
@@ -538,8 +547,16 @@ class TokenService extends BaseService {
       // 连接网络
       await this.connect(currentUser);
 
+      console.log('🔍 准备调用链码 Transfer:');
+      console.log('  📤 传递给链码的 recipient:', recipient);
+      console.log('  📤 传递给链码的 amount:', amount);
+      console.log('  📤 recipient 在调用前的最终状态:', recipient);
+
       // 执行转账
       const result = await this.invokeTransaction('Transfer', recipient, amount);
+
+      console.log('🔍 链码调用完成:');
+      console.log('  ✅ 链码返回结果:', result);
 
       return {
         success: true,
@@ -552,6 +569,7 @@ class TokenService extends BaseService {
         }
       };
     } catch (error) {
+      console.error('❌ 转账失败:', error);
       return {
         success: false,
         message: '转账失败',

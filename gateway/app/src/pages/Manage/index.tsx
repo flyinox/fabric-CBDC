@@ -7,7 +7,7 @@ import TransactionList from '../../components/TransactionList';
 import './index.css';
 
 const ManagePage: React.FC = () => {
-  const { currentUser } = useUserContext();
+  const { currentUser, users, switchingUser } = useUserContext();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,8 +32,12 @@ const ManagePage: React.FC = () => {
     }
   };
 
-  if (!currentUser) {
-    return <div className="manage-page loading">加载中...</div>;
+  if (!currentUser || switchingUser) {
+    return (
+      <div className="manage-page loading">
+        {switchingUser ? '切换用户中...' : '加载中...'}
+      </div>
+    );
   }
 
   // 角色判断

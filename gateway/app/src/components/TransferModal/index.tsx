@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Modal, Form, Input, Button, Toast, Selector } from 'antd-mobile';
 import type { User } from '../../types';
-import { transfer, getUsersWithBalances } from '../../services/walletApi';
+import { transfer } from '../../services/walletApi';
+import { useUserContext } from '../../context/UserContext';
 import './index.css';
 
 interface TransferModalProps {
@@ -17,25 +18,10 @@ const TransferModal: React.FC<TransferModalProps> = ({
   currentUser,
   onSuccess
 }) => {
+  const { refreshUserBalances } = useUserContext();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [users, setUsers] = useState<User[]>([]);
   const [transferType, setTransferType] = useState<'direct' | 'approve'>('direct');
-
-  useEffect(() => {
-    if (visible) {
-      loadUsers();
-    }
-  }, [visible]);
-
-  const loadUsers = async () => {
-    try {
-      const userList = await getUsersWithBalances();
-      setUsers(userList);
-    } catch (error) {
-      console.error('加载用户列表失败:', error);
-    }
-  };
 
   const handleSubmit = async (values: any) => {
     if (!currentUser) {
@@ -53,6 +39,10 @@ const TransferModal: React.FC<TransferModalProps> = ({
           icon: 'success'
         });
         form.resetFields();
+        
+        // 刷新用户余额
+        await refreshUserBalances();
+        
         onSuccess?.();
         onClose();
       } else {
@@ -72,10 +62,19 @@ const TransferModal: React.FC<TransferModalProps> = ({
     }
   };
 
-  const handleRecipientChange = (value: string[]) => {
-    if (value.length > 0) {
-      form.setFieldValue('recipient', value[0]);
+  // 验证地址格式
+  const validateAddress = (address: string) => {
+    // 简单的地址格式验证，可以根据实际需求调整
+    if (!address || address.trim() === '') {
+      return '请输入接收者地址';
     }
+    if (address.length < 50) {
+      return '地址长度不能少于50个字符';
+    }
+    if (address === currentUser?.id) {
+      return '不能转账给自己';
+    }
+    return null;
   };
 
   return (
@@ -105,18 +104,22 @@ const TransferModal: React.FC<TransferModalProps> = ({
             className="transfer-form"
           >
             <Form.Item
-              label="接收者"
+              label="接收者地址"
               name="recipient"
-              rules={[{ required: true, message: '请选择接收者' }]}
+              rules={[
+                { required: true, message: '请输入接收者地址' },
+                {
+                  validator: (_, value) => {
+                    const error = validateAddress(value);
+                    return error ? Promise.reject(new Error(error)) : Promise.resolve();
+                  }
+                }
+              ]}
             >
-              <Selector
-                options={users
-                  .filter(user => user.id !== currentUser?.id)
-                  .map(user => ({
-                    label: `${user.name} (${user.organization})`,
-                    value: user.id
-                  }))}
-                onChange={handleRecipientChange}
+              <Input
+                placeholder="请输入接收者地址"
+                type="text"
+                maxLength={5000}
               />
             </Form.Item>
 

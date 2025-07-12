@@ -155,18 +155,62 @@ class BaseService {
 
   // 执行链码调用
   async invokeTransaction(functionName, ...args) {
+    console.log('🔧 BaseService.invokeTransaction 调试信息:', {
+      函数名: functionName,
+      参数: args,
+      参数类型: args.map(arg => typeof arg),
+      合约状态: !!this.contract
+    });
+
+    // 🔍 添加详细的参数跟踪
+    console.log('🔍 INVOKE TRANSACTION 参数详细跟踪:');
+    args.forEach((arg, index) => {
+      console.log(`  📋 参数 ${index + 1}:`);
+      console.log(`    📥 值: ${arg}`);
+      console.log(`    📥 类型: ${typeof arg}`);
+      console.log(`    📥 长度: ${arg ? arg.length : 0}`);
+      if (typeof arg === 'string') {
+        console.log(`    📥 是否包含空格: ${arg.includes(' ')}`);
+        console.log(`    📥 是否包含换行符: ${arg.includes('\n')}`);
+        console.log(`    📥 是否包含制表符: ${arg.includes('\t')}`);
+        console.log(`    📥 前10个字符: ${arg.substring(0, 10)}`);
+        console.log(`    📥 后10个字符: ${arg.substring(Math.max(0, arg.length - 10))}`);
+      }
+    });
+
     if (!this.contract) {
       throw new Error('合约未连接，请先调用 connect() 方法');
     }
 
-    // 创建交易
-    const transaction = this.contract.createTransaction(functionName);
-    
-    // 提交交易并获取交易ID
-    const result = await transaction.submit(...args);
-    
-    // 返回交易ID
-    return transaction.getTransactionId();
+    try {
+      // 创建交易
+      console.log('🔧 创建交易...');
+      const transaction = this.contract.createTransaction(functionName);
+      console.log('🔧 交易创建成功');
+      
+      // 提交交易并获取交易ID
+      console.log('🔧 开始提交交易...');
+      console.log('🔧 提交的参数:', args);
+      const result = await transaction.submit(...args);
+      console.log('🔧 交易提交成功:', {
+        result: result,
+        resultType: typeof result
+      });
+      
+      // 返回交易ID
+      const txId = transaction.getTransactionId();
+      console.log('🔧 获取交易ID:', txId);
+      return txId;
+    } catch (error) {
+      console.error('❌ invokeTransaction 执行失败:', {
+        functionName: functionName,
+        args: args,
+        error: error.message,
+        errorType: typeof error,
+        errorStack: error.stack
+      });
+      throw error;
+    }
   }
 
   // 执行链码查询

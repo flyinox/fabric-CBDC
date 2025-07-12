@@ -271,13 +271,29 @@ router.post('/api/transfer', async (ctx) => {
     identityName 
   } = ctx.request.body;
   
+  // 🔍 添加后端API地址跟踪日志
+  console.log('🔍 BACKEND API TRANSFER 地址跟踪开始:');
+  console.log('  📥 后端接收到的 recipient:', recipient);
+  console.log('  📥 recipient 类型:', typeof recipient);
+  console.log('  📥 recipient 长度:', recipient ? recipient.length : 0);
+  console.log('  📥 recipient 是否为空:', !recipient);
+  console.log('  📥 recipient 是否为空字符串:', recipient === '');
+  console.log('  📥 recipient 是否只包含空格:', recipient && recipient.trim() === '');
+  console.log('  📥 完整的请求体:', ctx.request.body);
+  
   if (!recipient || !amount || !identityName) {
+    console.log('❌ 参数验证失败:', { recipient, amount, identityName });
     ctx.status = 400;
     ctx.body = { success: false, message: 'recipient、amount、identityName都是必需的' };
     return;
   }
   
   try {
+    console.log('🔍 准备调用 TokenService.transfer:');
+    console.log('  📤 传递给 TokenService 的 recipient:', recipient);
+    console.log('  📤 传递给 TokenService 的 amount:', amount);
+    console.log('  📤 传递给 TokenService 的 identityName:', identityName);
+
     const tokenService = new TokenService();
     const result = await tokenService.transfer({
       recipient,
@@ -285,8 +301,10 @@ router.post('/api/transfer', async (ctx) => {
       identityName
     });
     
+    console.log('🔍 TokenService 返回结果:', result);
     ctx.body = result;
   } catch (error) {
+    console.error('❌ 转账失败:', error);
     ctx.status = 500;
     ctx.body = {
       success: false,
@@ -305,6 +323,8 @@ router.post('/api/transferFrom', async (ctx) => {
     identityName 
   } = ctx.request.body;
   
+  console.log('🔧 授权转账 API 调用参数:', { from, to, amount, identityName });
+  
   if (!from || !to || !amount || !identityName) {
     ctx.status = 400;
     ctx.body = { success: false, message: 'from、to、amount、identityName都是必需的' };
@@ -322,6 +342,7 @@ router.post('/api/transferFrom', async (ctx) => {
     
     ctx.body = result;
   } catch (error) {
+    console.error('❌ 授权转账失败:', error.message);
     ctx.status = 500;
     ctx.body = {
       success: false,

@@ -8,9 +8,10 @@ interface UserSelectorDrawerProps {
   users: User[];
   currentUser: User | null;
   onSelect: (user: User) => void;
+  switchingUser?: boolean;
 }
 
-const UserSelectorDrawer: React.FC<UserSelectorDrawerProps> = ({ visible, onClose, users, currentUser, onSelect }) => {
+const UserSelectorDrawer: React.FC<UserSelectorDrawerProps> = ({ visible, onClose, users, currentUser, onSelect, switchingUser = false }) => {
   return (
     <Popup
       visible={visible}
@@ -37,9 +38,31 @@ const UserSelectorDrawer: React.FC<UserSelectorDrawerProps> = ({ visible, onClos
                   fontSize: 20
                 }}>{user.name[0]}</div>
               }
-              onClick={() => onSelect(user)}
-              style={{ fontWeight: currentUser?.id === user.id ? 600 : 400, color: currentUser?.id === user.id ? '#1677ff' : '#333' }}
-              extra={currentUser?.id === user.id ? '当前' : ''}
+              onClick={() => !switchingUser && onSelect(user)}
+              style={{ 
+                fontWeight: currentUser?.id === user.id ? 600 : 400, 
+                color: currentUser?.id === user.id ? '#1677ff' : '#333',
+                opacity: switchingUser ? 0.5 : 1,
+                cursor: switchingUser ? 'not-allowed' : 'pointer',
+                transition: 'all 0.3s ease'
+              }}
+              extra={
+                currentUser?.id === user.id ? (
+                  switchingUser ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div style={{
+                        width: 12,
+                        height: 12,
+                        border: '2px solid #1677ff',
+                        borderTop: '2px solid transparent',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }} />
+                      切换中
+                    </div>
+                  ) : '当前'
+                ) : ''
+              }
             >
               {user.name}
               <div style={{ fontSize: 12, color: '#888' }}>{user.organization}</div>

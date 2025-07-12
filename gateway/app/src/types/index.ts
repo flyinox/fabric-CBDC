@@ -29,4 +29,6 @@ export interface UserContextType {
   currentUser: User | null;
   setCurrentUser: (user: User) => void;
   loading: boolean;
+  switchingUser: boolean;
+  refreshUserBalances: () => Promise<void>;
 } 

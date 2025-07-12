@@ -9,7 +9,7 @@ import TransferModal from '../../components/TransferModal';
 import ApproveModal from '../../components/ApproveModal';
 
 const WalletPage: React.FC = () => {
-  const { currentUser, loading } = useUserContext();
+  const { currentUser, loading, switchingUser, refreshUserBalances } = useUserContext();
   const [transferModalVisible, setTransferModalVisible] = useState(false);
   const [approveModalVisible, setApproveModalVisible] = useState(false);
   const [accountId, setAccountId] = useState<string>('');
@@ -23,33 +23,34 @@ const WalletPage: React.FC = () => {
   }, [currentUser]);
 
   const handleCopyAddress = () => {
-    if (currentUser) {
-      navigator.clipboard.writeText(currentUser.id).then(() => {
-        Toast.show('用户ID已复制到剪贴板');
+    if (accountId) {
+      navigator.clipboard.writeText(accountId).then(() => {
+        Toast.show('用户地址已复制到剪贴板');
       }).catch(() => {
         Toast.show('复制失败');
       });
+    } else {
+      Toast.show('用户地址正在加载中，请稍后再试');
     }
   };
 
-  const handleTransferSuccess = () => {
-    // 转账成功后刷新用户余额和交易记录
-    if (currentUser) {
-      getUserBalance(currentUser.id).then(balance => {
-        setCurrentUser(prev => prev ? { ...prev, balance: balance.toString() } : null);
-      });
-    }
+  const handleTransferSuccess = async () => {
+    // 转账成功后刷新用户余额
+    await refreshUserBalances();
   };
 
-  const handleApproveSuccess = () => {
-    // 授权成功后可以刷新相关数据
+  const handleApproveSuccess = async () => {
+    // 授权成功后刷新用户余额
+    await refreshUserBalances();
     Toast.show('授权操作成功');
   };
 
-  if (loading) {
+  if (loading || switchingUser) {
     return (
       <div className="wallet-page loading">
-        <div>加载中...</div>
+        <div>
+          {switchingUser ? '切换用户中...' : '加载中...'}
+        </div>
       </div>
     );
   }
@@ -69,7 +70,7 @@ const WalletPage: React.FC = () => {
               <div className="balance-amount">¥{currentUser.balance}</div>
             </div>
             <div className="user-address">
-              <div className="address-label">用户ID</div>
+              <div className="address-label">用户地址</div>
               <div className="address-value" onClick={handleCopyAddress} style={{wordBreak: 'break-all'}}>
                 {accountId || '加载中...'}
                 <span className="copy-icon">📋</span>

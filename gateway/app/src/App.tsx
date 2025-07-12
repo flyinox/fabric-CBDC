@@ -43,7 +43,7 @@ const AppContent: React.FC = () => {
 
   // 用户选择器弹窗控制
   const [drawerVisible, setDrawerVisible] = useState(false);
-  const { users, currentUser, setCurrentUser, loading } = useUserContext();
+  const { users, currentUser, setCurrentUser, loading, switchingUser } = useUserContext();
 
   return (
     <>
@@ -59,17 +59,33 @@ const AppContent: React.FC = () => {
             padding: '16px 24px',
             fontSize: 18,
             fontWeight: 600,
-            color: '#1677ff',
-            cursor: 'pointer',
+            color: switchingUser ? '#999' : '#1677ff',
+            cursor: switchingUser ? 'not-allowed' : 'pointer',
             boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'flex-start',
-            minHeight: 48
+            minHeight: 48,
+            opacity: switchingUser ? 0.7 : 1,
+            transition: 'all 0.3s ease'
           }}
-          onClick={() => setDrawerVisible(true)}
+          onClick={() => !switchingUser && setDrawerVisible(true)}
         >
-          {currentUser ? `${currentUser.name}（${currentUser.organization}）` : '请选择用户'}
+          {switchingUser ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{
+                width: 16,
+                height: 16,
+                border: '2px solid #1677ff',
+                borderTop: '2px solid transparent',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite'
+              }} />
+              切换用户中...
+            </div>
+          ) : (
+            currentUser ? `${currentUser.name}（${currentUser.organization}）` : '请选择用户'
+          )}
         </div>
         <UserSelectorDrawer
           visible={drawerVisible}
@@ -77,6 +93,7 @@ const AppContent: React.FC = () => {
           users={users}
           currentUser={currentUser}
           onSelect={user => { setCurrentUser(user); setDrawerVisible(false); }}
+          switchingUser={switchingUser}
         />
         <Routes>
           <Route path="/wallet" element={<WalletPage />} />

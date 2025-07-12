@@ -7,6 +7,36 @@ const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:4000/api';
 // mock数据（可根据实际mockData.ts内容调整）
 const mockWallets = [
   {
+    file: 'CentralBank_Admin.id',
+    orgName: 'CentralBank',
+    orgType: 'central_bank',
+    userName: 'Admin',
+    fullName: 'Admin@centralbank.example.com',
+    mspId: 'CentralBankMSP',
+    type: 'X.509',
+    version: 1
+  },
+  {
+    file: 'CentralBank_User1.id',
+    orgName: 'CentralBank',
+    orgType: 'central_bank',
+    userName: 'User1',
+    fullName: 'User1@centralbank.example.com',
+    mspId: 'CentralBankMSP',
+    type: 'X.509',
+    version: 1
+  },
+  {
+    file: 'Bank1_Admin.id',
+    orgName: 'Bank1',
+    orgType: 'commercial_bank',
+    userName: 'Admin',
+    fullName: 'Admin@bank1.example.com',
+    mspId: 'Bank1MSP',
+    type: 'X.509',
+    version: 1
+  },
+  {
     file: 'Bank1_User1.id',
     orgName: 'Bank1',
     orgType: 'commercial_bank',
@@ -16,7 +46,46 @@ const mockWallets = [
     type: 'X.509',
     version: 1
   },
-  // ... 其他mock数据 ...
+  {
+    file: 'Bank2_Admin.id',
+    orgName: 'Bank2',
+    orgType: 'commercial_bank',
+    userName: 'Admin',
+    fullName: 'Admin@bank2.example.com',
+    mspId: 'Bank2MSP',
+    type: 'X.509',
+    version: 1
+  },
+  {
+    file: 'Bank2_User1.id',
+    orgName: 'Bank2',
+    orgType: 'commercial_bank',
+    userName: 'User1',
+    fullName: 'User1@bank2.example.com',
+    mspId: 'Bank2MSP',
+    type: 'X.509',
+    version: 1
+  },
+  {
+    file: 'CC1_Admin.id',
+    orgName: 'CC1',
+    orgType: 'commercial_bank',
+    userName: 'Admin',
+    fullName: 'Admin@cc1.example.com',
+    mspId: 'CC1MSP',
+    type: 'X.509',
+    version: 1
+  },
+  {
+    file: 'CC1_User1.id',
+    orgName: 'CC1',
+    orgType: 'commercial_bank',
+    userName: 'User1',
+    fullName: 'User1@cc1.example.com',
+    mspId: 'CC1MSP',
+    type: 'X.509',
+    version: 1
+  }
 ];
 
 // mock交易数据（可根据实际mockData.ts内容调整）
@@ -92,8 +161,20 @@ export async function getUsers(): Promise<User[]> {
 // 获取用户真实账户ID
 export async function getUserAccountId(identityName: string): Promise<string> {
   if (useMock) {
-    // 返回mock账户ID
-    return 'mock-account-id';
+    // 返回mock账户ID - 模拟base64格式的真实账户ID
+    const mockAccountIds: Record<string, string> = {
+      'CentralBank_Admin': 'Q2VudHJhbEJhbmtBZG1pbjEyMzQ1Njc4OTBBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWjEyMzQ1Njc4OTBhYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ejEyMzQ1Njc4OQ==',
+      'CentralBank_User1': 'Q2VudHJhbEJhbmtVc2VyMTIzNDU2Nzg5MEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaMTIzNDU2Nzg5YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY3ODk=',
+      'Bank1_Admin': 'QmFuazFBZG1pbjEyMzQ1Njc4OTBBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWjEyMzQ1Njc4OWFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6MTIzNDU2Nzg5',
+      'Bank1_User1': 'QmFuazFVc2VyMTIzNDU2Nzg5MEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaMTIzNDU2Nzg5YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY3ODk=',
+      'Bank2_Admin': 'QmFuazJBZG1pbjEyMzQ1Njc4OTBBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWjEyMzQ1Njc4OWFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6MTIzNDU2Nzg5',
+      'Bank2_User1': 'QmFuazJVc2VyMTIzNDU2Nzg5MEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaMTIzNDU2Nzg5YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY3ODk=',
+      'CC1_Admin': 'Q0MxQWRtaW4xMjM0NTY3ODkwQUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVoxMjM0NTY3ODlhYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ejEyMzQ1Njc4OQ==',
+      'CC1_User1': 'Q0MxVXNlcjEyMzQ1Njc4OTBBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWjEyMzQ1Njc4OWFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6MTIzNDU2Nzg5'
+    };
+    
+    // 根据身份名称返回对应的mock账户ID，如果没有找到则返回默认值
+    return mockAccountIds[identityName] || 'RGVmYXVsdEFjY291bnRJZDEyMzQ1Njc4OTBBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWjEyMzQ1Njc4OWFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6MTIzNDU2Nzg5';
   } else {
     try {
       const res = await fetch(`${apiBase}/account/${encodeURIComponent(identityName)}`);
@@ -159,8 +240,17 @@ export async function getTransactions(userId?: string, identityName?: string): P
 // 获取单个用户余额
 export async function getUserBalance(identityName: string): Promise<number> {
   if (useMock) {
-    // 返回mock余额
-    return Math.floor(Math.random() * 10000) + 1000;
+    // 在mock模式下，根据用户身份返回固定余额，避免随机数导致的计算错误
+    if (identityName.includes('centralbank')) {
+      return identityName.includes('Admin') ? 1101 : 99;
+    } else if (identityName.includes('bank1')) {
+      return 500;
+    } else if (identityName.includes('bank2')) {
+      return 300;
+    } else if (identityName.includes('cc1')) {
+      return 200;
+    }
+    return 100; // 默认余额
   } else {
     try {
       const res = await fetch(`${apiBase}/balance/${encodeURIComponent(identityName)}`);
@@ -181,10 +271,20 @@ export async function getUserBalance(identityName: string): Promise<number> {
 // 批量获取用户余额
 export async function getUsersBalances(identityNames: string[]): Promise<Record<string, number>> {
   if (useMock) {
-    // 返回mock余额
+    // 返回固定的mock余额，避免随机数导致的计算错误
     const balances: Record<string, number> = {};
     identityNames.forEach(name => {
-      balances[name] = Math.floor(Math.random() * 10000) + 1000;
+      if (name.includes('centralbank')) {
+        balances[name] = name.includes('Admin') ? 1101 : 99;
+      } else if (name.includes('bank1')) {
+        balances[name] = 500;
+      } else if (name.includes('bank2')) {
+        balances[name] = 300;
+      } else if (name.includes('cc1')) {
+        balances[name] = 200;
+      } else {
+        balances[name] = 100; // 默认余额
+      }
     });
     return balances;
   } else {
@@ -233,8 +333,18 @@ export async function getUsersWithBalances(): Promise<User[]> {
 
 // 转账相关API
 export async function transfer(recipient: string, amount: string, identityName: string): Promise<any> {
+  // 🔍 添加前端地址跟踪日志
+  console.log('🔍 FRONTEND TRANSFER 地址跟踪开始:');
+  console.log('  📥 前端接收到的 recipient:', recipient);
+  console.log('  📥 recipient 类型:', typeof recipient);
+  console.log('  📥 recipient 长度:', recipient ? recipient.length : 0);
+  console.log('  📥 recipient 是否为空:', !recipient);
+  console.log('  📥 recipient 是否为空字符串:', recipient === '');
+  console.log('  📥 recipient 是否只包含空格:', recipient && recipient.trim() === '');
+
   if (useMock) {
     // 返回mock转账结果
+    console.log('🔍 使用 MOCK 模式');
     return {
       success: true,
       message: '转账成功',
@@ -247,15 +357,27 @@ export async function transfer(recipient: string, amount: string, identityName: 
     };
   } else {
     try {
+      console.log('🔍 准备发送到后端 API:');
+      console.log('  📤 发送的 recipient:', recipient);
+      console.log('  📤 发送的 amount:', amount);
+      console.log('  📤 发送的 identityName:', identityName);
+
+      const requestBody = { recipient, amount, identityName };
+      console.log('  📤 完整的请求体:', requestBody);
+
       const res = await fetch(`${apiBase}/transfer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipient, amount, identityName })
+        body: JSON.stringify(requestBody)
       });
+      
+      console.log('🔍 后端响应状态:', res.status);
       const data = await res.json();
+      console.log('🔍 后端响应数据:', data);
+      
       return data;
     } catch (error: any) {
-      console.error('转账请求失败:', error);
+      console.error('❌ 转账请求失败:', error);
       return {
         success: false,
         message: '转账失败',
@@ -279,17 +401,19 @@ export async function transferFrom(from: string, to: string, amount: string, ide
         txId: 'mock-tx-id-' + Date.now()
       }
     };
-  } else {
+  }
     try {
+      const requestBody = { from, to, amount, identityName };
+
       const res = await fetch(`${apiBase}/transferFrom`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from, to, amount, identityName })
+        body: JSON.stringify(requestBody)
       });
+
       const data = await res.json();
       return data;
     } catch (error: any) {
-      console.error('授权转账请求失败:', error);
       return {
         success: false,
         message: '授权转账失败',
@@ -297,7 +421,6 @@ export async function transferFrom(from: string, to: string, amount: string, ide
       };
     }
   }
-}
 
 export async function approve(spender: string, amount: string, identityName: string): Promise<any> {
   if (useMock) {
