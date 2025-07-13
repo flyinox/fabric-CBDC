@@ -147,9 +147,9 @@ const TransactionList: React.FC<TransactionListProps> = ({
                     </>
                   ) : (
                     <>
-                      <span>从 {formatAddress(tx.from)}</span>
-                      <span> → </span>
-                      <span>到 {formatAddress(tx.to)}</span>
+                  <span>从 {formatAddress(tx.from)}</span>
+                  <span> → </span>
+                  <span>到 {formatAddress(tx.to)}</span>
                     </>
                   )}
                 </div>

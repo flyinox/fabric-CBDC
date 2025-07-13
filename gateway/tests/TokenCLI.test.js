@@ -20,7 +20,8 @@ describe('TokenCLI', () => {
       setIdentityName: jest.fn(),
       getName: jest.fn(),
       getSymbol: jest.fn(),
-      getTotalSupply: jest.fn()
+      getTotalSupply: jest.fn(),
+      getTokenInfo: jest.fn()
     };
     
     // 使用依赖注入创建 TokenCLI 实例
@@ -171,59 +172,45 @@ describe('TokenCLI', () => {
     it('应该成功查询代币完整信息', async () => {
       const mockName = 'Digital Yuan';
       const mockSymbol = 'DCEP';
+      const mockDecimals = 2;
       const mockSupply = 1000000;
 
-      mockTokenService.getName.mockResolvedValue({
+      mockTokenService.getTokenInfo.mockResolvedValue({
         success: true,
-        data: { name: mockName }
-      });
-      mockTokenService.getSymbol.mockResolvedValue({
-        success: true,
-        data: { symbol: mockSymbol }
-      });
-      mockTokenService.getTotalSupply.mockResolvedValue({
-        success: true,
-        data: { totalSupply: mockSupply }
+        data: {
+          name: mockName,
+          symbol: mockSymbol,
+          decimals: mockDecimals,
+          totalSupply: mockSupply
+        }
       });
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
       await tokenCLI.queryInfo();
 
-      expect(mockTokenService.getName).toHaveBeenCalled();
-      expect(mockTokenService.getSymbol).toHaveBeenCalled();
-      expect(mockTokenService.getTotalSupply).toHaveBeenCalled();
+      expect(mockTokenService.getTokenInfo).toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('查询成功'));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining(mockName));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining(mockSymbol));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining(mockDecimals.toString()));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining(mockSupply.toString()));
 
       consoleSpy.mockRestore();
     });
 
-    it('应该处理部分查询失败的情况', async () => {
-      const mockName = 'Digital Yuan';
-      const errorMessage = 'Failed to get symbol';
+    it('应该处理查询失败的情况', async () => {
+      const errorMessage = 'Failed to get token info';
 
-      mockTokenService.getName.mockResolvedValue({
-        success: true,
-        data: { name: mockName }
-      });
-      mockTokenService.getSymbol.mockResolvedValue({
+      mockTokenService.getTokenInfo.mockResolvedValue({
         success: false,
         error: errorMessage
-      });
-      mockTokenService.getTotalSupply.mockResolvedValue({
-        success: true,
-        data: { totalSupply: 1000000 }
       });
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
       await tokenCLI.queryInfo();
 
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('查询成功'));
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining(mockName));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('查询失败'));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining(errorMessage));
 
@@ -345,32 +332,28 @@ describe('TokenCLI', () => {
     });
 
     it('应该执行info命令', async () => {
-      mockTokenService.getName.mockResolvedValue({
+      mockTokenService.getTokenInfo.mockResolvedValue({
         success: true,
-        data: { name: 'Test' }
-      });
-      mockTokenService.getSymbol.mockResolvedValue({
-        success: true,
-        data: { symbol: 'TEST' }
-      });
-      mockTokenService.getTotalSupply.mockResolvedValue({
-        success: true,
-        data: { totalSupply: 1000000 }
+        data: {
+          name: 'Test',
+          symbol: 'TEST',
+          decimals: 2,
+          totalSupply: 1000000
+        }
       });
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
       await tokenCLI.execute(['info']);
 
-      expect(mockTokenService.getName).toHaveBeenCalled();
-      expect(mockTokenService.getSymbol).toHaveBeenCalled();
-      expect(mockTokenService.getTotalSupply).toHaveBeenCalled();
+      expect(mockTokenService.getTokenInfo).toHaveBeenCalled();
 
       consoleSpy.mockRestore();
     });
 
     it('应该进入交互模式当没有指定命令时', async () => {
-      mockBaseService.question
+      // Mock TokenCLI的question方法
+      tokenCLI.question = jest.fn()
         .mockResolvedValueOnce('1') // 选择查询名称
         .mockResolvedValueOnce('n'); // 不继续查询
 
@@ -383,7 +366,7 @@ describe('TokenCLI', () => {
 
       await tokenCLI.execute([]);
 
-      expect(mockBaseService.question).toHaveBeenCalledWith(expect.stringContaining('请输入选择'));
+      expect(tokenCLI.question).toHaveBeenCalledWith(expect.stringContaining('请输入选择'));
       expect(mockTokenService.getName).toHaveBeenCalled();
 
       consoleSpy.mockRestore();

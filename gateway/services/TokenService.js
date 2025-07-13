@@ -1153,6 +1153,72 @@ class TokenService extends BaseService {
   }
 
   /**
+   * 查询所有交易记录（根据用户角色实现权限控制）
+   * @param {Object} options - 查询选项
+   * @param {string} options.minAmount - 最小金额（可选）
+   * @param {string} options.maxAmount - 最大金额（可选）
+   * @param {string} options.transactionType - 交易类型（可选）
+   * @param {string} options.counterparty - 交易对手方（可选）
+   * @param {string} options.pageSize - 页面大小（可选，默认20）
+   * @param {string} options.offset - 偏移量（可选，默认0）
+   * @param {string} options.identityName - 身份名称，默认为当前选择的用户
+   * @returns {Promise<Object>} 查询结果
+   */
+  async queryAllTransactions(options = {}) {
+    const {
+      minAmount = '0',
+      maxAmount = '0',
+      transactionType = '',
+      counterparty = '',
+      pageSize = '20',
+      offset = '0',
+      identityName
+    } = options;
+
+    // 参数验证
+    this._validatePaginationParams(pageSize, offset);
+
+    // 获取当前用户或使用指定用户
+    const currentUser = identityName || this.getCurrentUser() || 'admin';
+    
+    // 显示当前用户信息
+    this.showCurrentUserInfo();
+
+    try {
+      // 连接网络
+      await this.connect(currentUser);
+
+      // 执行查询
+      const result = await this.evaluateTransaction(
+        'QueryAllTransactions',
+        minAmount,
+        maxAmount,
+        transactionType,
+        counterparty,
+        pageSize,
+        offset
+      );
+
+      // 解析结果
+      const queryResult = JSON.parse(result.toString());
+
+      return {
+        success: true,
+        message: '查询所有交易成功',
+        data: queryResult
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: '查询所有交易失败',
+        error: error.message
+      };
+    } finally {
+      this.disconnect();
+    }
+  }
+
+  /**
    * 获取代币总供应量
    * @param {string} identityName - 身份名称，默认为当前选择的用户
    * @returns {Promise<Object>} 代币总供应量信息

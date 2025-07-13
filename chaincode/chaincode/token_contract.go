@@ -1484,7 +1484,7 @@ func (s *SmartContract) checkAccountInfoPermission(ctx contractapi.TransactionCo
 	}
 
 	// 检查是否是银行admin用户
-	if s.isAdminUser(callerID) {
+	if s.isAdminUserByDomain(callerID) {
 		// admin用户可以查看同一银行的所有账户信息
 		if callerDomain == targetInfo.OrgMSP {
 			return true, nil
@@ -1526,7 +1526,7 @@ func (s *SmartContract) checkBalancePermission(ctx contractapi.TransactionContex
 	}
 
 	// 检查是否是银行admin用户
-	if s.isAdminUser(callerID) {
+	if s.isAdminUserByDomain(callerID) {
 		// admin用户可以查看同一银行的所有账户
 		if callerDomain == targetInfo.OrgMSP {
 			return true, nil
@@ -1565,6 +1565,18 @@ func (s *SmartContract) isAdminUser(clientID string) bool {
 	}
 
 	return false
+}
+
+// isAdminUserByDomain 通过domain检查用户是否是admin用户（更准确的方法）
+func (s *SmartContract) isAdminUserByDomain(clientID string) bool {
+	// 提取domain
+	domain, err := s.extractDomainFromClientID(clientID)
+	if err != nil {
+		return false
+	}
+
+	// 检查domain是否包含admin（不区分大小写）
+	return strings.Contains(strings.ToLower(domain), "admin")
 }
 
 // extractDomainFromClientID 从clientID中提取组织域名信息
@@ -1643,7 +1655,7 @@ func (s *SmartContract) checkTransactionQueryPermission(ctx contractapi.Transact
 	}
 
 	// 检查是否是银行admin用户
-	if s.isAdminUser(callerID) {
+	if s.isAdminUserByDomain(callerID) {
 		// admin用户可以查看同一银行的所有交易记录
 		targetInfo, err := s.getUserAccountInfo(ctx, targetUserID)
 		if err != nil {
@@ -1658,401 +1670,10 @@ func (s *SmartContract) checkTransactionQueryPermission(ctx contractapi.Transact
 	return false, nil
 }
 
-// QueryUserTransactions 查询用户的交易记录，支持多种筛选条件
-func (s *SmartContract) QueryUserTransactions(ctx contractapi.TransactionContextInterface, userID string, minAmount int, maxAmount int, transactionType string, counterparty string) (string, error) {
-	// 检查合约初始化
-	initialized, err := checkInitialized(ctx)
-	if err != nil {
-		return "", fmt.Errorf("failed to check if contract is already initialized: %v", err)
-	}
-	if !initialized {
-		return "", fmt.Errorf("contract options need to be set before calling any function, call Initialize() to initialize contract")
-	}
+// ========== 统一的交易查询方法 ==========
 
-	// 获取当前调用者的信息
-	callerID, err := ctx.GetClientIdentity().GetID()
-	if err != nil {
-		return "", fmt.Errorf("failed to get caller id: %v", err)
-	}
-
-	// 检查权限 - 用户只能查询自己的交易，央行可以查询所有交易
-	hasPermission, err := s.checkTransactionQueryPermission(ctx, callerID, userID)
-	if err != nil {
-		return "", fmt.Errorf("failed to check permission: %v", err)
-	}
-	if !hasPermission {
-		return "", fmt.Errorf("caller does not have permission to query transactions for user %s", userID)
-	}
-
-	// 构建查询条件
-	querySelector := map[string]interface{}{
-		"selector": map[string]interface{}{
-			"docType": "transaction",
-		},
-	}
-
-	// 添加用户筛选条件
-	if userID != "" {
-		querySelector["selector"].(map[string]interface{})["$or"] = []map[string]interface{}{
-			{"from": userID},
-			{"to": userID},
-		}
-	}
-
-	// 添加金额范围筛选
-	if minAmount > 0 || maxAmount > 0 {
-		amountCondition := map[string]interface{}{}
-		if minAmount > 0 {
-			amountCondition["$gte"] = minAmount
-		}
-		if maxAmount > 0 {
-			amountCondition["$lte"] = maxAmount
-		}
-		querySelector["selector"].(map[string]interface{})["amount"] = amountCondition
-	}
-
-	// 添加交易类型筛选
-	if transactionType != "" {
-		querySelector["selector"].(map[string]interface{})["transactionType"] = transactionType
-	}
-
-	// 添加参与方筛选
-	if counterparty != "" {
-		querySelector["selector"].(map[string]interface{})["$or"] = []map[string]interface{}{
-			{"from": counterparty},
-			{"to": counterparty},
-		}
-	}
-
-	// 限制返回结果数量
-	querySelector["limit"] = 100
-
-	// 序列化查询条件
-	queryJSON, err := json.Marshal(querySelector)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal query selector: %v", err)
-	}
-
-	// 执行查询
-	queryResults, err := ctx.GetStub().GetPrivateDataQueryResult(centralBankCollection, string(queryJSON))
-	if err != nil {
-		return "", fmt.Errorf("failed to query private data: %v", err)
-	}
-	defer queryResults.Close()
-
-	// 处理查询结果
-	var transactions []map[string]interface{}
-	for queryResults.HasNext() {
-		queryResult, err := queryResults.Next()
-		if err != nil {
-			return "", fmt.Errorf("failed to get next query result: %v", err)
-		}
-
-		var transaction map[string]interface{}
-		err = json.Unmarshal(queryResult.Value, &transaction)
-		if err != nil {
-			return "", fmt.Errorf("failed to unmarshal transaction: %v", err)
-		}
-
-		// 添加查询结果信息
-		transaction["key"] = queryResult.Key
-		transactions = append(transactions, transaction)
-	}
-
-	// 构建响应
-	response := map[string]interface{}{
-		"userID": userID,
-		"queryConditions": map[string]interface{}{
-			"minAmount":       minAmount,
-			"maxAmount":       maxAmount,
-			"transactionType": transactionType,
-			"counterparty":    counterparty,
-		},
-		"totalCount":   len(transactions),
-		"transactions": transactions,
-	}
-
-	// 序列化响应
-	responseJSON, err := json.Marshal(response)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal response: %v", err)
-	}
-
-	return string(responseJSON), nil
-}
-
-// QueryUserTransactionsWithPagination 查询用户的交易记录，支持分页功能
-func (s *SmartContract) QueryUserTransactionsWithPagination(ctx contractapi.TransactionContextInterface, userID string, minAmount int, maxAmount int, transactionType string, counterparty string, pageSize int, bookmark string) (string, error) {
-	// 检查合约初始化
-	initialized, err := checkInitialized(ctx)
-	if err != nil {
-		return "", fmt.Errorf("failed to check if contract is already initialized: %v", err)
-	}
-	if !initialized {
-		return "", fmt.Errorf("contract options need to be set before calling any function, call Initialize() to initialize contract")
-	}
-
-	// 获取当前调用者的信息
-	callerID, err := ctx.GetClientIdentity().GetID()
-	if err != nil {
-		return "", fmt.Errorf("failed to get caller id: %v", err)
-	}
-
-	// 检查权限 - 用户只能查询自己的交易，央行可以查询所有交易
-	hasPermission, err := s.checkTransactionQueryPermission(ctx, callerID, userID)
-	if err != nil {
-		return "", fmt.Errorf("failed to check permission: %v", err)
-	}
-	if !hasPermission {
-		return "", fmt.Errorf("caller does not have permission to query transactions for user %s", userID)
-	}
-
-	// 验证和设置页面大小
-	if pageSize <= 0 {
-		pageSize = 20 // 默认页面大小
-	}
-	if pageSize > 100 {
-		pageSize = 100 // 最大页面大小限制
-	}
-
-	// 构建查询条件
-	querySelector := map[string]interface{}{
-		"selector": map[string]interface{}{
-			"docType": "transaction",
-		},
-		"limit": pageSize,
-	}
-
-	// 添加用户筛选条件
-	if userID != "" {
-		querySelector["selector"].(map[string]interface{})["$or"] = []map[string]interface{}{
-			{"from": userID},
-			{"to": userID},
-		}
-	}
-
-	// 添加金额范围筛选
-	if minAmount > 0 || maxAmount > 0 {
-		amountCondition := map[string]interface{}{}
-		if minAmount > 0 {
-			amountCondition["$gte"] = minAmount
-		}
-		if maxAmount > 0 {
-			amountCondition["$lte"] = maxAmount
-		}
-		querySelector["selector"].(map[string]interface{})["amount"] = amountCondition
-	}
-
-	// 添加交易类型筛选
-	if transactionType != "" {
-		querySelector["selector"].(map[string]interface{})["transactionType"] = transactionType
-	}
-
-	// 添加参与方筛选
-	if counterparty != "" {
-		querySelector["selector"].(map[string]interface{})["$or"] = []map[string]interface{}{
-			{"from": counterparty},
-			{"to": counterparty},
-		}
-	}
-
-	// 序列化查询条件
-	queryJSON, err := json.Marshal(querySelector)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal query selector: %v", err)
-	}
-
-	// 执行查询
-	queryResults, err := ctx.GetStub().GetPrivateDataQueryResult(centralBankCollection, string(queryJSON))
-	if err != nil {
-		return "", fmt.Errorf("failed to query private data: %v", err)
-	}
-	defer queryResults.Close()
-
-	// 处理查询结果
-	var transactions []map[string]interface{}
-	for queryResults.HasNext() {
-		queryResult, err := queryResults.Next()
-		if err != nil {
-			return "", fmt.Errorf("failed to get next query result: %v", err)
-		}
-
-		var transaction map[string]interface{}
-		err = json.Unmarshal(queryResult.Value, &transaction)
-		if err != nil {
-			return "", fmt.Errorf("failed to unmarshal transaction: %v", err)
-		}
-
-		// 添加查询结果信息
-		transaction["key"] = queryResult.Key
-		transactions = append(transactions, transaction)
-	}
-
-	// 构建分页响应
-	response := map[string]interface{}{
-		"userID": userID,
-		"queryConditions": map[string]interface{}{
-			"minAmount":       minAmount,
-			"maxAmount":       maxAmount,
-			"transactionType": transactionType,
-			"counterparty":    counterparty,
-		},
-		"pagination": map[string]interface{}{
-			"pageSize":        pageSize,
-			"currentBookmark": bookmark,
-			"nextBookmark":    "", // 简化版本，暂时不实现bookmark
-			"hasMore":         false,
-		},
-		"totalCount":   len(transactions),
-		"transactions": transactions,
-	}
-
-	// 序列化响应
-	responseJSON, err := json.Marshal(response)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal response: %v", err)
-	}
-
-	return string(responseJSON), nil
-}
-
-// QueryUserTransactionsWithBookmark 使用bookmark进行分页查询（支持bookmark参数）
-func (s *SmartContract) QueryUserTransactionsWithBookmark(ctx contractapi.TransactionContextInterface, userID string, minAmount int, maxAmount int, transactionType string, counterparty string, pageSize int, bookmark string) (string, error) {
-	// 检查合约初始化
-	initialized, err := checkInitialized(ctx)
-	if err != nil {
-		return "", fmt.Errorf("failed to check if contract is already initialized: %v", err)
-	}
-	if !initialized {
-		return "", fmt.Errorf("contract options need to be set before calling any function, call Initialize() to initialize contract")
-	}
-
-	// 获取当前调用者的信息
-	callerID, err := ctx.GetClientIdentity().GetID()
-	if err != nil {
-		return "", fmt.Errorf("failed to get caller id: %v", err)
-	}
-
-	// 检查权限 - 用户只能查询自己的交易，央行可以查询所有交易
-	hasPermission, err := s.checkTransactionQueryPermission(ctx, callerID, userID)
-	if err != nil {
-		return "", fmt.Errorf("failed to check permission: %v", err)
-	}
-	if !hasPermission {
-		return "", fmt.Errorf("caller does not have permission to query transactions for user %s", userID)
-	}
-
-	// 验证和设置页面大小
-	if pageSize <= 0 {
-		pageSize = 20 // 默认页面大小
-	}
-	if pageSize > 100 {
-		pageSize = 100 // 最大页面大小限制
-	}
-
-	// 构建查询条件
-	querySelector := map[string]interface{}{
-		"selector": map[string]interface{}{
-			"docType": "transaction",
-		},
-		"limit": pageSize,
-	}
-
-	// 添加用户筛选条件
-	if userID != "" {
-		querySelector["selector"].(map[string]interface{})["$or"] = []map[string]interface{}{
-			{"from": userID},
-			{"to": userID},
-		}
-	}
-
-	// 添加金额范围筛选
-	if minAmount > 0 || maxAmount > 0 {
-		amountCondition := map[string]interface{}{}
-		if minAmount > 0 {
-			amountCondition["$gte"] = minAmount
-		}
-		if maxAmount > 0 {
-			amountCondition["$lte"] = maxAmount
-		}
-		querySelector["selector"].(map[string]interface{})["amount"] = amountCondition
-	}
-
-	// 添加交易类型筛选
-	if transactionType != "" {
-		querySelector["selector"].(map[string]interface{})["transactionType"] = transactionType
-	}
-
-	// 添加参与方筛选
-	if counterparty != "" {
-		querySelector["selector"].(map[string]interface{})["$or"] = []map[string]interface{}{
-			{"from": counterparty},
-			{"to": counterparty},
-		}
-	}
-
-	// 序列化查询条件
-	queryJSON, err := json.Marshal(querySelector)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal query selector: %v", err)
-	}
-
-	// 执行查询
-	queryResults, err := ctx.GetStub().GetPrivateDataQueryResult(centralBankCollection, string(queryJSON))
-	if err != nil {
-		return "", fmt.Errorf("failed to query private data: %v", err)
-	}
-	defer queryResults.Close()
-
-	// 处理查询结果
-	var transactions []map[string]interface{}
-	for queryResults.HasNext() {
-		queryResult, err := queryResults.Next()
-		if err != nil {
-			return "", fmt.Errorf("failed to get next query result: %v", err)
-		}
-
-		var transaction map[string]interface{}
-		err = json.Unmarshal(queryResult.Value, &transaction)
-		if err != nil {
-			return "", fmt.Errorf("failed to unmarshal transaction: %v", err)
-		}
-
-		// 添加查询结果信息
-		transaction["key"] = queryResult.Key
-		transactions = append(transactions, transaction)
-	}
-
-	// 构建分页响应
-	response := map[string]interface{}{
-		"userID": userID,
-		"queryConditions": map[string]interface{}{
-			"minAmount":       minAmount,
-			"maxAmount":       maxAmount,
-			"transactionType": transactionType,
-			"counterparty":    counterparty,
-		},
-		"pagination": map[string]interface{}{
-			"pageSize":        pageSize,
-			"currentBookmark": bookmark,
-			"nextBookmark":    "", // 简化版本，暂时不实现bookmark
-			"hasMore":         false,
-		},
-		"totalCount":   len(transactions),
-		"transactions": transactions,
-	}
-
-	// 序列化响应
-	responseJSON, err := json.Marshal(response)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal response: %v", err)
-	}
-
-	return string(responseJSON), nil
-}
-
-// QueryUserTransactionsWithOffset 使用偏移量进行分页查询
-func (s *SmartContract) QueryUserTransactionsWithOffset(ctx contractapi.TransactionContextInterface, userID string, minAmount int, maxAmount int, transactionType string, counterparty string, pageSize int, offset int) (string, error) {
+// QueryUserTransactions 统一的交易查询方法，支持多种筛选条件和分页
+func (s *SmartContract) QueryUserTransactions(ctx contractapi.TransactionContextInterface, userID string, minAmount int, maxAmount int, transactionType string, counterparty string, pageSize int, offset int) (string, error) {
 	// 检查合约初始化
 	initialized, err := checkInitialized(ctx)
 	if err != nil {
@@ -2182,7 +1803,7 @@ func (s *SmartContract) QueryUserTransactionsWithOffset(ctx contractapi.Transact
 		nextOffset = -1 // 表示没有下一页
 	}
 
-	// 构建分页响应
+	// 构建响应
 	response := map[string]interface{}{
 		"userID": userID,
 		"queryConditions": map[string]interface{}{
@@ -2211,8 +1832,19 @@ func (s *SmartContract) QueryUserTransactionsWithOffset(ctx contractapi.Transact
 	return string(responseJSON), nil
 }
 
-// GetUserTransactionHistoryWithPagination 获取用户的交易历史，支持分页功能
-func (s *SmartContract) GetUserTransactionHistoryWithPagination(ctx contractapi.TransactionContextInterface, userID string, pageSize int, offset int) (string, error) {
+// 为了向后兼容，保留一些简化的查询方法
+// QueryUserTransactionsSimple 简化版查询，用于基本查询需求
+func (s *SmartContract) QueryUserTransactionsSimple(ctx contractapi.TransactionContextInterface, userID string) (string, error) {
+	return s.QueryUserTransactions(ctx, userID, 0, 0, "", "", 100, 0)
+}
+
+// GetUserTransactionHistory 获取用户交易历史（向后兼容）
+func (s *SmartContract) GetUserTransactionHistory(ctx contractapi.TransactionContextInterface, userID string) (string, error) {
+	return s.QueryUserTransactions(ctx, userID, 0, 0, "", "", 50, 0)
+}
+
+// QueryAllTransactions 查询所有交易记录，根据用户角色实现权限控制
+func (s *SmartContract) QueryAllTransactions(ctx contractapi.TransactionContextInterface, minAmount int, maxAmount int, transactionType string, counterparty string, pageSize int, offset int) (string, error) {
 	// 检查合约初始化
 	initialized, err := checkInitialized(ctx)
 	if err != nil {
@@ -2228,21 +1860,18 @@ func (s *SmartContract) GetUserTransactionHistoryWithPagination(ctx contractapi.
 		return "", fmt.Errorf("failed to get caller id: %v", err)
 	}
 
-	// 检查权限
-	hasPermission, err := s.checkTransactionQueryPermission(ctx, callerID, userID)
+	// 解析调用者的clientID获取用户类型
+	callerDomain, err := s.extractDomainFromClientID(callerID)
 	if err != nil {
-		return "", fmt.Errorf("failed to check permission: %v", err)
-	}
-	if !hasPermission {
-		return "", fmt.Errorf("caller does not have permission to query transactions for user %s", userID)
+		return "", fmt.Errorf("failed to extract caller domain: %v", err)
 	}
 
-	// 设置默认限制
+	// 验证和设置页面大小
 	if pageSize <= 0 {
-		pageSize = 50
+		pageSize = 20 // 默认页面大小
 	}
-	if pageSize > 1000 {
-		pageSize = 1000
+	if pageSize > 100 {
+		pageSize = 100 // 最大页面大小限制
 	}
 
 	// 验证偏移量
@@ -2250,16 +1879,63 @@ func (s *SmartContract) GetUserTransactionHistoryWithPagination(ctx contractapi.
 		offset = 0
 	}
 
-	// 构建查询
+	// 构建查询条件
 	querySelector := map[string]interface{}{
 		"selector": map[string]interface{}{
 			"docType": "transaction",
-			"$or": []map[string]interface{}{
-				{"from": userID},
-				{"to": userID},
-			},
 		},
 		"limit": pageSize + offset, // 获取更多数据以支持偏移量
+	}
+
+	// 根据用户角色添加不同的筛选条件
+	if callerDomain == CENTRAL_BANK_DOMAIN {
+		// 央行用户（admin和user）：可以查询所有交易，不需要额外筛选
+		log.Printf("央行用户查询所有交易记录")
+	} else if s.isAdminUserByDomain(callerID) {
+		// 银行admin用户：只能查询同一银行的所有交易
+		log.Printf("银行admin用户查询本行所有交易记录，银行MSP: %s", callerDomain)
+		// 这里需要通过MSP字段筛选，但由于当前交易数据结构中没有存储toMsp字段
+		// 我们需要通过其他方式来实现银行级别的筛选
+		// 暂时先查询所有交易，后续可以通过增强交易数据结构来完善
+	} else {
+		// 普通用户：只能查询自己的交易
+		log.Printf("普通用户查询自己的交易记录，用户ID: %s", callerID)
+		querySelector["selector"].(map[string]interface{})["$or"] = []map[string]interface{}{
+			{"from": callerID},
+			{"to": callerID},
+		}
+	}
+
+	// 添加金额范围筛选
+	if minAmount > 0 || maxAmount > 0 {
+		amountCondition := map[string]interface{}{}
+		if minAmount > 0 {
+			amountCondition["$gte"] = minAmount
+		}
+		if maxAmount > 0 {
+			amountCondition["$lte"] = maxAmount
+		}
+		querySelector["selector"].(map[string]interface{})["amount"] = amountCondition
+	}
+
+	// 添加交易类型筛选
+	if transactionType != "" {
+		querySelector["selector"].(map[string]interface{})["transactionType"] = transactionType
+	}
+
+	// 添加参与方筛选
+	if counterparty != "" {
+		// 如果已经有$or条件，需要合并
+		if _, exists := querySelector["selector"].(map[string]interface{})["$or"]; exists {
+			// 合并现有的$or条件和新的参与方条件
+			// 这里需要更复杂的逻辑来合并条件，暂时简化处理
+			log.Printf("Warning: 参与方筛选与现有条件冲突，暂时忽略参与方筛选")
+		} else {
+			querySelector["selector"].(map[string]interface{})["$or"] = []map[string]interface{}{
+				{"from": counterparty},
+				{"to": counterparty},
+			}
+		}
 	}
 
 	// 序列化查询条件
@@ -2289,8 +1965,30 @@ func (s *SmartContract) GetUserTransactionHistoryWithPagination(ctx contractapi.
 			return "", fmt.Errorf("failed to unmarshal transaction: %v", err)
 		}
 
+		// 添加查询结果信息
 		transaction["key"] = queryResult.Key
 		allTransactions = append(allTransactions, transaction)
+	}
+
+	// 对于银行admin用户，需要在应用层进行MSP筛选
+	if callerDomain != CENTRAL_BANK_DOMAIN && s.isAdminUserByDomain(callerID) && !s.isCentralBankUser(callerID) {
+		// 银行admin用户：筛选同一银行的交易
+		var filteredTransactions []map[string]interface{}
+		for _, tx := range allTransactions {
+			// 检查交易的from和to是否属于同一银行
+			fromUser := tx["from"].(string)
+			toUser := tx["to"].(string)
+
+			// 获取from和to用户的MSP信息
+			fromMSP, _ := s.extractDomainFromClientID(fromUser)
+			toMSP, _ := s.extractDomainFromClientID(toUser)
+
+			// 如果from或to属于同一银行，则包含此交易
+			if fromMSP == callerDomain || toMSP == callerDomain {
+				filteredTransactions = append(filteredTransactions, tx)
+			}
+		}
+		allTransactions = filteredTransactions
 	}
 
 	// 应用偏移量和页面大小
@@ -2314,7 +2012,12 @@ func (s *SmartContract) GetUserTransactionHistoryWithPagination(ctx contractapi.
 
 	// 构建响应
 	response := map[string]interface{}{
-		"userID": userID,
+		"queryConditions": map[string]interface{}{
+			"minAmount":       minAmount,
+			"maxAmount":       maxAmount,
+			"transactionType": transactionType,
+			"counterparty":    counterparty,
+		},
 		"pagination": map[string]interface{}{
 			"pageSize":      pageSize,
 			"currentOffset": offset,
@@ -2324,6 +2027,12 @@ func (s *SmartContract) GetUserTransactionHistoryWithPagination(ctx contractapi.
 		},
 		"currentPageCount": len(transactions),
 		"transactions":     transactions,
+		"userRole": map[string]interface{}{
+			"callerID":      callerID,
+			"callerDomain":  callerDomain,
+			"isAdmin":       s.isAdminUserByDomain(callerID),
+			"isCentralBank": callerDomain == CENTRAL_BANK_DOMAIN,
+		},
 	}
 
 	// 序列化响应
@@ -2333,4 +2042,13 @@ func (s *SmartContract) GetUserTransactionHistoryWithPagination(ctx contractapi.
 	}
 
 	return string(responseJSON), nil
+}
+
+// isCentralBankUser 检查用户是否是央行用户
+func (s *SmartContract) isCentralBankUser(clientID string) bool {
+	domain, err := s.extractDomainFromClientID(clientID)
+	if err != nil {
+		return false
+	}
+	return domain == CENTRAL_BANK_DOMAIN
 }

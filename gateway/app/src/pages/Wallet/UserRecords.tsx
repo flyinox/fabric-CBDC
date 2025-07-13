@@ -25,7 +25,7 @@ const UserRecords: React.FC<UserRecordsProps> = ({ user, pageSize = 10 }) => {
     if (!user) return;
     
     if (reset) {
-      setLoading(true);
+    setLoading(true);
       setCurrentPage(1);
       setHasMore(true);
     }

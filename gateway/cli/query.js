@@ -76,6 +76,7 @@ function showHelp() {
   transactionspage - 查询用户交易记录（分页查询，使用偏移量）
   transactionsbookmark - 查询用户交易记录（分页查询，使用书签）
   history          - 获取用户交易历史（分页查询）
+  alltransactions  - 查询所有交易记录（根据用户角色权限控制）
   balance          - 查询用户余额
 
 选项:
@@ -103,6 +104,9 @@ function showHelp() {
 
   # 交易历史查询
   node query.js -t history -u <用户ID> --pagesize 50 --offset 0
+
+  # 查询所有交易（根据用户角色）
+  node query.js -t alltransactions --minamount 100 --maxamount 1000 --transactiontype transfer --pagesize 20 --offset 0
 
   # 余额查询
   node query.js -t balance -i <身份名称>
@@ -279,6 +283,107 @@ async function executeBalanceQuery(options) {
   }
 }
 
+/**
+ * 查询所有交易记录（根据用户角色实现权限控制）
+ * @param {Object} options - 查询选项
+ * @param {string} options.minAmount - 最小金额（可选）
+ * @param {string} options.maxAmount - 最大金额（可选）
+ * @param {string} options.transactionType - 交易类型（可选）
+ * @param {string} options.counterparty - 交易对手方（可选）
+ * @param {string} options.pageSize - 页面大小（可选，默认20）
+ * @param {string} options.offset - 偏移量（可选，默认0）
+ * @param {string} options.identityName - 身份名称（可选）
+ */
+async function queryAllTransactions(options = {}) {
+  const {
+    minAmount = '0',
+    maxAmount = '0',
+    transactionType = '',
+    counterparty = '',
+    pageSize = '20',
+    offset = '0',
+    identityName
+  } = options;
+
+  console.log('🔍 查询所有交易记录...');
+  console.log(`📋 查询条件:`);
+  console.log(`  - 最小金额: ${minAmount}`);
+  console.log(`  - 最大金额: ${maxAmount}`);
+  console.log(`  - 交易类型: ${transactionType || '全部'}`);
+  console.log(`  - 交易对手方: ${counterparty || '全部'}`);
+  console.log(`  - 页面大小: ${pageSize}`);
+  console.log(`  - 偏移量: ${offset}`);
+
+  try {
+    const tokenService = new TokenService();
+    const result = await tokenService.queryAllTransactions({
+      minAmount,
+      maxAmount,
+      transactionType,
+      counterparty,
+      pageSize,
+      offset,
+      identityName
+    });
+
+    if (result.success) {
+      console.log('✅ 查询成功');
+      console.log('📊 查询结果:');
+      
+      const data = result.data;
+      console.log(`  - 总交易数: ${data.pagination?.totalCount || 0}`);
+      console.log(`  - 当前页交易数: ${data.currentPageCount || 0}`);
+      console.log(`  - 页面大小: ${data.pagination?.pageSize || 0}`);
+      console.log(`  - 当前偏移量: ${data.pagination?.currentOffset || 0}`);
+      console.log(`  - 是否有更多: ${data.pagination?.hasMore || false}`);
+      
+      // 显示用户角色信息
+      if (data.userRole) {
+        console.log('👤 用户角色信息:');
+        console.log(`  - 调用者ID: ${data.userRole.callerID}`);
+        console.log(`  - 调用者Domain: ${data.userRole.callerDomain}`);
+        console.log(`  - 是否Admin: ${data.userRole.isAdmin}`);
+        console.log(`  - 是否央行: ${data.userRole.isCentralBank}`);
+      }
+
+      // 显示交易列表
+      if (data.transactions && data.transactions.length > 0) {
+        console.log('\n📋 交易列表:');
+        data.transactions.forEach((tx, index) => {
+          console.log(`\n  ${index + 1}. 交易ID: ${tx.txId || tx.key}`);
+          console.log(`     类型: ${tx.transactionType || '未知'}`);
+          console.log(`     金额: ${tx.amount || 0}`);
+          console.log(`     发送方: ${tx.from || '未知'}`);
+          console.log(`     接收方: ${tx.to || '未知'}`);
+          if (tx.spender) {
+            console.log(`     授权方: ${tx.spender}`);
+          }
+          if (tx.timestamp) {
+            const date = new Date(tx.timestamp * 1000);
+            console.log(`     时间: ${date.toLocaleString()}`);
+          }
+        });
+      } else {
+        console.log('\n📋 没有找到符合条件的交易记录');
+      }
+
+      // 显示分页信息
+      if (data.pagination && data.pagination.hasMore) {
+        console.log(`\n📄 分页信息:`);
+        console.log(`  - 下一页偏移量: ${data.pagination.nextOffset}`);
+        console.log(`  - 使用命令查看下一页: --offset ${data.pagination.nextOffset}`);
+      }
+    } else {
+      console.error('❌ 查询失败:', result.message);
+      if (result.error) {
+        console.error('   错误详情:', result.error);
+      }
+    }
+  } catch (error) {
+    console.error('❌ 查询过程中发生错误:', error.message);
+  }
+}
+
 // 交互式查询
 async function interactiveQuery() {
   console.log('\n🔍 CBDC 富查询工具 (交互模式)');
@@ -287,10 +392,11 @@ async function interactiveQuery() {
   console.log('2. 分页查询 (使用偏移量)');
   console.log('3. 书签分页查询 (使用书签)');
   console.log('4. 交易历史查询 (简化分页)');
-  console.log('5. 余额查询');
+  console.log('5. 查询所有交易 (根据用户角色)');
+  console.log('6. 余额查询');
   console.log('0. 退出');
 
-  const choice = await askQuestion('\n请输入选择 (0-5): ');
+  const choice = await askQuestion('\n请输入选择 (0-6): ');
 
   switch (choice) {
     case '1':
@@ -306,6 +412,9 @@ async function interactiveQuery() {
       await interactiveHistoryQuery();
       break;
     case '5':
+      await interactiveAllTransactionsQuery();
+      break;
+    case '6':
       await interactiveBalanceQuery();
       break;
     case '0':
@@ -430,6 +539,35 @@ async function interactiveHistoryQuery() {
   });
 }
 
+// 交互式查询所有交易
+async function interactiveAllTransactionsQuery() {
+  console.log('\n🌐 查询所有交易 (根据用户角色)');
+  console.log('⚠️  注意：此功能根据用户角色实现权限控制');
+  console.log('  - 央行用户：可以查询所有交易');
+  console.log('  - 银行admin：只能查询本行交易');
+  console.log('  - 普通用户：只能查询自己的交易');
+  
+  const minAmount = await askQuestion('请输入最小金额 (可选，直接回车跳过): ');
+  const maxAmount = await askQuestion('请输入最大金额 (可选，直接回车跳过): ');
+  const transactionType = await askQuestion('请输入交易类型 (可选，直接回车跳过): ');
+  const counterparty = await askQuestion('请输入交易对手方 (可选，直接回车跳过): ');
+  
+  const pageSize = await askQuestion('请输入页面大小 (默认20，最大100): ');
+  const offset = await askQuestion('请输入偏移量 (默认0): ');
+  
+  const identityName = await askQuestion('请输入身份名称 (可选，直接回车使用当前用户): ');
+  
+  await queryAllTransactions({
+    minAmount: minAmount || '0',
+    maxAmount: maxAmount || '0',
+    transactionType: transactionType || '',
+    counterparty: counterparty || '',
+    pageSize: pageSize || '20',
+    offset: offset || '0',
+    identityName: identityName || undefined
+  });
+}
+
 // 交互式余额查询
 async function interactiveBalanceQuery() {
   console.log('\n💰 余额查询');
@@ -456,7 +594,9 @@ async function main() {
   }
 
   // 验证必需参数
-  if (options.type.toLowerCase() !== 'balance' && !options.userId) {
+  if (options.type.toLowerCase() !== 'balance' && 
+      options.type.toLowerCase() !== 'alltransactions' && 
+      !options.userId) {
     console.error('❌ 用户ID是必需参数');
     process.exit(1);
   }
@@ -479,6 +619,9 @@ async function main() {
       break;
     case 'history':
       await executeHistoryQuery(options);
+      break;
+    case 'alltransactions':
+      await queryAllTransactions(options);
       break;
     case 'balance':
       await executeBalanceQuery(options);
@@ -504,5 +647,6 @@ module.exports = {
   executeTransactionsQuery,
   executeTransactionsPageQuery,
   executeTransactionsBookmarkQuery,
-  executeHistoryQuery
+  executeHistoryQuery,
+  queryAllTransactions
 }; 

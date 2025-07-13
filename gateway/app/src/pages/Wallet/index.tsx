@@ -65,7 +65,7 @@ const WalletPage: React.FC = () => {
               <div className="user-card-amount">¥{currentUser.balance}</div>
               <div className="user-card-address-row">
                 <span className="user-card-address">
-                  {accountId || '加载中...'}
+                {accountId || '加载中...'}
                 </span>
                 <span className="user-card-copy" onClick={handleCopyAddress} title="复制地址">📋</span>
               </div>
