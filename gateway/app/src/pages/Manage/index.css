@@ -1,7 +1,8 @@
 .manage-page {
   padding: 16px;
   background-color: #f5f5f5;
-  min-height: 100vh;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .manage-page.loading {
@@ -86,4 +87,62 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   color: #999;
   font-size: 16px;
+}
+
+/* 交易记录区域样式 */
+.manage-page .transaction-list {
+  margin: 0;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.manage-page .transaction-list .adm-list {
+  background: transparent;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.manage-page .transaction-list .adm-list-item {
+  background: white;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.manage-page .transaction-list .adm-list-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.manage-page .transaction-list .transaction-item {
+  border-bottom: none;
+  padding: 16px !important;
+}
+
+.manage-page .transaction-list .transaction-item:last-child {
+  margin-bottom: 0;
+}
+
+/* 加载状态优化 */
+.manage-page .transaction-list-loading {
+  margin: 0;
+  box-shadow: none;
+  border-radius: 0;
+  background: transparent;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.manage-page .loading-more {
+  background: white;
+  border-radius: 12px;
+  margin: 8px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
 } 

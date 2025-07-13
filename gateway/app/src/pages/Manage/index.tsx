@@ -1,60 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Toast, Selector } from 'antd-mobile';
-import type { User, Transaction } from '../../types';
-import { getTransactions } from '../../services/walletApi';
+import { Button } from 'antd-mobile';
 import { useUserContext } from '../../context/UserContext';
-import TransactionList from '../../components/TransactionList';
 import MintModal from '../../components/MintModal';
 import BurnModal from '../../components/BurnModal';
+import ManageRecords from './ManageRecords';
 import './index.css';
 
 const ManagePage: React.FC = () => {
   const { currentUser, users, switchingUser, refreshUserBalances } = useUserContext();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
   const [mintModalVisible, setMintModalVisible] = useState(false);
   const [burnModalVisible, setBurnModalVisible] = useState(false);
 
   useEffect(() => {
     console.log('🔍 ManagePage: useEffect触发，currentUser变化');
     console.log('🔍 ManagePage: 新的currentUser:', currentUser);
-    
-    if (currentUser) {
-      console.log('🔍 ManagePage: 用户已选择，开始加载交易记录');
-      loadTransactions();
-    } else {
-      console.log('🔍 ManagePage: 用户未选择，跳过加载');
-    }
   }, [currentUser]);
-
-  const loadTransactions = async () => {
-    console.log('🔍 ManagePage: 开始加载交易记录');
-    console.log('🔍 ManagePage: 当前用户:', currentUser);
-    
-    if (!currentUser) {
-      console.log('❌ ManagePage: 用户未选择，跳过加载');
-      return;
-    }
-    
-    try {
-      console.log('🔍 ManagePage: 设置loading状态为true');
-      setLoading(true);
-      
-      console.log('🔍 ManagePage: 调用getTransactions API');
-      const txList = await getTransactions(undefined, currentUser.id);
-      console.log('🔍 ManagePage: 获取到交易记录:', txList);
-      console.log('🔍 ManagePage: 交易记录数量:', txList.length);
-      
-      setTransactions(txList);
-      console.log('🔍 ManagePage: 更新交易记录状态');
-    } catch (error) {
-      console.error('❌ ManagePage: 加载交易记录失败:', error);
-      setTransactions([]);
-    } finally {
-      console.log('🔍 ManagePage: 设置loading状态为false');
-      setLoading(false);
-    }
-  };
 
   if (!currentUser || switchingUser) {
     return (
@@ -97,27 +57,23 @@ const ManagePage: React.FC = () => {
           }}>销毁</Button>
         </div>
         <div className="manage-title">全网交易记录</div>
-        <TransactionList
-          transactions={transactions}
-          loading={loading}
-          hasMore={false}
-          onLoadMore={async () => {}}
+        <ManageRecords
+          user={currentUser}
+          users={users}
+          isCentralBank={true}
+          pageSize={10}
         />
       </>
     );
   } else if (isOrgAdmin) {
-    const orgTx = transactions.filter(tx => {
-      // 只要from或to是本组织的用户
-      return users.some(u => u.organization === currentUser.organization && (u.id === tx.from || u.id === tx.to));
-    });
     content = (
       <>
         <div className="manage-title">本组织交易记录</div>
-        <TransactionList
-          transactions={orgTx}
-          loading={loading}
-          hasMore={false}
-          onLoadMore={async () => {}}
+        <ManageRecords
+          user={currentUser}
+          users={users}
+          isCentralBank={false}
+          pageSize={10}
         />
       </>
     );
@@ -137,17 +93,12 @@ const ManagePage: React.FC = () => {
         onSuccess={async () => {
           console.log('🔍 ManagePage: 收到铸币成功回调');
           console.log('🔍 ManagePage: 当前用户:', currentUser);
-          console.log('🔍 ManagePage: 当前交易记录数量:', transactions.length);
           
           // 刷新数据
-          console.log('🔍 ManagePage: 开始刷新数据 - 余额和交易记录');
+          console.log('🔍 ManagePage: 开始刷新数据 - 余额');
           console.log('🔍 ManagePage: 当前余额:', currentUser?.balance);
           
           try {
-            // 刷新交易记录
-            console.log('🔍 ManagePage: 刷新交易记录');
-            await loadTransactions();
-            
             // 刷新用户余额（通过context）
             console.log('🔍 ManagePage: 刷新用户余额');
             await refreshUserBalances();
@@ -167,17 +118,12 @@ const ManagePage: React.FC = () => {
         onSuccess={async () => {
           console.log('🔍 ManagePage: 收到销毁成功回调');
           console.log('🔍 ManagePage: 当前用户:', currentUser);
-          console.log('🔍 ManagePage: 当前交易记录数量:', transactions.length);
           
           // 刷新数据
-          console.log('🔍 ManagePage: 开始刷新数据 - 余额和交易记录');
+          console.log('🔍 ManagePage: 开始刷新数据 - 余额');
           console.log('🔍 ManagePage: 当前余额:', currentUser?.balance);
           
           try {
-            // 刷新交易记录
-            console.log('🔍 ManagePage: 刷新交易记录');
-            await loadTransactions();
-            
             // 刷新用户余额（通过context）
             console.log('🔍 ManagePage: 刷新用户余额');
             await refreshUserBalances();
