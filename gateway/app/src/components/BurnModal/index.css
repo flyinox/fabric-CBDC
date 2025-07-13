@@ -1,0 +1,60 @@
+.burn-modal {
+  padding: 16px;
+}
+
+.burn-description {
+  margin-bottom: 20px;
+  padding: 12px;
+  background-color: #fff2f0;
+  border-radius: 8px;
+  border-left: 4px solid #ff4d4f;
+}
+
+.burn-description p {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #666;
+  line-height: 1.5;
+}
+
+.burn-description p:last-child {
+  margin-bottom: 0;
+}
+
+.burn-form {
+  margin-top: 16px;
+}
+
+.burn-form .adm-form-item {
+  margin-bottom: 16px;
+}
+
+.burn-form .adm-form-item-label {
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.burn-actions {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.burn-actions .adm-button {
+  height: 44px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.burn-actions .adm-button:last-child {
+  margin-top: 12px;
+  background-color: #f5f5f5;
+  color: #666;
+  border: 1px solid #d9d9d9;
+}
+
+.burn-actions .adm-button:last-child:hover {
+  background-color: #e6e6e6;
+  border-color: #bfbfbf;
+} 

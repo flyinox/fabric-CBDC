@@ -399,16 +399,17 @@
   background: rgba(255,255,255,0.10);
   border-radius: 8px;
   padding: 4px 12px;
-  max-width: 260px;
+  width: 100%;
   word-break: break-all;
 }
 
 .user-card-address {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 180px;
-  display: inline-block;
+  width: 100%;
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  font-size: 15px;
+  color: #e3edff;
 }
 
 .user-card-copy {
@@ -416,31 +417,16 @@
   color: #b3d1ff;
   cursor: pointer;
   transition: color 0.2s;
+  flex-shrink: 0;
 }
 .user-card-copy:hover {
   color: #fff;
 }
 
-.user-card-action {
-  display: flex;
-  align-items: flex-end;
-  height: 100%;
-}
-.user-card-arrow-btn {
-  background: rgba(255,255,255,0.18);
-  border: none;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.user-card-arrow-btn:hover {
-  background: rgba(255,255,255,0.28);
-}
+/* 移除箭头按钮相关样式 */
+.user-card-action {}
+.user-card-arrow-btn {}
+.user-card-arrow-btn:hover {}
 
 .user-card-footer-row {
   display: flex;
@@ -475,11 +461,12 @@
   }
   .user-card-address-row {
     font-size: 13px;
-    max-width: 180px;
     padding: 2px 8px;
+    max-width: 100%;
   }
   .user-card-address {
-    max-width: 90px;
+    font-size: 13px;
+    max-width: 100%;
   }
   .user-card-arrow-btn {
     width: 28px;

@@ -486,3 +486,99 @@ export async function getAllowance(owner: string, spender: string, identityName:
     }
   }
 }
+
+// 铸币相关API
+export async function mint(amount: string, identityName: string): Promise<any> {
+  console.log('🔍 FRONTEND MINT 开始:');
+  console.log('  📥 前端接收到的 amount:', amount);
+  console.log('  📥 前端接收到的 identityName:', identityName);
+
+  if (useMock) {
+    // 返回mock铸币结果
+    console.log('🔍 使用 MOCK 模式');
+    return {
+      success: true,
+      message: '铸币成功',
+      data: {
+        amount: parseInt(amount),
+        txId: 'mock-mint-tx-id-' + Date.now()
+      }
+    };
+  } else {
+    try {
+      console.log('🔍 准备发送到后端 API:');
+      console.log('  📤 发送的 amount:', amount);
+      console.log('  📤 发送的 identityName:', identityName);
+
+      const requestBody = { amount, identityName };
+      console.log('  📤 完整的请求体:', requestBody);
+
+      const res = await fetch(`${apiBase}/mint`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+      
+      console.log('🔍 后端响应状态:', res.status);
+      const data = await res.json();
+      console.log('🔍 后端响应数据:', data);
+      
+      return data;
+    } catch (error: any) {
+      console.error('❌ 铸币请求失败:', error);
+      return {
+        success: false,
+        message: '铸币失败',
+        error: error.message
+      };
+    }
+  }
+}
+
+// 销毁相关API
+export async function burn(amount: string, identityName: string): Promise<any> {
+  console.log('🔍 FRONTEND BURN 开始:');
+  console.log('  📥 前端接收到的 amount:', amount);
+  console.log('  📥 前端接收到的 identityName:', identityName);
+
+  if (useMock) {
+    // 返回mock销毁结果
+    console.log('🔍 使用 MOCK 模式');
+    return {
+      success: true,
+      message: '销毁成功',
+      data: {
+        amount: parseInt(amount),
+        txId: 'mock-burn-tx-id-' + Date.now()
+      }
+    };
+  } else {
+    try {
+      console.log('🔍 准备发送到后端 API:');
+      console.log('  📤 发送的 amount:', amount);
+      console.log('  📤 发送的 identityName:', identityName);
+
+      const requestBody = { amount, identityName };
+      console.log('  📤 完整的请求体:', requestBody);
+
+      const res = await fetch(`${apiBase}/burn`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+      
+      console.log('🔍 后端响应状态:', res.status);
+      const data = await res.json();
+      console.log('🔍 后端响应数据:', data);
+      
+      return data;
+    } catch (error: any) {
+      console.error('❌ 销毁请求失败:', error);
+      return {
+        success: false,
+        message: '销毁失败',
+        error: error.message
+      };
+    }
+  }
+}

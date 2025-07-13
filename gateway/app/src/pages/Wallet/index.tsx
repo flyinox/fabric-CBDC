@@ -65,15 +65,10 @@ const WalletPage: React.FC = () => {
               <div className="user-card-amount">¥{currentUser.balance}</div>
               <div className="user-card-address-row">
                 <span className="user-card-address">
-                  {accountId ? `${accountId.slice(0, 8)}...${accountId.slice(-8)}` : '加载中...'}
+                  {accountId || '加载中...'}
                 </span>
                 <span className="user-card-copy" onClick={handleCopyAddress} title="复制地址">📋</span>
               </div>
-            </div>
-            <div className="user-card-action">
-              <button className="user-card-arrow-btn" tabIndex={-1} aria-label="更多操作">
-                <span style={{fontSize: 20, color: '#1677ff'}}>&gt;</span>
-              </button>
             </div>
           </div>
           <div className="user-card-footer-row">

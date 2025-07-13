@@ -314,6 +314,94 @@ router.post('/api/transfer', async (ctx) => {
   }
 });
 
+// 铸币API
+router.post('/api/mint', async (ctx) => {
+  const { 
+    amount, 
+    identityName 
+  } = ctx.request.body;
+  
+  // 🔍 添加后端API铸币跟踪日志
+  console.log('🔍 BACKEND API MINT 开始:');
+  console.log('  📥 后端接收到的 amount:', amount);
+  console.log('  📥 后端接收到的 identityName:', identityName);
+  console.log('  📥 完整的请求体:', ctx.request.body);
+  
+  if (!amount || !identityName) {
+    console.log('❌ 参数验证失败:', { amount, identityName });
+    ctx.status = 400;
+    ctx.body = { success: false, message: 'amount、identityName都是必需的' };
+    return;
+  }
+  
+  try {
+    console.log('🔍 准备调用 TokenService.mint:');
+    console.log('  📤 传递给 TokenService 的 amount:', amount);
+    console.log('  📤 传递给 TokenService 的 identityName:', identityName);
+
+    const tokenService = new TokenService();
+    const result = await tokenService.mint({
+      amount,
+      identityName
+    });
+    
+    console.log('🔍 TokenService 返回结果:', result);
+    ctx.body = result;
+  } catch (error) {
+    console.error('❌ 铸币失败:', error);
+    ctx.status = 500;
+    ctx.body = {
+      success: false,
+      message: '铸币失败',
+      error: error.message
+    };
+  }
+});
+
+// 销毁API
+router.post('/api/burn', async (ctx) => {
+  const { 
+    amount, 
+    identityName 
+  } = ctx.request.body;
+  
+  // 🔍 添加后端API销毁跟踪日志
+  console.log('🔍 BACKEND API BURN 开始:');
+  console.log('  📥 后端接收到的 amount:', amount);
+  console.log('  📥 后端接收到的 identityName:', identityName);
+  console.log('  📥 完整的请求体:', ctx.request.body);
+  
+  if (!amount || !identityName) {
+    console.log('❌ 参数验证失败:', { amount, identityName });
+    ctx.status = 400;
+    ctx.body = { success: false, message: 'amount、identityName都是必需的' };
+    return;
+  }
+  
+  try {
+    console.log('🔍 准备调用 TokenService.burn:');
+    console.log('  📤 传递给 TokenService 的 amount:', amount);
+    console.log('  📤 传递给 TokenService 的 identityName:', identityName);
+
+    const tokenService = new TokenService();
+    const result = await tokenService.burn({
+      amount,
+      identityName
+    });
+    
+    console.log('🔍 TokenService 返回结果:', result);
+    ctx.body = result;
+  } catch (error) {
+    console.error('❌ 销毁失败:', error);
+    ctx.status = 500;
+    ctx.body = {
+      success: false,
+      message: '销毁失败',
+      error: error.message
+    };
+  }
+});
+
 // 授权转账API
 router.post('/api/transferFrom', async (ctx) => {
   const { 
