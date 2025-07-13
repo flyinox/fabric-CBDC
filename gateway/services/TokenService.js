@@ -819,7 +819,9 @@ class TokenService extends BaseService {
         minAmount,
         maxAmount,
         transactionType,
-        counterparty
+        counterparty,
+        '100',  // pageSize
+        '0'     // offset
       );
 
       // 解析结果
@@ -1003,8 +1005,6 @@ class TokenService extends BaseService {
       throw new Error('用户ID不能为空');
     }
 
-    this._validatePaginationParams(pageSize, offset, 1000); // 最大1000
-
     // 获取当前用户或使用指定用户
     const currentUser = identityName || this.getCurrentUser() || 'admin';
     
@@ -1017,10 +1017,8 @@ class TokenService extends BaseService {
 
       // 执行查询
       const result = await this.evaluateTransaction(
-        'GetUserTransactionHistoryWithPagination',
-        userId,
-        pageSize,
-        offset
+        'GetUserTransactionHistory',
+        userId
       );
 
       // 解析结果

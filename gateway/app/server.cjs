@@ -180,6 +180,47 @@ router.get('/api/account/:identityName', async (ctx) => {
   }
 });
 
+// 查询所有交易记录（根据用户角色权限控制）
+router.post('/api/all-transactions', async (ctx) => {
+  const { 
+    identityName, 
+    minAmount = '0', 
+    maxAmount = '0', 
+    transactionType = '', 
+    counterparty = '',
+    pageSize = '20',
+    offset = '0'
+  } = ctx.request.body;
+  
+  if (!identityName) {
+    ctx.status = 400;
+    ctx.body = { success: false, message: 'identityName是必需的' };
+    return;
+  }
+  
+  try {
+    const tokenService = new TokenService();
+    const result = await tokenService.queryAllTransactions({
+      minAmount,
+      maxAmount,
+      transactionType,
+      counterparty,
+      pageSize,
+      offset,
+      identityName
+    });
+    
+    ctx.body = result;
+  } catch (error) {
+    ctx.status = 500;
+    ctx.body = {
+      success: false,
+      message: '查询所有交易记录失败',
+      error: error.message
+    };
+  }
+});
+
 // 查询用户交易记录
 router.post('/api/transactions', async (ctx) => {
   const { 

@@ -192,6 +192,94 @@ export async function getUserAccountId(identityName: string): Promise<string> {
   }
 }
 
+// 获取所有交易记录（根据用户角色权限控制）
+export async function getAllTransactions(identityName: string, options: {
+  minAmount?: string;
+  maxAmount?: string;
+  transactionType?: string;
+  counterparty?: string;
+  pageSize?: string;
+  offset?: string;
+} = {}): Promise<{
+  success: boolean;
+  message?: string;
+  data?: {
+    queryConditions: any;
+    pagination: any;
+    currentPageCount: number;
+    transactions: Transaction[];
+    userRole: any;
+  };
+  error?: string;
+}> {
+  if (useMock) {
+    // 返回mock数据
+    return {
+      success: true,
+      message: '查询所有交易成功',
+      data: {
+        queryConditions: options,
+        pagination: {
+          pageSize: parseInt(options.pageSize || '20'),
+          currentOffset: parseInt(options.offset || '0'),
+          nextOffset: -1,
+          hasMore: false,
+          totalCount: mockTransactions.length
+        },
+        currentPageCount: mockTransactions.length,
+        transactions: mockTransactions,
+        userRole: {
+          callerID: identityName,
+          callerDomain: identityName.includes('CentralBank') ? 'centralbank.example.com' : 'bank.example.com',
+          isAdmin: identityName.includes('Admin'),
+          isCentralBank: identityName.includes('CentralBank')
+        }
+      }
+    };
+  } else {
+    try {
+      const res = await fetch(`${apiBase}/all-transactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identityName,
+          minAmount: options.minAmount || '0',
+          maxAmount: options.maxAmount || '0',
+          transactionType: options.transactionType || '',
+          counterparty: options.counterparty || '',
+          pageSize: options.pageSize || '20',
+          offset: options.offset || '0'
+        })
+      });
+      const data = await res.json();
+      
+      if (data.success && data.data && data.data.transactions) {
+        // 转换交易数据格式
+        data.data.transactions = data.data.transactions.map((tx: any) => ({
+          id: tx.txId || tx.key || tx.id,
+          type: tx.transactionType || tx.type,
+          amount: tx.amount?.toString() || '0',
+          from: tx.from,
+          to: tx.to,
+          timestamp: (typeof tx.timestamp === 'number' && tx.timestamp > 1e12) ? tx.timestamp : (tx.timestamp * 1000),
+          status: 'success',
+          hash: tx.txId || tx.key,
+          spender: tx.spender
+        }));
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('获取所有交易记录失败:', error);
+      return {
+        success: false,
+        message: '获取所有交易记录失败',
+        error: error instanceof Error ? error.message : '未知错误'
+      };
+    }
+  }
+}
+
 // 获取交易记录 - 支持mock和真实API
 export async function getTransactions(userId?: string, identityName?: string): Promise<Transaction[]> {
   if (useMock) {
@@ -214,7 +302,11 @@ export async function getTransactions(userId?: string, identityName?: string): P
       const res = await fetch(`${apiBase}/transactions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: realUserId, identityName })
+        body: JSON.stringify({ 
+          userId: realUserId, 
+          identityName,
+          queryType: 'transactions'  // 指定查询类型
+        })
       });
       const data = await res.json();
       if (data.success && data.data && data.data.transactions) {
