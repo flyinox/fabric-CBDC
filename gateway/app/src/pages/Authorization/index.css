@@ -1,7 +1,8 @@
 .authorization-page {
   padding: 16px;
   background-color: #f5f5f5;
-  min-height: 100vh;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .authorization-page.loading {
@@ -329,6 +330,9 @@
   border-radius: 16px;
   padding: 20px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .allowance-title {
@@ -343,11 +347,23 @@
 .allowance-list {
   --border-top: none;
   --border-bottom: none;
+  background: transparent;
+  overflow-y: auto;
 }
 
 .allowance-item {
   padding: 16px 0;
   border-bottom: 1px solid #f0f0f0;
+  background: white;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.allowance-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
 }
 
 .allowance-item:last-child {
@@ -411,4 +427,33 @@
 .no-allowance p:last-child {
   margin-bottom: 0;
   font-size: 14px;
+}
+
+/* 响应式设计 */
+@media (max-width: 600px) {
+  .authorization-page {
+    padding: 12px;
+  }
+  
+  .allowance-section {
+    max-height: 300px;
+  }
+  
+  .user-card {
+    margin-bottom: 16px;
+  }
+  
+  .stats-card {
+    margin-bottom: 16px;
+  }
+  
+  .help-card {
+    margin-bottom: 16px;
+  }
+}
+
+@media (min-width: 768px) {
+  .allowance-section {
+    max-height: 500px;
+  }
 } 
