@@ -71,50 +71,13 @@ cd bank-network
 # 启动完整的CBDC网络（包含网络启动、频道创建和智能合约部署）
 ./network.sh start
 
-# 启动支持CouchDB的网络（支持丰富查询功能）
-./network.sh start-couchdb
-
-# 或者分步执行
-./network.sh up                    # 启动网络节点
-./network.sh up-couchdb            # 启动支持CouchDB的网络节点
-./network.sh createChannel         # 创建频道
-./network.sh deployCC              # 部署智能合约
-
-
 # 网络清理（如果希望清理所有的区块和配置，请用这个命令）
 ./network.sh clean
 ```
 
-## 📋 网络管理命令
-
-### 基础网络操作
-
-```bash
-# 启动网络
-./network.sh up
-
-# 停止网络
-./network.sh down
-
-# 重启网络
-./network.sh restart
-
-# 查看网络状态
-./network.sh status
-```
-
 ### 频道管理
 
-```bash
-# 创建频道
-./network.sh createChannel
-
-# 加入频道
-./network.sh joinChannel
-
-# 更新频道配置
-./network.sh updateChannel
-```
+不用自己管理 channel，目前 channel 已经默认创建
 
 ### 智能合约管理
 
@@ -122,11 +85,63 @@ cd bank-network
 # 部署智能合约
 ./network.sh deployCC
 
-# 升级智能合约
-./network.sh upgradeCC
-
 # 查询已安装的智能合约
 ./network.sh cc queryinstalled
+```
+
+### 🔄 CBDC 链码升级
+
+#### 升级前准备
+
+```bash
+# 1. 修改合约模板代码（重要：不要直接修改 token_contract.go）
+vim chaincode/chaincode/token_contract.go.template
+
+# 2. 重新生成合约代码
+./scripts/templateGenerator.sh generate_chaincode_from_template CentralBank
+```
+
+#### 升级方法
+
+**方法1：使用 deployCC 命令升级（推荐）**
+```bash
+# 升级到新版本（自动管理序列号，务必加上频道名参数）
+./network.sh deployCC -c cbdc-channel -ccn cbdc -ccv 2.0 -ccs auto -ccp ./chaincode/chaincode -ccl go
+```
+> ⚠️ 注意：如果你的频道名不是 cbdc-channel，请将命令中的频道名参数替换为实际频道名。
+
+**方法2：手动升级流程**
+```bash
+# 1. 打包新版本链码
+./network.sh cc package -ccn cbdc -ccv 2.0 -ccp ./chaincode/chaincode -ccl go
+
+# 2. 安装到所有组织（务必加上频道名参数）
+./network.sh deployCC -c cbdc-channel -ccn cbdc -ccv 2.0 -ccs auto
+
+# 3. 验证升级结果
+./network.sh cc list -org 1
+```
+
+#### 升级注意事项
+
+⚠️ **重要提醒**：
+- **合约代码是动态生成的**，修改时请更改 `token_contract.go.template` 模板文件
+- 直接修改 `token_contract.go` 会被 `start` 命令覆盖
+- 升级前建议备份当前网络状态
+- 确保新版本合约向后兼容
+- 序列号会自动递增，无需手动管理
+
+#### 版本管理
+
+```bash
+# 查看当前链码版本
+./network.sh cc list -org 1
+
+# 查看已安装的链码包
+peer lifecycle chaincode queryinstalled --output json
+
+# 查看已提交的链码定义
+peer lifecycle chaincode querycommitted --channelID cbdc-channel --name cbdc
 ```
 
 ## 💰 CBDC智能合约操作
@@ -412,10 +427,6 @@ docker-compose logs -f
 - **易用性**：提供简化的 Gateway 命令接口
 
 ### 快速开始
-
-```bash
-# 启动支持 CouchDB 的网络
-./network.sh start-couchdb
 
 # 查看富查询命令帮助
 cd gateway && npm run help
