@@ -11,6 +11,24 @@ const app = new Koa();
 const router = new Router();
 
 const WALLET_DIR = path.resolve(__dirname, '../wallet');
+const CONFIG_PATH = path.resolve(__dirname, '../../network-config.json');
+
+// 获取网络配置信息
+router.get('/api/network-config', async (ctx) => {
+  try {
+    if (fs.existsSync(CONFIG_PATH)) {
+      const configContent = fs.readFileSync(CONFIG_PATH, 'utf-8');
+      const config = JSON.parse(configContent);
+      ctx.body = config;
+    } else {
+      ctx.status = 404;
+      ctx.body = { error: '网络配置文件不存在' };
+    }
+  } catch (error) {
+    ctx.status = 500;
+    ctx.body = { error: '读取网络配置失败', details: error.message };
+  }
+});
 
 // 获取所有钱包账户基本信息
 router.get('/api/wallets', async (ctx) => {

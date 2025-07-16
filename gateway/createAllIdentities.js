@@ -169,7 +169,8 @@ if (identityFiles.length > 0) {
   });
   
   // 按组织类型排序：央行在前，商业银行在后
-  const orgOrder = ['CentralBank', 'Bank1', 'Bank2'];
+  // 从配置文件中动态获取组织顺序
+  const orgOrder = config.network.organizations.map(org => org.name);
   
   orgOrder.forEach(orgName => {
     if (orgGroups[orgName]) {

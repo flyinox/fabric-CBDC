@@ -7,22 +7,22 @@ const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:4000/api';
 // mock数据（可根据实际mockData.ts内容调整）
 const mockWallets = [
   {
-    file: 'CentralBank_Admin.id',
-    orgName: 'CentralBank',
+    file: 'CC1_Admin.id',
+    orgName: 'CC1',
     orgType: 'central_bank',
     userName: 'Admin',
-    fullName: 'Admin@centralbank.example.com',
-    mspId: 'CentralBankMSP',
+    fullName: 'Admin@cc1.example.com',
+    mspId: 'CC1MSP',
     type: 'X.509',
     version: 1
   },
   {
-    file: 'CentralBank_User1.id',
-    orgName: 'CentralBank',
+    file: 'CC1_User1.id',
+    orgName: 'CC1',
     orgType: 'central_bank',
     userName: 'User1',
-    fullName: 'User1@centralbank.example.com',
-    mspId: 'CentralBankMSP',
+    fullName: 'User1@cc1.example.com',
+    mspId: 'CC1MSP',
     type: 'X.509',
     version: 1
   },
@@ -127,7 +127,7 @@ function transformWalletToUser(wallet: any): User {
   return {
     id: wallet.file.replace('.id', ''),
     name: wallet.fullName,
-    organization: wallet.orgName === 'CentralBank' ? '中国人民银行' : 
+    organization: wallet.orgName === 'CC1' ? 'c1' : 
                   wallet.orgName === 'Bank1' ? '中国银行' : 
                   wallet.orgName === 'Bank2' ? '工商银行' : wallet.orgName,
     address: `${wallet.mspId}...${wallet.userName}`,
@@ -230,9 +230,9 @@ export async function getAllTransactions(identityName: string, options: {
         transactions: mockTransactions,
         userRole: {
           callerID: identityName,
-          callerDomain: identityName.includes('CentralBank') ? 'centralbank.example.com' : 'bank.example.com',
+          callerDomain: identityName.includes('cc1') ? 'c1.example.com' : 'bank.example.com',
           isAdmin: identityName.includes('Admin'),
-          isCentralBank: identityName.includes('CentralBank')
+          isCentralBank: identityName.includes('cc1')
         }
       }
     };

@@ -6,10 +6,34 @@ import BurnModal from '../../components/BurnModal';
 import ManageRecords from './ManageRecords';
 import './index.css';
 
+// 从配置文件读取央行信息
+const getCentralBankInfo = async () => {
+  try {
+    const response = await fetch('/api/network-config');
+    if (response.ok) {
+      const config = await response.json();
+      return {
+        centralBankId: config._central_bank,
+        centralBankName: config.network.organizations.find((org: any) => org.type === 'central_bank')?.name || 'c1'
+      };
+    }
+  } catch (error) {
+    console.error('获取网络配置失败:', error);
+  }
+  // 默认值
+  return { centralBankId: 'c1', centralBankName: 'c1' };
+};
+
 const ManagePage: React.FC = () => {
   const { currentUser, users, switchingUser, refreshUserBalances } = useUserContext();
   const [mintModalVisible, setMintModalVisible] = useState(false);
   const [burnModalVisible, setBurnModalVisible] = useState(false);
+  const [centralBankInfo, setCentralBankInfo] = useState({ centralBankId: 'c1', centralBankName: 'c1' });
+
+  useEffect(() => {
+    // 加载央行信息
+    getCentralBankInfo().then(setCentralBankInfo);
+  }, []);
 
   useEffect(() => {
     console.log('🔍 ManagePage: useEffect触发，currentUser变化');
@@ -24,12 +48,13 @@ const ManagePage: React.FC = () => {
     );
   }
 
-  // 角色判断
-  const isCentralBank = currentUser.organization === '中国人民银行';
-  const isOrgAdmin = currentUser.name.startsWith('Admin@') && currentUser.organization !== '中国人民银行';
+  // 角色判断 - 使用动态读取的央行信息
+  const isCentralBank = currentUser.organization === centralBankInfo.centralBankName;
+  const isOrgAdmin = currentUser.name.startsWith('Admin@') && currentUser.organization !== centralBankInfo.centralBankName;
   
   console.log('🔍 ManagePage: 角色判断结果');
   console.log('🔍 ManagePage: 用户组织:', currentUser?.organization);
+  console.log('🔍 ManagePage: 央行名称:', centralBankInfo.centralBankName);
   console.log('🔍 ManagePage: 是否央行用户:', isCentralBank);
   console.log('🔍 ManagePage: 是否组织管理员:', isOrgAdmin);
 

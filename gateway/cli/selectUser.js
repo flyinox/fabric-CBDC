@@ -12,6 +12,16 @@ class UserSelector {
     });
     this.walletPath = path.join(__dirname, '../wallet');
     this.currentUserFile = path.join(__dirname, '../.current-user');
+    
+    // 读取网络配置
+    try {
+      const configPath = path.resolve(__dirname, '../../network-config.json');
+      const configRaw = fs.readFileSync(configPath, 'utf8');
+      this.config = JSON.parse(configRaw);
+    } catch (error) {
+      console.error('❌ 无法读取网络配置文件:', error.message);
+      this.config = null;
+    }
   }
 
   close() {
@@ -108,7 +118,7 @@ class UserSelector {
     });
 
     // 按组织类型排序：央行在前，商业银行在后
-    const orgOrder = ['CentralBank', 'Bank1', 'Bank2'];
+    const orgOrder = this.config ? this.config.network.organizations.map(org => org.name) : ['CentralBank', 'b1', 'b2'];
     let globalIndex = 1;
 
     orgOrder.forEach(orgName => {
@@ -228,7 +238,7 @@ class UserSelector {
       orgGroups[identity.orgName].push(identity);
     });
     // 按组织类型排序：央行在前，商业银行在后
-    const orgOrder = ['CentralBank', 'Bank1', 'Bank2'];
+    const orgOrder = this.config ? this.config.network.organizations.map(org => org.name) : ['CentralBank', 'b1', 'b2'];
     let globalIndex = 1;
     const indexedIdentities = [];
     orgOrder.forEach(orgName => {

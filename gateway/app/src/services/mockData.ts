@@ -33,7 +33,7 @@ export const mockUsers: User[] = [
   {
     id: 'cc1',
     name: 'Admin@cc1.example.com',
-    organization: '中国人民银行',
+    organization: 'c1',
     address: '0xD1098765...g32f4h7322',
     balance: '10000.00'
   }
