@@ -30,41 +30,49 @@ function getOrgCryptoConfig() {
     local org_name=$1
     local config_file=""
     
-    case "$org_name" in
-        "CentralBank")
-            config_file="organizations/cryptogen/crypto-config-centralbank.yaml"
-            ;;
-        "PBOC")
-            config_file="organizations/cryptogen/crypto-config-pboc.yaml"
-            ;;
-        "ICBC")
-            config_file="organizations/cryptogen/crypto-config-icbc.yaml"
-            ;;
-        "ABC")
-            config_file="organizations/cryptogen/crypto-config-abc.yaml"
-            ;;
-        "BOC")
-            config_file="organizations/cryptogen/crypto-config-boc.yaml"
-            ;;
-        "a1")
-            config_file="organizations/cryptogen/crypto-config-a1.yaml"
-            ;;
-        "b1")
-            config_file="organizations/cryptogen/crypto-config-b1.yaml"
-            ;;
-        *)
-            # 对于动态组织，尝试从 network-config.json 中查找
-            if [ -f "network-config.json" ]; then
-                local org_domain=$(jq -r ".network.organizations[] | select(.name == \"$org_name\") | .domain" network-config.json 2>/dev/null)
-                if [ "$org_domain" != "null" ] && [ -n "$org_domain" ]; then
-                    local org_name_lower=$(echo "$org_name" | tr '[:upper:]' '[:lower:]')
-                    config_file="organizations/cryptogen/crypto-config-${org_name_lower}.yaml"
-                fi
-            fi
-            ;;
-    esac
+    # 从 network-config.json 中查找组织
+    if [ -f "network-config.json" ]; then
+        local org_domain=$(jq -r ".network.organizations[] | select(.name == \"$org_name\") | .domain" network-config.json 2>/dev/null)
+        if [ "$org_domain" != "null" ] && [ -n "$org_domain" ]; then
+            local org_name_lower=$(echo "$org_name" | tr '[:upper:]' '[:lower:]')
+            config_file="organizations/cryptogen/crypto-config-${org_name_lower}.yaml"
+        fi
+    fi
     
     echo "$config_file"
+}
+
+# 获取所有可用的组织列表
+function getAvailableOrganizations() {
+    local orgs=()
+    
+    # 从 network-config.json 获取组织列表
+    if [ -f "network-config.json" ]; then
+        local temp_org_file=$(mktemp)
+        jq -r '.network.organizations[].name' network-config.json > "$temp_org_file" 2>/dev/null
+        while IFS= read -r org_line; do
+            if [ -n "$org_line" ]; then
+                orgs+=("$org_line")
+            fi
+        done < "$temp_org_file"
+        rm -f "$temp_org_file"
+    fi
+    
+    echo "${orgs[@]}"
+}
+
+# 验证组织是否存在
+function validateOrganization() {
+    local org_name=$1
+    local orgs=($(getAvailableOrganizations))
+    
+    for org in "${orgs[@]}"; do
+        if [ "$org" = "$org_name" ]; then
+            return 0
+        fi
+    done
+    
+    return 1
 }
 
 # 获取组织的域名
@@ -72,38 +80,13 @@ function getOrgDomain() {
     local org_name=$1
     local org_domain=""
     
-    case "$org_name" in
-        "CentralBank")
-            org_domain="centralbank.example.com"
-            ;;
-        "PBOC")
-            org_domain="pboc.example.com"
-            ;;
-        "ICBC")
-            org_domain="icbc.example.com"
-            ;;
-        "ABC")
-            org_domain="abc.example.com"
-            ;;
-        "BOC")
-            org_domain="boc.example.com"
-            ;;
-        "a1")
-            org_domain="a1.example.com"
-            ;;
-        "b1")
-            org_domain="b1.example.com"
-            ;;
-        *)
-            # 对于动态组织，尝试从 network-config.json 中查找
-            if [ -f "network-config.json" ]; then
-                org_domain=$(jq -r ".network.organizations[] | select(.name == \"$org_name\") | .domain" network-config.json 2>/dev/null)
-                if [ "$org_domain" == "null" ]; then
-                    org_domain=""
-                fi
-            fi
-            ;;
-    esac
+    # 从 network-config.json 中查找组织
+    if [ -f "network-config.json" ]; then
+        org_domain=$(jq -r ".network.organizations[] | select(.name == \"$org_name\") | .domain" network-config.json 2>/dev/null)
+        if [ "$org_domain" == "null" ]; then
+            org_domain=""
+        fi
+    fi
     
     echo "$org_domain"
 }
@@ -187,6 +170,17 @@ function addUserToOrg() {
     
     if [ -z "$org_name" ]; then
         errorln "组织名称不能为空"
+        return 1
+    fi
+    
+    # 验证组织是否存在
+    if ! validateOrganization "$org_name"; then
+        errorln "组织 '$org_name' 不存在或未在 network-config.json 中配置"
+        infoln "可用组织："
+        local orgs=($(getAvailableOrganizations))
+        for org in "${orgs[@]}"; do
+            printf "  - %s\n" "$org"
+        done
         return 1
     fi
     
@@ -286,6 +280,17 @@ function removeUserFromOrg() {
     
     if [ -z "$org_name" ]; then
         errorln "组织名称不能为空"
+        return 1
+    fi
+    
+    # 验证组织是否存在
+    if ! validateOrganization "$org_name"; then
+        errorln "组织 '$org_name' 不存在或未在 network-config.json 中配置"
+        infoln "可用组织："
+        local orgs=($(getAvailableOrganizations))
+        for org in "${orgs[@]}"; do
+            printf "  - %s\n" "$org"
+        done
         return 1
     fi
     
@@ -518,25 +523,12 @@ function listUserCommand() {
         infoln "📋 列出所有组织的用户："
         println
         
-        # 从 network-config.json 获取组织列表
-        if [ -f "network-config.json" ]; then
-            local temp_org_file=$(mktemp)
-            jq -r '.network.organizations[].name' network-config.json > "$temp_org_file" 2>/dev/null
-            while IFS= read -r org_line; do
-                if [ -n "$org_line" ]; then
-                    listOrgUsers "$org_line"
-                    println
-                fi
-            done < "$temp_org_file"
-            rm -f "$temp_org_file"
-        else
-            # 使用默认组织列表
-            local default_orgs=("CentralBank" "a1" "b1")
-            for org in "${default_orgs[@]}"; do
-                listOrgUsers "$org"
-                println
-            done
-        fi
+        # 获取所有可用组织
+        local orgs=($(getAvailableOrganizations))
+        for org in "${orgs[@]}"; do
+            listOrgUsers "$org"
+            println
+        done
     else
         listOrgUsers "$org_name"
     fi
@@ -763,21 +755,7 @@ function selectUser() {
 # 选择组织函数
 function selectOrganization() {
     local org_name_var=$1
-    local orgs=()
-    
-    # 从 network-config.json 获取组织列表
-    if [ -f "network-config.json" ]; then
-        local temp_org_file=$(mktemp)
-        jq -r '.network.organizations[].name' network-config.json > "$temp_org_file" 2>/dev/null
-        while IFS= read -r org_line; do
-            if [ -n "$org_line" ]; then
-                orgs+=("$org_line")
-            fi
-        done < "$temp_org_file"
-        rm -f "$temp_org_file"
-    else
-        orgs=("CentralBank" "a1" "b1")
-    fi
+    local orgs=($(getAvailableOrganizations))
     
     if [ ${#orgs[@]} -eq 1 ]; then
         eval "$org_name_var='${orgs[0]}'"
@@ -821,14 +799,20 @@ function printUserManagementHelp() {
     println "  -v             - 详细输出模式"
     println "  -h             - 显示帮助信息"
     println
+    println "动态组织支持:"
+    println "  - 组织列表从 network-config.json 动态读取"
+    println "  - 支持任意数量的组织配置"
+    println "  - 自动验证组织是否存在"
+    println "  - 完全基于配置文件，无硬编码依赖"
+    println
     println "示例:"
-    println "  $0 adduser add -o CentralBank -c 2"
-    println "  $0 adduser remove -o a1 -c 1"
-    println "  $0 adduser list -o b1"
+    println "  $0 adduser add -o c1 -c 2"
+    println "  $0 adduser remove -o b1 -c 1"
+    println "  $0 adduser list -o b2"
     println "  $0 adduser list  # 列出所有组织的用户"
-    println "  $0 adduser getid -o CentralBank -u Admin@centralbank.example.com"
-    println "  $0 adduser getid -o a1 -u User1@a1.example.com"
-    println "  $0 adduser add -v -o CentralBank -c 2  # 详细模式"
+    println "  $0 adduser getid -o c1 -u Admin@c1.example.com"
+    println "  $0 adduser getid -o b1 -u User1@b1.example.com"
+    println "  $0 adduser add -v -o c1 -c 2  # 详细模式"
     println
     println "用户 ID 相关:"
     println "  - getid 子命令生成的 base64 编码 ID 可用于转账命令"
@@ -841,4 +825,5 @@ function printUserManagementHelp() {
     println "  - 操作前会自动备份配置文件"
     println "  - 新用户可立即使用，无需重启网络"
     println "  - 旧格式 (-org, -count) 仍然兼容新格式 (-o, -c)"
+    println "  - 组织配置完全从 network-config.json 读取"
 } 

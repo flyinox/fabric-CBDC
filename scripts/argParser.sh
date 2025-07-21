@@ -164,14 +164,24 @@ function validate_numeric_arg() {
     return 0
 }
 
-# 验证组织参数 (简化版本，兼容性更好)
+# 验证组织参数 (动态版本，从 network-config.json 读取)
 function validate_org_arg() {
     local org=$(get_arg "org")
     if [[ -n "$org" ]]; then
-        # 使用简单的组织列表验证
-        local valid_orgs="CentralBank a1 b1 PBOC ICBC ABC BOC"
-        local is_valid=false
+        # 从 network-config.json 获取组织列表
+        local valid_orgs=""
+        if [ -f "network-config.json" ]; then
+            local temp_org_file=$(mktemp)
+            jq -r '.network.organizations[].name' network-config.json > "$temp_org_file" 2>/dev/null
+            while IFS= read -r org_line; do
+                if [ -n "$org_line" ]; then
+                    valid_orgs="$valid_orgs $org_line"
+                fi
+            done < "$temp_org_file"
+            rm -f "$temp_org_file"
+        fi
         
+        local is_valid=false
         for valid_org in $valid_orgs; do
             if [ "$org" = "$valid_org" ]; then
                 is_valid=true
@@ -181,7 +191,11 @@ function validate_org_arg() {
         
         if [ "$is_valid" = false ]; then
             errorln "无效的组织名称: $org"
-            errorln "有效的组织: $valid_orgs"
+            if [ -n "$valid_orgs" ]; then
+                errorln "有效的组织: $valid_orgs"
+            else
+                errorln "未找到任何配置的组织，请检查 network-config.json 文件"
+            fi
             return 1
         fi
     fi
@@ -271,26 +285,33 @@ function selectOrganization() {
             fi
         done < "$temp_org_file"
         rm -f "$temp_org_file"
-    else
-        orgs=("CentralBank" "a1" "b1")
     fi
     
-    println "📋 可用组织："
-    for i in "${!orgs[@]}"; do
-        printf "  %d) %s\n" $((i+1)) "${orgs[$i]}"
-    done
+    if [ ${#orgs[@]} -eq 0 ]; then
+        errorln "未找到任何配置的组织，请检查 network-config.json 文件"
+        return 1
+    fi
     
-    while true; do
-        printf "请选择组织 [1-${#orgs[@]}]: "
-        read -r selection
+    if [ ${#orgs[@]} -eq 1 ]; then
+        eval "$org_name_var='${orgs[0]}'"
+    else
+        println "📋 可用组织："
+        for i in "${!orgs[@]}"; do
+            printf "  %d) %s\n" $((i+1)) "${orgs[$i]}"
+        done
         
-        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#orgs[@]} ]; then
-            eval "$org_name_var='${orgs[$((selection-1))]}'"
-            break
-        else
-            errorln "无效选择，请输入 1-${#orgs[@]} 之间的数字"
-        fi
-    done
+        while true; do
+            printf "请选择组织 [1-${#orgs[@]}]: "
+            read -r selection
+            
+            if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#orgs[@]} ]; then
+                eval "$org_name_var='${orgs[$((selection-1))]}'"
+                break
+            else
+                errorln "无效选择，请输入 1-${#orgs[@]} 之间的数字"
+            fi
+        done
+    fi
 }
 
 # 使用示例函数
