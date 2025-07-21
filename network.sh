@@ -1146,6 +1146,9 @@ elif [ "$MODE" == "adduser" ]; then
   # Rebuild the argument list for adduser command
   set -- "$ADDUSER_SUBCOMMAND" "$@"
   userManagement "$@"
+elif [ "$MODE" == "logs" ]; then
+  infoln "查看orderer日志，特别是Raft consensus相关内容"
+  ./scripts/orderer_logs.sh "$@"
 else
   printHelp
   exit 1
