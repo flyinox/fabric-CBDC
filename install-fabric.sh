@@ -55,7 +55,7 @@ begins_with_short_option()
 print_help()
 {
 	printf 'Usage: %s [-f|--fabric-version <arg>] [-c|--ca-version <arg>] <comp-1> [<comp-2>] ... [<comp-n>] ...\n' "$0"
-	printf '\t%s\n' "<comp> Component to install, one or more of  docker | binary | samples | podman  First letter of component also accepted; If none specified docker | binary | samples is assumed"
+	printf '\t%s\n' "<comp> Component to install, one or more of  docker | binary | podman  First letter of component also accepted; If none specified docker | binary is assumed"
 	printf '\t%s\n' "-f, --fabric-version: FabricVersion (default: '2.5.12')"
 	printf '\t%s\n' "-c, --ca-version: Fabric CA Version (default: '1.5.15')"
 }
@@ -217,30 +217,7 @@ dockerFabricRegistry() {
     esac
 }
 
-cloneSamplesRepo() {
-    # clone (if needed) hyperledger/fabric-samples and checkout corresponding
-    # version to the binaries and docker images to be downloaded
-    if [ -d test-network ]; then
-        # if we are in the fabric-samples repo, checkout corresponding version
-        echo "==> Already in fabric-samples repo"
-    elif [ -d fabric-samples ]; then
-        # if fabric-samples repo already cloned and in current directory,
-        # cd fabric-samples
-        echo "===> Changing directory to fabric-samples"
-        cd fabric-samples
-    else
-        echo "===> Cloning hyperledger/fabric-samples repo"
-        git clone -b main https://github.com/hyperledger/fabric-samples.git && cd fabric-samples
-    fi
 
-    if GIT_DIR=.git git rev-parse v${VERSION} >/dev/null 2>&1; then
-        echo "===> Checking out v${VERSION} of hyperledger/fabric-samples"
-        git checkout -q v${VERSION}
-    else
-        echo "fabric-samples v${VERSION} does not exist, defaulting to main. fabric-samples main branch is intended to work with recent versions of fabric."
-        git checkout -q main
-    fi
-}
 
 # This will download the .tar.gz
 download() {
@@ -248,9 +225,7 @@ download() {
     local URL=$2
     local DEST_DIR=$(pwd)
     echo "===> Downloading: " "${URL}"
-    if [ -d fabric-samples ]; then
-       DEST_DIR="fabric-samples"
-    fi
+    # 确保下载到当前目录，而不是fabric-samples目录
     echo "===> Will unpack to: ${DEST_DIR}"
     curl -L --retry 5 --retry-delay 3 "${URL}" | tar xz -C ${DEST_DIR}|| rc=$?
     if [ -n "$rc" ]; then
@@ -338,20 +313,13 @@ CA_BINARY_FILE=hyperledger-fabric-ca-${PLATFORM}-${CA_VERSION}.tar.gz
 
 # if nothing has been specified, assume everything
 if [[ ${_arg_comp[@]} =~ ^$ ]]; then
-    echo "No options selected: Getting all samples, binaries, and docker images"
+    echo "No options selected: Getting binaries and docker images"
     echo "Abort now if not the intention"
     sleep 3 # just to give a chance to abort if this wasn't intended
-    _arg_comp=('samples','binary','docker')
+    _arg_comp=('binary','docker')
 fi
 
-# Process samples first then the binaries. So if the fabric-samples dir is present
-# the binaries will go there
-if [[ "${_arg_comp[@]}" =~ (^| |,)s(amples)? ]]; then
-        echo
-        echo "Clone hyperledger/fabric-samples repo"
-        echo
-        cloneSamplesRepo
-fi
+
 
 if [[ "${_arg_comp[@]}" =~ (^| |,)b(inary)? ]]; then
         echo
