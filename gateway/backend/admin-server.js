@@ -184,8 +184,40 @@ router.post('/api/admin/network/clean', async (ctx) => {
   console.log('[清除网络] 开始执行');
   try {
     const networkRoot = path.resolve(__dirname, '../../');
-    const result = await executeCommand('./network.sh', ['clean'], networkRoot);
-    console.log(`[清除网络] 执行结果: ${result.success ? '成功' : '失败'}`);
+    
+    // 使用 echo 'y' | 来自动提供确认输入
+    const result = await new Promise((resolve) => {
+      const child = spawn('bash', ['-c', 'echo "y" | ./network.sh clean'], { 
+        cwd: networkRoot,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env, FORCE_COLOR: '0' }
+      });
+      
+      let stdout = '';
+      let stderr = '';
+      
+      child.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+      
+      child.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+      
+      child.on('close', (code) => {
+        console.log(`[清除网络] 执行结果: ${code === 0 ? '成功' : '失败'}`);
+        if (code === 0) {
+          resolve({ success: true, output: stdout });
+        } else {
+          resolve({ success: false, error: stderr || '命令执行失败' });
+        }
+      });
+      
+      child.on('error', (error) => {
+        console.log(`[清除网络] 异常: ${error.message}`);
+        resolve({ success: false, error: error.message });
+      });
+    });
     
     if (result.success) {
       ctx.body = { success: true, message: '网络配置清除成功' };
