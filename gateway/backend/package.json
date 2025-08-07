@@ -1,0 +1,26 @@
+{
+  "name": "cbdc-backend",
+  "version": "1.0.0",
+  "description": "CBDC Management Backend",
+  "main": "admin-server.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "node admin-server.js",
+    "dev:client": "cd app && npm run dev",
+    "build": "cd app && npm run build",
+    "install:all": "npm install && cd app && npm install"
+  },
+  "dependencies": {
+    "koa": "^2.15.0",
+    "@koa/router": "^12.0.1",
+    "@koa/cors": "^5.0.0",
+    "koa-bodyparser": "^4.4.1",
+    "child_process": "^1.0.2"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": ["cbdc", "management", "backend"],
+  "author": "CBDC Team",
+  "license": "MIT"
+} 

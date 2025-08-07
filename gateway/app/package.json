@@ -7,6 +7,8 @@
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:client\"",
     "dev:api": "node server.cjs",
     "dev:client": "vite",
+    "dev:admin": "concurrently \"npm run dev:admin-api\" \"npm run dev:client\"",
+    "dev:admin-api": "node ../admin-server.js",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -24,11 +26,13 @@
     "vite": "^7.0.3"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.0.0",
     "@koa/cors": "^5.0.0",
     "@koa/router": "^13.1.1",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
     "@types/react-router-dom": "^5.3.3",
+    "antd": "^5.26.7",
     "antd-mobile": "^5.39.0",
     "antd-mobile-icons": "^0.3.0",
     "koa": "^3.0.0",

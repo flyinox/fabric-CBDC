@@ -35,7 +35,11 @@
   "dependencies": {
     "fabric-ca-client": "^2.2.19",
     "fabric-network": "^2.2.19",
-    "fabric-protos": "^2.2.19"
+    "fabric-protos": "^2.2.19",
+    "koa": "^2.15.0",
+    "@koa/router": "^12.0.1",
+    "@koa/cors": "^5.0.0",
+    "koa-bodyparser": "^4.4.1"
   },
   "devDependencies": {
     "@types/jest": "^29.5.8",
