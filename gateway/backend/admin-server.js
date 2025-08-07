@@ -541,6 +541,102 @@ router.post('/api/admin/network/stop', async (ctx) => {
   }
 });
 
+// 清除网络配置
+router.post('/api/admin/network/clean', async (ctx) => {
+  console.log('[清除网络] 开始执行');
+  try {
+    const networkRoot = path.resolve(__dirname, '../../');
+    const result = await executeCommand('./network.sh', ['clean'], networkRoot);
+    console.log(`[清除网络] 执行结果: ${result.success ? '成功' : '失败'}`);
+    
+    if (result.success) {
+      ctx.body = { success: true, message: '网络配置清除成功' };
+    } else {
+      ctx.status = 500;
+      ctx.body = { error: '网络配置清除失败', details: result.error };
+    }
+  } catch (error) {
+    console.log(`[清除网络] 异常: ${error.message}`);
+    ctx.status = 500;
+    ctx.body = { error: '网络配置清除失败', details: error.message };
+  }
+});
+
+// 设置网络配置
+router.post('/api/admin/network/setup', async (ctx) => {
+  console.log('[设置网络] 开始执行');
+  try {
+    const { centralBank, banks } = ctx.request.body;
+    console.log(`[设置网络] 配置: 央行=${centralBank}, 银行=${banks.map(b => b.name).join(', ')}`);
+    
+    const networkRoot = path.resolve(__dirname, '../../');
+    const bankArgs = banks.map(bank => bank.name);
+    const args = ['setup', '-central', centralBank, '-banks', ...bankArgs];
+    
+    const result = await executeCommand('./network.sh', args, networkRoot);
+    console.log(`[设置网络] 执行结果: ${result.success ? '成功' : '失败'}`);
+    
+    if (result.success) {
+      ctx.body = { success: true, message: '网络配置成功' };
+    } else {
+      ctx.status = 500;
+      ctx.body = { error: '网络配置失败', details: result.error };
+    }
+  } catch (error) {
+    console.log(`[设置网络] 异常: ${error.message}`);
+    ctx.status = 500;
+    ctx.body = { error: '网络配置失败', details: error.message };
+  }
+});
+
+// 获取可用银行列表
+router.get('/api/admin/banks', async (ctx) => {
+  try {
+    const networkRoot = path.resolve(__dirname, '../../');
+    const result = await executeCommand('ls', ['-1'], path.join(networkRoot, 'organizations/peerOrganizations'));
+    
+    const banks = [];
+    if (result.success) {
+      const lines = result.output.trim().split('\n');
+      for (const line of lines) {
+        if (line && !line.includes('example.com')) {
+          const bankName = line.replace('.example.com', '');
+          banks.push(bankName);
+        }
+      }
+    }
+    
+    ctx.body = { banks };
+  } catch (error) {
+    ctx.status = 500;
+    ctx.body = { error: '获取银行列表失败', details: error.message };
+  }
+});
+
+// 添加用户
+router.post('/api/admin/users/add', async (ctx) => {
+  console.log('[添加用户] 开始执行');
+  try {
+    const { bank, count } = ctx.request.body;
+    console.log(`[添加用户] 银行=${bank}, 数量=${count}`);
+    
+    const networkRoot = path.resolve(__dirname, '../../');
+    const result = await executeCommand('./network.sh', ['adduser', '-bank', bank, '-count', count.toString()], networkRoot);
+    console.log(`[添加用户] 执行结果: ${result.success ? '成功' : '失败'}`);
+    
+    if (result.success) {
+      ctx.body = { success: true, message: `成功为${bank}添加${count}个用户` };
+    } else {
+      ctx.status = 500;
+      ctx.body = { error: '添加用户失败', details: result.error };
+    }
+  } catch (error) {
+    console.log(`[添加用户] 异常: ${error.message}`);
+    ctx.status = 500;
+    ctx.body = { error: '添加用户失败', details: error.message };
+  }
+});
+
 // 获取节点日志
 router.get('/api/admin/logs/:nodeName', async (ctx) => {
   try {

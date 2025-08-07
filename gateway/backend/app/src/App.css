@@ -57,6 +57,11 @@
   z-index: 1000;
 }
 
+.logo {
+  padding: 16px;
+  border-bottom: 1px solid #303030;
+}
+
 .admin-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px 32px;
@@ -160,54 +165,90 @@
 }
 
 .logs-container {
-  max-height: 600px;
+  max-height: 500px;
   border-radius: 8px;
   border: 1px solid #f0f0f0;
+  overflow: hidden;
 }
 
 .logs-content {
-  font-size: 14px;
-  line-height: 1.6;
-  padding: 16px;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 12px;
+  max-height: 480px;
+  overflow-y: auto;
+  word-wrap: break-word;
+  word-break: break-all;
 }
 
 .log-entry {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 12px 0;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.log-entry:last-child {
+  border-bottom: none;
 }
 
 .log-time {
-  font-size: 13px;
-  min-width: 180px;
+  font-size: 11px;
+  min-width: 140px;
   font-weight: 500;
+  color: #666;
+  flex-shrink: 0;
 }
 
 .log-message {
-  font-size: 14px;
+  font-size: 12px;
   flex: 1;
+  overflow-wrap: break-word;
+  word-break: break-all;
+  white-space: pre-wrap;
 }
 
 .log-error, .log-warn, .log-info, .log-debug {
-  border-left: 4px solid;
-  padding-left: 12px;
+  border-left: 3px solid;
+  padding-left: 8px;
+  margin-left: 4px;
 }
 
 .log-error {
   border-left-color: #ff4d4f;
+  background-color: #fff2f0;
 }
 
 .log-warn {
   border-left-color: #faad14;
+  background-color: #fffbe6;
 }
 
 .log-info {
   border-left-color: #1890ff;
+  background-color: #f0f9ff;
 }
 
 .log-debug {
   border-left-color: #52c41a;
+  background-color: #f6ffed;
+}
+
+/* 日志弹窗优化 */
+.ant-modal-body {
+  padding: 16px !important;
+}
+
+.logs-container {
+  background: #fafafa;
+  border: 1px solid #d9d9d9;
+}
+
+.logs-content {
+  background: white;
+  border-radius: 4px;
+  margin: 8px 0;
 }
 
 .stats-card .ant-statistic-title {
