@@ -818,6 +818,22 @@ function startCBDCNetwork() {
   
   successln "🎉 CBDC 网络启动完成！"
   println
+  
+  # Step 4: Create gateway identities if gateway directory exists
+  if [ -d "gateway" ]; then
+    infoln "🔑 步骤 4/4: 创建 Gateway 身份文件..."
+    cd gateway
+    if npm run create:identities; then
+      successln "✅ Gateway 身份文件创建成功"
+    else
+      warnln "⚠️  Gateway 身份文件创建失败，请手动运行 'cd gateway && npm run create:identities'"
+    fi
+    cd ..
+  else
+    warnln "⚠️  Gateway 目录不存在，跳过身份文件创建"
+  fi
+  println
+  
   infoln "网络信息:"
   println "  频道名称: $channel_name"
   println "  智能合约: $cbdc_cc_name"

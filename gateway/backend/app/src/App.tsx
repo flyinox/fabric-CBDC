@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Menu, Card, Row, Col, Statistic, Button, Space, Tag, Modal, Spin, Empty, message, Typography, Form, Input, Select, InputNumber, Divider } from 'antd';
 import { 
-  PlayCircleOutlined, 
-  StopOutlined, 
   ReloadOutlined, 
   DesktopOutlined, 
   SettingOutlined,
@@ -97,53 +95,7 @@ const App: React.FC = () => {
     }
   };
 
-  const startNetwork = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/admin/network/start', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
-        },
-      });
-      const data = await response.json();
-      if (response.ok) {
-        message.success('网络启动成功');
-        fetchNetworkStatus();
-      } else {
-        message.error(data.error || '网络启动失败');
-      }
-    } catch (error) {
-      message.error('网络启动失败');
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const stopNetwork = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/admin/network/stop', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
-        },
-      });
-      const data = await response.json();
-      if (response.ok) {
-        message.success('网络停止成功');
-        fetchNetworkStatus();
-      } else {
-        message.error(data.error || '网络停止失败');
-      }
-    } catch (error) {
-      message.error('网络停止失败');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const viewNodeLogs = async (nodeName: string) => {
     setSelectedNode(nodeName);
@@ -346,7 +298,7 @@ const App: React.FC = () => {
             <Statistic
               title="运行中节点"
               value={runningNodes}
-              prefix={<PlayCircleOutlined />}
+              prefix={<DesktopOutlined />}
               valueStyle={{ color: '#3f8600' }}
             />
           </Card>
@@ -366,12 +318,12 @@ const App: React.FC = () => {
         </Col>
       </Row>
 
-      {/* 网络控制 */}
+      {/* 网络监控 */}
       <Card 
         title={
           <Space>
-            <SettingOutlined />
-            网络控制
+            <MonitorOutlined />
+            网络监控
           </Space>
         }
         className="control-card"
@@ -379,22 +331,11 @@ const App: React.FC = () => {
         <div className="control-buttons">
           <Button 
             type="primary" 
-            icon={<PlayCircleOutlined />}
-            onClick={startNetwork}
+            icon={<ReloadOutlined />}
+            onClick={fetchNetworkStatus}
             loading={loading}
-            disabled={networkStatus?.status === 'running'}
           >
-            启动网络
-          </Button>
-          
-          <Button 
-            danger
-            icon={<StopOutlined />}
-            onClick={stopNetwork}
-            loading={loading}
-            disabled={networkStatus?.status === 'stopped'}
-          >
-            停止网络
+            刷新状态
           </Button>
         </div>
         
@@ -704,9 +645,9 @@ const App: React.FC = () => {
           ) : (
             <Empty description="暂无日志" />
           )}
-        </div>
+      </div>
       </Modal>
-    </div>
+      </div>
   );
 };
 

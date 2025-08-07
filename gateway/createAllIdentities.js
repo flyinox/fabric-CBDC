@@ -12,9 +12,22 @@ console.log('🏛️ 开始为所有组织的所有用户创建身份文件...\n
 const orgs = config.network.organizations;
 const walletPath = path.join(__dirname, 'wallet');
 
-// 确保钱包目录存在
-if (!fs.existsSync(walletPath)) {
+// 删除现有钱包内容并重新创建
+if (fs.existsSync(walletPath)) {
+  console.log('🗑️  删除现有钱包内容...');
+  const walletContents = fs.readdirSync(walletPath);
+  for (const item of walletContents) {
+    const itemPath = path.join(walletPath, item);
+    if (fs.statSync(itemPath).isDirectory()) {
+      fs.rmSync(itemPath, { recursive: true, force: true });
+    } else {
+      fs.unlinkSync(itemPath);
+    }
+  }
+  console.log('✅ 钱包内容已清理');
+} else {
   fs.mkdirSync(walletPath, { recursive: true });
+  console.log('📁 创建钱包目录');
 }
 
 let totalCreated = 0;
