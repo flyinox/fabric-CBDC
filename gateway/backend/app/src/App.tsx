@@ -10,7 +10,9 @@ import {
   ApiOutlined,
   TeamOutlined,
   PlusOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  LockOutlined,
+  LoginOutlined
 } from '@ant-design/icons';
 import './App.css';
 
@@ -46,7 +48,20 @@ interface NetworkConfig {
   banks: BankConfig[];
 }
 
+interface LoginForm {
+  username: string;
+  password: string;
+}
+
 const App: React.FC = () => {
+  // 登录状态
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginForm, setLoginForm] = useState<LoginForm>({
+    username: 'admin',
+    password: 'admin123'
+  });
+
   // 侧边栏状态
   const [selectedMenu, setSelectedMenu] = useState('monitor');
   
@@ -86,14 +101,66 @@ const App: React.FC = () => {
   const [tokenInfo, setTokenInfo] = useState<any>(null);
   const [centralBankUsers, setCentralBankUsers] = useState<string[]>([]);
 
+  // 登录处理
+  const handleLogin = async () => {
+    if (!loginForm.username || !loginForm.password) {
+      message.error('请输入用户名和密码');
+      return;
+    }
 
+    setLoginLoading(true);
+    try {
+      // 测试认证
+      const response = await fetch('/api/admin/network/status', {
+        headers: {
+          'Authorization': `Basic ${btoa(`${loginForm.username}:${loginForm.password}`)}`
+        }
+      });
+
+      if (response.ok) {
+        setIsLoggedIn(true);
+        message.success('登录成功');
+        // 登录成功后加载数据
+        fetchNetworkStatus();
+        fetchAvailableBanks();
+        fetchTokenInfo();
+        fetchCentralBankUsers();
+      } else {
+        message.error('用户名或密码错误');
+      }
+    } catch (error) {
+      message.error('登录失败，请检查网络连接');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  // 登出处理
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setSelectedMenu('monitor');
+    message.success('已退出登录');
+  };
+
+  // 检查登录状态
+  const checkLoginStatus = async () => {
+    // 不自动检查登录状态，用户需要手动登录
+    setIsLoggedIn(false);
+  };
+
+  // 获取认证头
+  const getAuthHeader = () => {
+    return `Basic ${btoa(`${loginForm.username}:${loginForm.password}`)}`;
+  };
 
   // 获取可用银行列表
   const fetchAvailableBanks = async () => {
+    if (!isLoggedIn) return;
+    
     try {
       const response = await fetch('/api/admin/banks', {
         headers: {
-          'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
+          'Authorization': getAuthHeader()
         }
       });
       if (response.ok) {
@@ -107,11 +174,13 @@ const App: React.FC = () => {
 
   // 运行监控功能
   const fetchNetworkStatus = async () => {
+    if (!isLoggedIn) return;
+    
     setLoading(true);
     try {
       const response = await fetch('/api/admin/network/status', {
         headers: {
-          'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
+          'Authorization': getAuthHeader()
         }
       });
       if (response.ok) {
@@ -127,16 +196,16 @@ const App: React.FC = () => {
     }
   };
 
-
-
   const viewNodeLogs = async (nodeName: string) => {
+    if (!isLoggedIn) return;
+    
     setSelectedNode(nodeName);
     setShowLogs(true);
     setLogsLoading(true);
     try {
       const response = await fetch(`/api/admin/logs/${nodeName}`, {
         headers: {
-          'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
+          'Authorization': getAuthHeader()
         }
       });
       if (response.ok) {
@@ -154,6 +223,8 @@ const App: React.FC = () => {
 
   // 网络管理功能
   const startNetworkWithClean = async () => {
+    if (!isLoggedIn) return;
+    
     if (!confirm('如果执行，将会清除现有网络，是否确认？')) {
       return;
     }
@@ -167,7 +238,7 @@ const App: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
+          'Authorization': getAuthHeader()
         },
       });
       
@@ -193,7 +264,7 @@ const App: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
+          'Authorization': getAuthHeader()
         },
       });
       
@@ -218,6 +289,8 @@ const App: React.FC = () => {
   };
 
   const setupNetwork = async () => {
+    if (!isLoggedIn) return;
+    
     if (!confirm('确定要重新配置网络吗？这将根据当前配置重新设置网络。')) {
       return;
     }
@@ -228,7 +301,7 @@ const App: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
+          'Authorization': getAuthHeader()
         },
         body: JSON.stringify({
           centralBankName: networkConfig.centralBankName,
@@ -281,6 +354,8 @@ const App: React.FC = () => {
 
   // 用户管理功能
   const addUsers = async () => {
+    if (!isLoggedIn) return;
+    
     if (!selectedBank) {
       message.error('请选择银行');
       return;
@@ -292,7 +367,7 @@ const App: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
+          'Authorization': getAuthHeader()
         },
         body: JSON.stringify({
           bank: selectedBank,
@@ -330,6 +405,8 @@ const App: React.FC = () => {
 
   // 代币初始化功能
   const initializeToken = async () => {
+    if (!isLoggedIn) return;
+    
     setTokenInitLoading(true);
     try {
       console.log('[前端] 开始代币初始化，参数:', tokenInitConfig);
@@ -337,7 +414,7 @@ const App: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
+          'Authorization': getAuthHeader()
         },
         body: JSON.stringify(tokenInitConfig)
       });
@@ -365,10 +442,12 @@ const App: React.FC = () => {
 
   // 获取代币信息
   const fetchTokenInfo = async () => {
+    if (!isLoggedIn) return;
+    
     try {
       const response = await fetch('/api/admin/token/info', {
         headers: {
-          'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
+          'Authorization': getAuthHeader()
         }
       });
       if (response.ok) {
@@ -394,10 +473,12 @@ const App: React.FC = () => {
 
   // 获取央行管理员用户
   const fetchCentralBankUsers = async () => {
+    if (!isLoggedIn) return;
+    
     try {
       const response = await fetch('/api/admin/token/central-bank-users', {
         headers: {
-          'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
+          'Authorization': getAuthHeader()
         }
       });
       if (response.ok) {
@@ -418,10 +499,12 @@ const App: React.FC = () => {
 
   // 测试代币初始化环境
   const testTokenEnvironment = async () => {
+    if (!isLoggedIn) return;
+    
     try {
       const response = await fetch('/api/admin/token/test', {
         headers: {
-          'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
+          'Authorization': getAuthHeader()
         }
       });
       if (response.ok) {
@@ -437,14 +520,72 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchNetworkStatus();
-    fetchAvailableBanks();
-    fetchTokenInfo();
-    fetchCentralBankUsers();
+    checkLoginStatus();
   }, []);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchNetworkStatus();
+      fetchAvailableBanks();
+      fetchTokenInfo();
+      fetchCentralBankUsers();
+    }
+  }, [isLoggedIn]);
 
   const totalNodes = networkStatus?.nodes?.length || 0;
   const runningNodes = networkStatus?.nodes?.filter(node => node.status === 'running').length || 0;
+
+  // 渲染登录界面
+  const renderLoginPage = () => (
+    <div className="login-container">
+      <div className="login-card">
+        <div className="login-header">
+          <Title level={2} style={{ textAlign: 'center', marginBottom: 0 }}>
+            CBDC 管理后台
+          </Title>
+        </div>
+        
+        <Form layout="vertical" className="login-form">
+          <Form.Item label="用户名">
+            <Input
+              prefix={<UserOutlined />}
+              placeholder="请输入用户名"
+              value={loginForm.username}
+              onChange={(e) => setLoginForm({
+                ...loginForm,
+                username: e.target.value
+              })}
+              onPressEnter={handleLogin}
+            />
+          </Form.Item>
+          
+          <Form.Item label="密码">
+            <Input.Password
+              prefix={<LockOutlined />}
+              placeholder="请输入密码"
+              value={loginForm.password}
+              onChange={(e) => setLoginForm({
+                ...loginForm,
+                password: e.target.value
+              })}
+              onPressEnter={handleLogin}
+            />
+          </Form.Item>
+          
+          <Form.Item>
+            <Button
+              type="primary"
+              icon={<LoginOutlined />}
+              loading={loginLoading}
+              onClick={handleLogin}
+            >
+              登录
+            </Button>
+          </Form.Item>
+        </Form>
+      </div>
+    </div>
+  );
 
   // 渲染运行监控界面
   const renderMonitorPage = () => (
@@ -870,6 +1011,11 @@ const App: React.FC = () => {
     }
   };
 
+  // 如果未登录，显示登录界面
+  if (!isLoggedIn) {
+    return renderLoginPage();
+  }
+
   return (
     <div className="admin-layout">
       <Layout style={{ height: '100vh' }}>
@@ -886,6 +1032,16 @@ const App: React.FC = () => {
             onClick={({ key }) => setSelectedMenu(key)}
             theme="dark"
           />
+          <div className="logout-section">
+            <Button 
+              type="text" 
+              icon={<UserOutlined />}
+              onClick={handleLogout}
+              style={{ color: 'white', width: '100%', textAlign: 'left' }}
+            >
+              退出登录
+            </Button>
+          </div>
         </Sider>
         <Layout>
           <Content style={{ padding: '24px', overflow: 'auto' }}>
