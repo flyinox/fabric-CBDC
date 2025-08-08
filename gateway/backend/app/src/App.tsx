@@ -36,12 +36,13 @@ interface LogEntry {
 }
 
 interface BankConfig {
-  name: string;
-  key: string;
+  name: string;      // 中文显示名称
+  identifier: string; // 英文MSP标识
 }
 
 interface NetworkConfig {
-  centralBank: string;
+  centralBankName: string;    // 央行中文名称
+  centralBankIdentifier: string; // 央行英文标识
   banks: BankConfig[];
 }
 
@@ -59,10 +60,11 @@ const App: React.FC = () => {
 
   // 网络管理状态
   const [networkConfig, setNetworkConfig] = useState<NetworkConfig>({
-    centralBank: 'CentralBank',
+    centralBankName: 'pboc',
+    centralBankIdentifier: 'pboc',
     banks: [
-      { name: 'Bank1', key: 'bank1' },
-      { name: 'Bank2', key: 'bank2' }
+      { name: 'icbc', identifier: 'icbc' },
+      { name: 'abc', identifier: 'abc' }
     ]
   });
   const [networkConfigLoading, setNetworkConfigLoading] = useState(false);
@@ -72,6 +74,25 @@ const App: React.FC = () => {
   const [userCount, setUserCount] = useState(1);
   const [userManagementLoading, setUserManagementLoading] = useState(false);
   const [availableBanks, setAvailableBanks] = useState<string[]>([]);
+
+
+
+  // 获取可用银行列表
+  const fetchAvailableBanks = async () => {
+    try {
+      const response = await fetch('/api/admin/banks', {
+        headers: {
+          'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableBanks(data.banks || []);
+      }
+    } catch (error) {
+      console.error('获取银行列表失败:', error);
+    }
+  };
 
   // 运行监控功能
   const fetchNetworkStatus = async () => {
@@ -121,29 +142,65 @@ const App: React.FC = () => {
   };
 
   // 网络管理功能
-  const cleanNetwork = async () => {
-    if (!confirm('确定要清除网络配置吗？这将停止所有节点并清除配置。')) {
+  const startNetworkWithClean = async () => {
+    if (!confirm('如果执行，将会清除现有网络，是否确认？')) {
       return;
     }
     
     setNetworkConfigLoading(true);
     try {
-      const response = await fetch('/api/admin/network/clean', {
+      console.log('[前端] 开始执行清除网络操作...');
+      
+      // 先清除网络
+      const cleanResponse = await fetch('/api/admin/network/clean', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
         },
       });
-      const data = await response.json();
-      if (response.ok) {
-        message.success('网络配置清除成功');
+      
+      console.log('[前端] 清除网络响应状态:', cleanResponse.status);
+      const cleanData = await cleanResponse.json();
+      console.log('[前端] 清除网络响应数据:', cleanData);
+      
+      if (!cleanResponse.ok) {
+        console.error('[前端] 清除网络失败:', cleanData);
+        message.error(cleanData.error || '网络清除失败');
+        return;
+      }
+      
+      console.log('[前端] 清除网络成功，开始启动网络...');
+      message.success('网络清除成功，正在启动网络...');
+      
+      // 等待一下再启动网络
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // 再启动网络
+      console.log('[前端] 开始执行启动网络操作...');
+      const startResponse = await fetch('/api/admin/network/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
+        },
+      });
+      
+      console.log('[前端] 启动网络响应状态:', startResponse.status);
+      const startData = await startResponse.json();
+      console.log('[前端] 启动网络响应数据:', startData);
+      
+      if (startResponse.ok) {
+        console.log('[前端] 启动网络成功');
+        message.success('网络启动成功');
         fetchNetworkStatus();
       } else {
-        message.error(data.error || '网络配置清除失败');
+        console.error('[前端] 启动网络失败:', startData);
+        message.error(startData.error || '网络启动失败');
       }
     } catch (error) {
-      message.error('网络配置清除失败');
+      console.error('[前端] 网络启动异常:', error);
+      message.error('网络启动失败');
     } finally {
       setNetworkConfigLoading(false);
     }
@@ -162,7 +219,11 @@ const App: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
         },
-        body: JSON.stringify(networkConfig)
+        body: JSON.stringify({
+          centralBankName: networkConfig.centralBankName,
+          centralBankIdentifier: networkConfig.centralBankIdentifier,
+          banks: networkConfig.banks
+        })
       });
       const data = await response.json();
       if (response.ok) {
@@ -179,9 +240,10 @@ const App: React.FC = () => {
   };
 
   const addBank = () => {
+    const bankId = `bank${networkConfig.banks.length + 1}`;
     const newBank = {
-      name: `Bank${networkConfig.banks.length + 1}`,
-      key: `bank${networkConfig.banks.length + 1}`
+      name: bankId,
+      identifier: bankId
     };
     setNetworkConfig({
       ...networkConfig,
@@ -197,9 +259,9 @@ const App: React.FC = () => {
     });
   };
 
-  const updateBank = (index: number, field: 'name' | 'key', value: string) => {
+  const updateBank = (index: number, field: 'name' | 'identifier', value: string) => {
     const newBanks = [...networkConfig.banks];
-    newBanks[index] = { ...newBanks[index], [field]: value };
+    newBanks[index] = { ...newBanks[index], name: value, identifier: value };
     setNetworkConfig({
       ...networkConfig,
       banks: newBanks
@@ -207,22 +269,6 @@ const App: React.FC = () => {
   };
 
   // 用户管理功能
-  const fetchAvailableBanks = async () => {
-    try {
-      const response = await fetch('/api/admin/banks', {
-        headers: {
-          'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setAvailableBanks(data.banks || []);
-      }
-    } catch (error) {
-      console.error('获取银行列表失败:', error);
-    }
-  };
-
   const addUsers = async () => {
     if (!selectedBank) {
       message.error('请选择银行');
@@ -407,24 +453,27 @@ const App: React.FC = () => {
         title={
           <Space>
             <ApiOutlined />
-            网络配置管理
+                          网络配置管理
           </Space>
         }
         className="control-card"
       >
         <Form layout="vertical">
           <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item label="央行名称">
+            <Col span={24}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <span style={{ minWidth: 80, fontWeight: 500 }}>央行标识</span>
                 <Input
-                  value={networkConfig.centralBank}
+                  value={networkConfig.centralBankIdentifier}
                   onChange={(e) => setNetworkConfig({
                     ...networkConfig,
-                    centralBank: e.target.value
+                    centralBankName: e.target.value,
+                    centralBankIdentifier: e.target.value
                   })}
-                  placeholder="请输入央行名称"
+                  placeholder="央行标识"
+                  style={{ flex: 1 }}
                 />
-              </Form.Item>
+              </div>
             </Col>
           </Row>
 
@@ -432,26 +481,15 @@ const App: React.FC = () => {
           
           {networkConfig.banks.map((bank, index) => (
             <Row gutter={16} key={index} style={{ marginBottom: 16 }}>
-              <Col span={8}>
-                <Form.Item label="银行名称">
+              <Col span={24}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ minWidth: 80, fontWeight: 500 }}>银行标识</span>
                   <Input
-                    value={bank.name}
+                    value={bank.identifier}
                     onChange={(e) => updateBank(index, 'name', e.target.value)}
-                    placeholder="银行名称"
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={8}>
-                <Form.Item label="银行标识">
-                  <Input
-                    value={bank.key}
-                    onChange={(e) => updateBank(index, 'key', e.target.value)}
                     placeholder="银行标识"
+                    style={{ flex: 1 }}
                   />
-                </Form.Item>
-              </Col>
-              <Col span={4}>
-                <Form.Item label="操作">
                   <Button
                     type="text"
                     danger
@@ -461,7 +499,7 @@ const App: React.FC = () => {
                   >
                     删除
                   </Button>
-                </Form.Item>
+                </div>
               </Col>
             </Row>
           ))}
@@ -477,14 +515,14 @@ const App: React.FC = () => {
 
           <Space>
             <Button 
-              danger
-              onClick={cleanNetwork}
+              type="primary"
+              onClick={startNetworkWithClean}
               loading={networkConfigLoading}
             >
-              清除配置
+              启动网络
             </Button>
             <Button 
-              type="primary"
+              type="default"
               onClick={setupNetwork}
               loading={networkConfigLoading}
             >

@@ -142,12 +142,58 @@ router.post('/api/admin/network/start', async (ctx) => {
     }
     
     console.log(`[启动网络] 脚本存在，开始执行`);
-    const result = await executeCommand('./network.sh', ['up'], networkRoot);
+    console.log(`[启动网络] 网络根目录: ${networkRoot}`);
+    
+    // 使用 echo 'y' | 来自动提供确认输入（如果需要）
+    const command = 'echo "y" | ./network.sh start';
+    console.log(`[启动网络] 执行命令: ${command}`);
+    
+    const result = await new Promise((resolve) => {
+      const child = spawn('bash', ['-c', command], { 
+        cwd: networkRoot,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env, FORCE_COLOR: '0' }
+      });
+      
+      let stdout = '';
+      let stderr = '';
+      
+      child.stdout.on('data', (data) => {
+        const output = data.toString();
+        stdout += output;
+        console.log('[启动网络] 输出:', output.trim());
+      });
+      
+      child.stderr.on('data', (data) => {
+        const error = data.toString();
+        stderr += error;
+        console.log('[启动网络] 错误:', error.trim());
+      });
+      
+      child.on('close', (code) => {
+        console.log(`[启动网络] 进程退出码: ${code}`);
+        console.log(`[启动网络] 完整输出: ${stdout}`);
+        console.log(`[启动网络] 完整错误: ${stderr}`);
+        console.log(`[启动网络] 执行结果: ${code === 0 ? '成功' : '失败'}`);
+        if (code === 0) {
+          resolve({ success: true, output: stdout });
+        } else {
+          resolve({ success: false, error: stderr || '命令执行失败' });
+        }
+      });
+      
+      child.on('error', (error) => {
+        console.log(`[启动网络] 进程异常: ${error.message}`);
+        resolve({ success: false, error: error.message });
+      });
+    });
     console.log(`[启动网络] 执行结果: ${result.success ? '成功' : '失败'}`);
     
     if (result.success) {
-      ctx.body = { success: true, message: '网络启动成功' };
+      console.log('[启动网络] 操作成功');
+      ctx.body = { success: true, message: '网络启动成功', output: result.output };
     } else {
+      console.log('[启动网络] 操作失败:', result.error);
       ctx.status = 500;
       ctx.body = { error: '网络启动失败', details: result.error };
     }
@@ -163,12 +209,57 @@ router.post('/api/admin/network/stop', async (ctx) => {
   console.log('[停止网络] 开始执行');
   try {
     const networkRoot = path.resolve(__dirname, '../../');
-    const result = await executeCommand('./network.sh', ['down'], networkRoot);
-    console.log(`[停止网络] 执行结果: ${result.success ? '成功' : '失败'}`);
+    console.log('[停止网络] 网络根目录:', networkRoot);
+    
+    // 使用 echo 'y' | 来自动提供确认输入（如果需要）
+    const command = 'echo "y" | ./network.sh stop';
+    console.log('[停止网络] 执行命令:', command);
+    
+    const result = await new Promise((resolve) => {
+      const child = spawn('bash', ['-c', command], { 
+        cwd: networkRoot,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env, FORCE_COLOR: '0' }
+      });
+      
+      let stdout = '';
+      let stderr = '';
+      
+      child.stdout.on('data', (data) => {
+        const output = data.toString();
+        stdout += output;
+        console.log('[停止网络] 输出:', output.trim());
+      });
+      
+      child.stderr.on('data', (data) => {
+        const error = data.toString();
+        stderr += error;
+        console.log('[停止网络] 错误:', error.trim());
+      });
+      
+      child.on('close', (code) => {
+        console.log(`[停止网络] 进程退出码: ${code}`);
+        console.log(`[停止网络] 完整输出: ${stdout}`);
+        console.log(`[停止网络] 完整错误: ${stderr}`);
+        console.log(`[停止网络] 执行结果: ${code === 0 ? '成功' : '失败'}`);
+        if (code === 0) {
+          resolve({ success: true, output: stdout });
+        } else {
+          resolve({ success: false, error: stderr || '命令执行失败' });
+        }
+      });
+      
+      child.on('error', (error) => {
+        console.log(`[停止网络] 进程异常: ${error.message}`);
+        resolve({ success: false, error: error.message });
+      });
+    });
     
     if (result.success) {
-      ctx.body = { success: true, message: '网络停止成功' };
+      console.log('[停止网络] 操作成功');
+      ctx.body = { success: true, message: '网络停止成功', output: result.output };
     } else {
+      console.log('[停止网络] 操作失败:', result.error);
       ctx.status = 500;
       ctx.body = { error: '网络停止失败', details: result.error };
     }
@@ -184,10 +275,82 @@ router.post('/api/admin/network/clean', async (ctx) => {
   console.log('[清除网络] 开始执行');
   try {
     const networkRoot = path.resolve(__dirname, '../../');
+    console.log('[清除网络] 网络根目录:', networkRoot);
     
     // 使用 echo 'y' | 来自动提供确认输入
+    const command = 'echo "y" | ./network.sh clean';
+    console.log('[清除网络] 执行命令:', command);
+    
     const result = await new Promise((resolve) => {
-      const child = spawn('bash', ['-c', 'echo "y" | ./network.sh clean'], { 
+      const child = spawn('bash', ['-c', command], { 
+        cwd: networkRoot,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env, FORCE_COLOR: '0' }
+      });
+      
+      let stdout = '';
+      let stderr = '';
+      
+      child.stdout.on('data', (data) => {
+        const output = data.toString();
+        stdout += output;
+        console.log('[清除网络] 输出:', output.trim());
+      });
+      
+      child.stderr.on('data', (data) => {
+        const error = data.toString();
+        stderr += error;
+        console.log('[清除网络] 错误:', error.trim());
+      });
+      
+      child.on('close', (code) => {
+        console.log(`[清除网络] 进程退出码: ${code}`);
+        console.log(`[清除网络] 完整输出: ${stdout}`);
+        console.log(`[清除网络] 完整错误: ${stderr}`);
+        console.log(`[清除网络] 执行结果: ${code === 0 ? '成功' : '失败'}`);
+        if (code === 0) {
+          resolve({ success: true, output: stdout });
+        } else {
+          resolve({ success: false, error: stderr || '命令执行失败' });
+        }
+      });
+      
+      child.on('error', (error) => {
+        console.log(`[清除网络] 进程异常: ${error.message}`);
+        resolve({ success: false, error: error.message });
+      });
+    });
+    
+    if (result.success) {
+      console.log('[清除网络] 操作成功');
+      ctx.body = { success: true, message: '网络配置清除成功', output: result.output };
+    } else {
+      console.log('[清除网络] 操作失败:', result.error);
+      ctx.status = 500;
+      ctx.body = { error: '网络配置清除失败', details: result.error };
+    }
+  } catch (error) {
+    console.log(`[清除网络] 异常: ${error.message}`);
+    ctx.status = 500;
+    ctx.body = { error: '网络配置清除失败', details: error.message };
+  }
+});
+
+// 设置网络配置
+router.post('/api/admin/network/setup', async (ctx) => {
+  console.log('[设置网络] 开始执行');
+  try {
+    const { centralBankName, centralBankIdentifier, banks } = ctx.request.body;
+    console.log(`[设置网络] 配置: 央行名称=${centralBankName}, 央行标识=${centralBankIdentifier}, 银行=${banks.map(b => `${b.name}(${b.identifier})`).join(', ')}`);
+    
+    const networkRoot = path.resolve(__dirname, '../../');
+    const bankArgs = banks.map(bank => bank.identifier);
+    const args = ['setup', '-central', centralBankIdentifier, '-banks', ...bankArgs];
+    
+    // 使用 echo 'y' | 来自动提供确认输入（如果需要）
+    const command = `echo "y" | ./network.sh ${args.join(' ')}`;
+    const result = await new Promise((resolve) => {
+      const child = spawn('bash', ['-c', command], { 
         cwd: networkRoot,
         stdio: ['pipe', 'pipe', 'pipe'],
         env: { ...process.env, FORCE_COLOR: '0' }
@@ -205,7 +368,7 @@ router.post('/api/admin/network/clean', async (ctx) => {
       });
       
       child.on('close', (code) => {
-        console.log(`[清除网络] 执行结果: ${code === 0 ? '成功' : '失败'}`);
+        console.log(`[设置网络] 执行结果: ${code === 0 ? '成功' : '失败'}`);
         if (code === 0) {
           resolve({ success: true, output: stdout });
         } else {
@@ -214,36 +377,10 @@ router.post('/api/admin/network/clean', async (ctx) => {
       });
       
       child.on('error', (error) => {
-        console.log(`[清除网络] 异常: ${error.message}`);
+        console.log(`[设置网络] 异常: ${error.message}`);
         resolve({ success: false, error: error.message });
       });
     });
-    
-    if (result.success) {
-      ctx.body = { success: true, message: '网络配置清除成功' };
-    } else {
-      ctx.status = 500;
-      ctx.body = { error: '网络配置清除失败', details: result.error };
-    }
-  } catch (error) {
-    console.log(`[清除网络] 异常: ${error.message}`);
-    ctx.status = 500;
-    ctx.body = { error: '网络配置清除失败', details: error.message };
-  }
-});
-
-// 设置网络配置
-router.post('/api/admin/network/setup', async (ctx) => {
-  console.log('[设置网络] 开始执行');
-  try {
-    const { centralBank, banks } = ctx.request.body;
-    console.log(`[设置网络] 配置: 央行=${centralBank}, 银行=${banks.map(b => b.name).join(', ')}`);
-    
-    const networkRoot = path.resolve(__dirname, '../../');
-    const bankArgs = banks.map(bank => bank.name);
-    const args = ['setup', '-central', centralBank, '-banks', ...bankArgs];
-    
-    const result = await executeCommand('./network.sh', args, networkRoot);
     console.log(`[设置网络] 执行结果: ${result.success ? '成功' : '失败'}`);
     
     if (result.success) {
@@ -291,7 +428,40 @@ router.post('/api/admin/users/add', async (ctx) => {
     console.log(`[添加用户] 银行=${bank}, 数量=${count}`);
     
     const networkRoot = path.resolve(__dirname, '../../');
-    const result = await executeCommand('./network.sh', ['adduser', '-bank', bank, '-count', count.toString()], networkRoot);
+    // 使用 echo 'y' | 来自动提供确认输入（如果需要）
+    const command = `echo "y" | ./network.sh adduser -bank ${bank} -count ${count}`;
+    const result = await new Promise((resolve) => {
+      const child = spawn('bash', ['-c', command], { 
+        cwd: networkRoot,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env, FORCE_COLOR: '0' }
+      });
+      
+      let stdout = '';
+      let stderr = '';
+      
+      child.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+      
+      child.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+      
+      child.on('close', (code) => {
+        console.log(`[添加用户] 执行结果: ${code === 0 ? '成功' : '失败'}`);
+        if (code === 0) {
+          resolve({ success: true, output: stdout });
+        } else {
+          resolve({ success: false, error: stderr || '命令执行失败' });
+        }
+      });
+      
+      child.on('error', (error) => {
+        console.log(`[添加用户] 异常: ${error.message}`);
+        resolve({ success: false, error: error.message });
+      });
+    });
     console.log(`[添加用户] 执行结果: ${result.success ? '成功' : '失败'}`);
     
     if (result.success) {
