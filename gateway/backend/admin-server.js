@@ -400,18 +400,18 @@ router.post('/api/admin/network/setup', async (ctx) => {
 router.get('/api/admin/banks', async (ctx) => {
   try {
     const networkRoot = path.resolve(__dirname, '../../');
-    const result = await executeCommand('ls', ['-1'], path.join(networkRoot, 'organizations/peerOrganizations'));
+    const configPath = path.join(networkRoot, 'network-config.json');
     
-    const banks = [];
-    if (result.success) {
-      const lines = result.output.trim().split('\n');
-      for (const line of lines) {
-        if (line && !line.includes('example.com')) {
-          const bankName = line.replace('.example.com', '');
-          banks.push(bankName);
-        }
-      }
+    if (!fs.existsSync(configPath)) {
+      ctx.status = 404;
+      ctx.body = { error: '网络配置文件不存在' };
+      return;
     }
+    
+    const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const banks = configData.network.organizations
+      .filter(org => org.type === 'commercial_bank')
+      .map(org => org.name);
     
     ctx.body = { banks };
   } catch (error) {
@@ -429,7 +429,7 @@ router.post('/api/admin/users/add', async (ctx) => {
     
     const networkRoot = path.resolve(__dirname, '../../');
     // 使用 echo 'y' | 来自动提供确认输入（如果需要）
-    const command = `echo "y" | ./network.sh adduser -bank ${bank} -count ${count}`;
+    const command = `echo "y" | ./network.sh adduser add -o ${bank} -c ${count}`;
     const result = await new Promise((resolve) => {
       const child = spawn('bash', ['-c', command], { 
         cwd: networkRoot,
@@ -465,7 +465,72 @@ router.post('/api/admin/users/add', async (ctx) => {
     console.log(`[添加用户] 执行结果: ${result.success ? '成功' : '失败'}`);
     
     if (result.success) {
-      ctx.body = { success: true, message: `成功为${bank}添加${count}个用户` };
+      // 同步新用户到钱包目录
+      try {
+        console.log(`[添加用户] 开始同步用户到钱包目录: ${bank}`);
+        
+        // 检查Node.js是否可用
+        const nodeCheck = await new Promise((resolve) => {
+          exec('which node', (error, stdout, stderr) => {
+            if (error || !stdout.trim()) {
+              resolve({ available: false, error: 'Node.js not found' });
+            } else {
+              resolve({ available: true, path: stdout.trim() });
+            }
+          });
+        });
+        
+        if (!nodeCheck.available) {
+          console.log(`[添加用户] Node.js不可用，跳过钱包同步: ${nodeCheck.error}`);
+          ctx.body = { success: true, message: `成功为${bank}添加${count}个用户（钱包同步需要Node.js，请手动运行: cd gateway && node createAllIdentities.js）` };
+          return;
+        }
+        
+        const syncCommand = `cd ${networkRoot} && ${nodeCheck.path} gateway/createAllIdentities.js`;
+        const syncResult = await new Promise((resolve) => {
+          const child = spawn('bash', ['-c', syncCommand], { 
+            cwd: networkRoot,
+            stdio: ['pipe', 'pipe', 'pipe'],
+            env: { ...process.env, FORCE_COLOR: '0' }
+          });
+          
+          let stdout = '';
+          let stderr = '';
+          
+          child.stdout.on('data', (data) => {
+            stdout += data.toString();
+          });
+          
+          child.stderr.on('data', (data) => {
+            stderr += data.toString();
+          });
+          
+          child.on('close', (code) => {
+            console.log(`[同步钱包] 执行结果: ${code === 0 ? '成功' : '失败'}`);
+            if (code === 0) {
+              resolve({ success: true, output: stdout });
+            } else {
+              resolve({ success: false, error: stderr || '同步失败' });
+            }
+          });
+          
+          child.on('error', (error) => {
+            console.log(`[同步钱包] 异常: ${error.message}`);
+            resolve({ success: false, error: error.message });
+          });
+        });
+        
+        if (syncResult.success) {
+          console.log(`[添加用户] 钱包同步成功`);
+          ctx.body = { success: true, message: `成功为${bank}添加${count}个用户，并同步到钱包` };
+        } else {
+          console.log(`[添加用户] 钱包同步失败: ${syncResult.error}`);
+          ctx.body = { success: true, message: `成功为${bank}添加${count}个用户，但钱包同步失败: ${syncResult.error}` };
+        }
+      } catch (syncError) {
+        console.log(`[添加用户] 钱包同步异常: ${syncError.message}`);
+        ctx.body = { success: true, message: `成功为${bank}添加${count}个用户，但钱包同步失败: ${syncError.message}` };
+      }
     } else {
       ctx.status = 500;
       ctx.body = { error: '添加用户失败', details: result.error };
