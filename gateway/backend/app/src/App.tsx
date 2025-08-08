@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Card, Row, Col, Statistic, Button, Space, Tag, Modal, Spin, Empty, message, Typography, Form, Input, Select, InputNumber, Divider } from 'antd';
+import { Layout, Menu, Card, Row, Col, Statistic, Button, Space, Tag, Modal, Spin, Empty, message, Typography, Form, Input, Select, InputNumber, Divider, Alert } from 'antd';
 import { 
   ReloadOutlined, 
   DesktopOutlined, 
@@ -74,6 +74,17 @@ const App: React.FC = () => {
   const [userCount, setUserCount] = useState(1);
   const [userManagementLoading, setUserManagementLoading] = useState(false);
   const [availableBanks, setAvailableBanks] = useState<string[]>([]);
+  
+  // 代币初始化状态
+  const [tokenInitConfig, setTokenInitConfig] = useState({
+    name: '数字人民币',
+    symbol: 'DCEP',
+    decimals: '2',
+    adminUser: 'Admin@pboc.example.com'
+  });
+  const [tokenInitLoading, setTokenInitLoading] = useState(false);
+  const [tokenInfo, setTokenInfo] = useState<any>(null);
+  const [centralBankUsers, setCentralBankUsers] = useState<string[]>([]);
 
 
 
@@ -317,9 +328,119 @@ const App: React.FC = () => {
     }
   };
 
+  // 代币初始化功能
+  const initializeToken = async () => {
+    setTokenInitLoading(true);
+    try {
+      console.log('[前端] 开始代币初始化，参数:', tokenInitConfig);
+      const response = await fetch('/api/admin/token/initialize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
+        },
+        body: JSON.stringify(tokenInitConfig)
+      });
+      
+      const data = await response.json();
+      console.log('[前端] 代币初始化响应:', data);
+      
+      if (response.ok) {
+        message.success(data.message || '代币初始化成功');
+        console.log('[前端] 代币初始化成功，开始刷新代币信息');
+        // 延迟一下再刷新，确保后端处理完成
+        setTimeout(() => {
+          fetchTokenInfo();
+        }, 1000);
+      } else {
+        message.error(data.error || '代币初始化失败');
+      }
+    } catch (error) {
+      console.error('[前端] 代币初始化异常:', error);
+      message.error('代币初始化失败');
+    } finally {
+      setTokenInitLoading(false);
+    }
+  };
+
+  // 获取代币信息
+  const fetchTokenInfo = async () => {
+    try {
+      const response = await fetch('/api/admin/token/info', {
+        headers: {
+          'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log('[前端] 代币信息响应:', data);
+        // 处理不同的数据结构
+        if (data.data) {
+          setTokenInfo(data.data);
+        } else if (data.success !== undefined) {
+          setTokenInfo(data);
+        } else {
+          setTokenInfo({ initialized: false, info: null });
+        }
+      } else {
+        console.error('[前端] 代币信息查询失败:', response.status);
+        setTokenInfo({ initialized: false, info: null });
+      }
+    } catch (error) {
+      console.error('获取代币信息失败:', error);
+      setTokenInfo({ initialized: false, info: null });
+    }
+  };
+
+  // 获取央行管理员用户
+  const fetchCentralBankUsers = async () => {
+    try {
+      const response = await fetch('/api/admin/token/central-bank-users', {
+        headers: {
+          'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCentralBankUsers(data.data.users || []);
+        // 如果找到央行用户，自动设置第一个为默认值
+        if (data.data.users && data.data.users.length > 0) {
+          setTokenInitConfig(prev => ({
+            ...prev,
+            adminUser: data.data.users[0]
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('获取央行用户失败:', error);
+    }
+  };
+
+  // 测试代币初始化环境
+  const testTokenEnvironment = async () => {
+    try {
+      const response = await fetch('/api/admin/token/test', {
+        headers: {
+          'Authorization': 'Basic YWRtaW46YWRtaW4xMjM='
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log('环境检查结果:', data.data);
+        message.info('环境检查完成，请查看控制台日志');
+      } else {
+        message.error('环境检查失败');
+      }
+    } catch (error) {
+      message.error('环境检查失败');
+    }
+  };
+
   useEffect(() => {
     fetchNetworkStatus();
     fetchAvailableBanks();
+    fetchTokenInfo();
+    fetchCentralBankUsers();
   }, []);
 
   const totalNodes = networkStatus?.nodes?.length || 0;
@@ -534,6 +655,128 @@ const App: React.FC = () => {
     </div>
   );
 
+  // 渲染代币初始化界面
+  const renderTokenInitPage = () => (
+    <div className="admin-content">
+      <Card 
+        title={
+          <Space>
+            <ApiOutlined />
+            代币初始化管理
+          </Space>
+        }
+      >
+        {(() => {
+          console.log('[前端] 渲染代币状态，tokenInfo:', tokenInfo);
+          return tokenInfo?.initialized ? (
+            <Alert
+              message={`代币已初始化: ${tokenInfo.info}`}
+              type="success"
+              showIcon
+              style={{ marginBottom: 24 }}
+            />
+          ) : (
+            <Alert
+              message="代币未初始化, 请使用央行管理员身份初始化代币"
+              type="warning"
+              showIcon
+              style={{ marginBottom: 24 }}
+            />
+          );
+        })()}
+        
+        <Form layout="vertical">
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="代币名称">
+                <Input
+                  value={tokenInitConfig.name}
+                  onChange={(e) => setTokenInitConfig({
+                    ...tokenInitConfig,
+                    name: e.target.value
+                  })}
+                  placeholder="请输入代币名称"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="代币符号">
+                <Input
+                  value={tokenInitConfig.symbol}
+                  onChange={(e) => setTokenInitConfig({
+                    ...tokenInitConfig,
+                    symbol: e.target.value
+                  })}
+                  placeholder="请输入代币符号（仅英文和数字）"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="小数位数">
+                <Input
+                  value={tokenInitConfig.decimals}
+                  onChange={(e) => setTokenInitConfig({
+                    ...tokenInitConfig,
+                    decimals: e.target.value
+                  })}
+                  placeholder="请输入小数位数（0-18）"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="央行管理员">
+                <Select
+                  value={tokenInitConfig.adminUser}
+                  onChange={(value) => setTokenInitConfig({
+                    ...tokenInitConfig,
+                    adminUser: value
+                  })}
+                  placeholder="请选择央行管理员用户"
+                  style={{ width: '100%' }}
+                >
+                  {centralBankUsers.map(user => (
+                    <Option key={user} value={user}>{user}</Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          
+          <Space>
+            <Button 
+              type="primary"
+              onClick={initializeToken}
+              loading={tokenInitLoading}
+              disabled={tokenInfo?.initialized}
+            >
+              初始化代币
+            </Button>
+            <Button 
+              type="default"
+              onClick={() => setTokenInitConfig({
+                name: '数字人民币',
+                symbol: 'DCEP',
+                decimals: '2',
+                adminUser: 'Admin@pboc.example.com'
+              })}
+            >
+              重置参数
+            </Button>
+            <Button 
+              type="dashed"
+              onClick={testTokenEnvironment}
+            >
+              测试环境
+            </Button>
+          </Space>
+        </Form>
+      </Card>
+    </div>
+  );
+
   // 渲染用户管理界面
   const renderUserManagementPage = () => (
     <div className="admin-content">
@@ -601,6 +844,11 @@ const App: React.FC = () => {
       label: '网络管理',
     },
     {
+      key: 'token',
+      icon: <ApiOutlined />,
+      label: '代币初始化',
+    },
+    {
       key: 'users',
       icon: <TeamOutlined />,
       label: '用户管理',
@@ -613,6 +861,8 @@ const App: React.FC = () => {
         return renderMonitorPage();
       case 'network':
         return renderNetworkManagementPage();
+      case 'token':
+        return renderTokenInitPage();
       case 'users':
         return renderUserManagementPage();
       default:
