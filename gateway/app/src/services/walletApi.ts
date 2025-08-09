@@ -7,7 +7,7 @@ const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:4000/api';
 
 // mock数据（根据实际钱包文件内容调整）
 const mockWallets = [
-  // 央行用户（AAA）
+  // 央行用户
   {
     file: 'AAA_Admin.id',
     orgName: 'AAA',
@@ -28,7 +28,7 @@ const mockWallets = [
     type: 'X.509',
     version: 1
   },
-  // 商业银行用户（工商银行）
+  // 商业银行用户
   {
     file: 'icbc_Admin.id',
     orgName: 'icbc',
@@ -49,7 +49,6 @@ const mockWallets = [
     type: 'X.509',
     version: 1
   },
-  // 商业银行用户（农业银行）
   {
     file: 'abc_Admin.id',
     orgName: 'abc',
@@ -70,7 +69,6 @@ const mockWallets = [
     type: 'X.509',
     version: 1
   },
-  // 商业银行用户（建设银行）
   {
     file: 'bank3_Admin.id',
     orgName: 'bank3',
@@ -140,14 +138,7 @@ function transformWalletToUser(wallet: any): User {
   return {
     id: wallet.file.replace('.id', ''),
     name: wallet.fullName,
-    organization: wallet.orgName === 'CC1' ? 'c1' : 
-                  wallet.orgName === 'Bank1' ? '中国银行' : 
-                  wallet.orgName === 'Bank2' ? '工商银行' : 
-                  wallet.orgName === 'AAA' ? '央行' :
-                  wallet.orgName === 'icbc' ? '工商银行' :
-                  wallet.orgName === 'abc' ? '农业银行' :
-                  wallet.orgName === 'bank3' ? '建设银行' :
-                  wallet.orgName,
+    organization: wallet.orgName,
     address: `${wallet.mspId}...${wallet.userName}`,
     balance: '1000.00', // 默认余额，实际应该从区块链获取
     orgType: wallet.orgType,
