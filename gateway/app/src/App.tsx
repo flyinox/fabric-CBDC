@@ -12,38 +12,51 @@ import AuthorizationPage from './pages/Authorization';
 import './App.css';
 import { UserProvider, useUserContext } from './context/UserContext';
 import UserSelectorDrawer from './components/UserSelectorDrawer';
-import { UserCircleOutline } from 'antd-mobile-icons';
+
 
 const AppContent: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [activeKey, setActiveKey] = useState(location.pathname);
+  const { currentUser } = useUserContext();
 
   useEffect(() => {
     setActiveKey(location.pathname);
   }, [location.pathname]);
 
-  const tabs = [
-    {
-      key: '/wallet',
-      title: '钱包',
-      icon: (active: boolean) => <PayCircleOutline />
-    },
-    {
-      key: '/authorization',
-      title: '授权',
-      icon: (active: boolean) => <SetOutline />
-    },
-    {
-      key: '/manage',
-      title: '管理',
-      icon: (active: boolean) => <BillOutline />
+  // 根据用户角色动态生成 tabs
+  const getTabs = () => {
+    const baseTabs = [
+      {
+        key: '/wallet',
+        title: '钱包',
+        icon: () => <PayCircleOutline />
+      },
+      {
+        key: '/authorization',
+        title: '授权',
+        icon: () => <SetOutline />
+      }
+    ];
+
+    // 判断是否显示管理 tab
+    // 规则：央行用户（不管是否Admin）或银行Admin用户可以看到管理tab
+    if (currentUser?.canManage) {
+      baseTabs.push({
+        key: '/manage',
+        title: '管理',
+        icon: () => <BillOutline />
+      });
     }
-  ];
+
+    return baseTabs;
+  };
+
+  const tabs = getTabs();
 
   // 用户选择器弹窗控制
   const [drawerVisible, setDrawerVisible] = useState(false);
-  const { users, currentUser, setCurrentUser, loading, switchingUser } = useUserContext();
+  const { users, setCurrentUser, switchingUser } = useUserContext();
 
   return (
     <>
@@ -98,7 +111,14 @@ const AppContent: React.FC = () => {
         <Routes>
           <Route path="/wallet" element={<WalletPage />} />
           <Route path="/authorization" element={<AuthorizationPage />} />
-          <Route path="/manage" element={<ManagePage />} />
+          <Route 
+            path="/manage" 
+            element={
+              currentUser?.canManage ? 
+                <ManagePage /> : 
+                <Navigate to="/wallet" replace />
+            } 
+          />
           <Route path="/" element={<Navigate to="/wallet" replace />} />
         </Routes>
       </div>

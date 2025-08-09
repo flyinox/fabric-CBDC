@@ -1,88 +1,93 @@
 import type { User, Transaction } from '../types';
+import { canAccessManagement } from '../utils/roleUtils';
 
 // 钱包账户API服务，支持mock和真实API切换
 const useMock = import.meta.env.VITE_USE_MOCK === 'true';
 const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:4000/api';
 
-// mock数据（可根据实际mockData.ts内容调整）
+// mock数据（根据实际钱包文件内容调整）
 const mockWallets = [
+  // 央行用户（AAA）
   {
-    file: 'CC1_Admin.id',
-    orgName: 'CC1',
+    file: 'AAA_Admin.id',
+    orgName: 'AAA',
     orgType: 'central_bank',
     userName: 'Admin',
-    fullName: 'Admin@cc1.example.com',
-    mspId: 'CC1MSP',
+    fullName: 'Admin@aaa.example.com',
+    mspId: 'AAAMSP',
     type: 'X.509',
     version: 1
   },
   {
-    file: 'CC1_User1.id',
-    orgName: 'CC1',
+    file: 'AAA_User1.id',
+    orgName: 'AAA',
     orgType: 'central_bank',
     userName: 'User1',
-    fullName: 'User1@cc1.example.com',
-    mspId: 'CC1MSP',
+    fullName: 'User1@aaa.example.com',
+    mspId: 'AAAMSP',
     type: 'X.509',
     version: 1
   },
+  // 商业银行用户（工商银行）
   {
-    file: 'Bank1_Admin.id',
-    orgName: 'Bank1',
+    file: 'icbc_Admin.id',
+    orgName: 'icbc',
     orgType: 'commercial_bank',
     userName: 'Admin',
-    fullName: 'Admin@bank1.example.com',
-    mspId: 'Bank1MSP',
+    fullName: 'Admin@icbc.example.com',
+    mspId: 'icbcMSP',
     type: 'X.509',
     version: 1
   },
   {
-    file: 'Bank1_User1.id',
-    orgName: 'Bank1',
+    file: 'icbc_User1.id',
+    orgName: 'icbc',
     orgType: 'commercial_bank',
     userName: 'User1',
-    fullName: 'User1@bank1.example.com',
-    mspId: 'Bank1MSP',
+    fullName: 'User1@icbc.example.com',
+    mspId: 'icbcMSP',
     type: 'X.509',
     version: 1
   },
+  // 商业银行用户（农业银行）
   {
-    file: 'Bank2_Admin.id',
-    orgName: 'Bank2',
+    file: 'abc_Admin.id',
+    orgName: 'abc',
     orgType: 'commercial_bank',
     userName: 'Admin',
-    fullName: 'Admin@bank2.example.com',
-    mspId: 'Bank2MSP',
+    fullName: 'Admin@abc.example.com',
+    mspId: 'abcMSP',
     type: 'X.509',
     version: 1
   },
   {
-    file: 'Bank2_User1.id',
-    orgName: 'Bank2',
+    file: 'abc_User1.id',
+    orgName: 'abc',
     orgType: 'commercial_bank',
     userName: 'User1',
-    fullName: 'User1@bank2.example.com',
-    mspId: 'Bank2MSP',
+    fullName: 'User1@abc.example.com',
+    mspId: 'abcMSP',
     type: 'X.509',
     version: 1
   },
+  // 商业银行用户（建设银行）
   {
-    file: 'CC1_Admin.id',
-    orgName: 'CC1',
+    file: 'bank3_Admin.id',
+    orgName: 'bank3',
     orgType: 'commercial_bank',
     userName: 'Admin',
-    fullName: 'Admin@cc1.example.com',
-    mspId: 'CC1MSP',
+    fullName: 'Admin@bank3.example.com',
+    mspId: 'bank3MSP',
     type: 'X.509',
     version: 1
   },
   {
-    file: 'CC1_User1.id',
-    orgName: 'CC1',
+    file: 'bank3_User1.id',
+    orgName: 'bank3',
     orgType: 'commercial_bank',
     userName: 'User1',
-    fullName: 'User1@cc1.example.com',
-    mspId: 'CC1MSP',
+    fullName: 'User1@bank3.example.com',
+    mspId: 'bank3MSP',
     type: 'X.509',
     version: 1
   }
@@ -124,14 +129,30 @@ const mockTransactions: Transaction[] = [
 
 // 将API返回的钱包数据转换为User格式
 function transformWalletToUser(wallet: any): User {
+  // 计算是否可以访问管理功能
+  const canManage = canAccessManagement({
+    orgType: wallet.orgType,
+    userName: wallet.userName,
+    orgName: wallet.orgName,
+    fullName: wallet.fullName
+  });
+
   return {
     id: wallet.file.replace('.id', ''),
     name: wallet.fullName,
     organization: wallet.orgName === 'CC1' ? 'c1' : 
                   wallet.orgName === 'Bank1' ? '中国银行' : 
-                  wallet.orgName === 'Bank2' ? '工商银行' : wallet.orgName,
+                  wallet.orgName === 'Bank2' ? '工商银行' : 
+                  wallet.orgName === 'AAA' ? '央行' :
+                  wallet.orgName === 'icbc' ? '工商银行' :
+                  wallet.orgName === 'abc' ? '农业银行' :
+                  wallet.orgName === 'bank3' ? '建设银行' :
+                  wallet.orgName,
     address: `${wallet.mspId}...${wallet.userName}`,
-    balance: '1000.00' // 默认余额，实际应该从区块链获取
+    balance: '1000.00', // 默认余额，实际应该从区块链获取
+    orgType: wallet.orgType,
+    userName: wallet.userName,
+    canManage: canManage
   };
 }
 
@@ -143,7 +164,8 @@ export async function fetchWallets() {
     // 请求真实API
     const res = await fetch(`${apiBase}/wallets`);
     const data = await res.json();
-    return data.wallets;
+    // 确保真实API返回的数据包含必要的角色信息
+    return data.wallets || data;
   }
 }
 

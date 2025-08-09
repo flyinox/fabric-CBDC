@@ -4,6 +4,9 @@ export interface User {
   organization: string;
   address: string;
   balance: string;
+  orgType?: 'central_bank' | 'commercial_bank';
+  userName?: string;
+  canManage?: boolean; // 是否可以访问管理功能
 }
 
 export interface Transaction {
