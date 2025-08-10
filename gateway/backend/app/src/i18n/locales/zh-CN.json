@@ -25,7 +25,58 @@
     "stopped": "已停止",
     "noData": "暂无数据",
     "noInfo": "暂无节点信息",
-    "noLogs": "暂无日志"
+    "noLogs": "暂无日志",
+    "pleaseEnter": "请输入",
+    "pleaseSelect": "请选择",
+    "operation": "操作",
+    "status": "状态",
+    "time": "时间",
+    "name": "名称",
+    "type": "类型",
+    "message": "消息",
+    "description": "描述",
+    "details": "详情",
+    "view": "查看",
+    "edit": "编辑",
+    "save": "保存",
+    "back": "返回",
+    "next": "下一步",
+    "previous": "上一步",
+    "finish": "完成",
+    "continue": "继续",
+    "retry": "重试",
+    "abort": "中止",
+    "clear": "清除",
+    "search": "搜索",
+    "filter": "筛选",
+    "sort": "排序",
+    "export": "导出",
+    "import": "导入",
+    "download": "下载",
+    "upload": "上传",
+    "copy": "复制",
+    "paste": "粘贴",
+    "cut": "剪切",
+    "selectAll": "全选",
+    "deselectAll": "取消全选",
+    "expand": "展开",
+    "collapse": "收起",
+    "show": "显示",
+    "hide": "隐藏",
+    "enable": "启用",
+    "disable": "禁用",
+    "active": "活跃",
+    "inactive": "非活跃",
+    "online": "在线",
+    "offline": "离线",
+    "connected": "已连接",
+    "disconnected": "已断开",
+    "pending": "待处理",
+    "processing": "处理中",
+    "completed": "已完成",
+    "cancelled": "已取消",
+    "suspended": "已暂停",
+    "resumed": "已恢复"
   },
   "login": {
     "title": "CBDC 管理后台",
@@ -37,7 +88,9 @@
     "logout": "退出登录",
     "loginSuccess": "登录成功",
     "loginFailed": "用户名或密码错误",
-    "networkError": "登录失败，请检查网络连接"
+    "networkError": "登录失败，请检查网络连接",
+    "pleaseEnterUsernamePassword": "请输入用户名和密码",
+    "logoutSuccess": "已退出登录"
   },
   "navigation": {
     "monitor": "运行监控",
@@ -56,7 +109,9 @@
     "updateTime": "更新时间: {{time}}",
     "viewLogs": "日志",
     "logsTitle": "{{nodeName}} 日志",
-    "loadingLogs": "加载日志中..."
+    "loadingLogs": "加载日志中...",
+    "getStatusFailed": "获取网络状态失败",
+    "getLogsFailed": "获取日志失败"
   },
   "network": {
     "title": "网络配置管理",
@@ -75,7 +130,11 @@
     "networkStartFailed": "网络启动失败",
     "networkCleanSuccess": "网络清除成功，正在启动网络...",
     "networkConfigSuccess": "网络配置成功",
-    "networkConfigFailed": "网络配置失败"
+    "networkConfigFailed": "网络配置失败",
+    "clearNetworkFailed": "网络清除失败",
+    "startNetworkFailed": "网络启动失败",
+    "clearNetworkSuccess": "网络清除成功，正在启动网络...",
+    "networkOperationFailed": "网络操作失败"
   },
   "token": {
     "title": "代币初始化管理",
@@ -93,7 +152,11 @@
     "resetParams": "重置参数",
     "testEnvironment": "测试环境",
     "initSuccess": "代币初始化成功",
-    "initFailed": "代币初始化失败"
+    "initFailed": "代币初始化失败",
+    "digitalRMB": "数字人民币",
+    "environmentCheckComplete": "环境检查完成，请查看控制台日志",
+    "environmentCheckFailed": "环境检查失败",
+    "getTokenInfoFailed": "获取代币信息失败"
   },
   "users": {
     "title": "用户管理",
@@ -102,7 +165,10 @@
     "userCount": "用户数量",
     "addUsers": "添加用户",
     "addSuccess": "成功为{{bank}}添加{{count}}个用户",
-    "addFailed": "添加用户失败"
+    "addFailed": "添加用户失败",
+    "pleaseSelectBank": "请选择银行",
+    "getBanksFailed": "获取银行列表失败",
+    "getCentralBankUsersFailed": "获取央行用户失败"
   },
   "messages": {
     "getStatusFailed": "获取网络状态失败",
@@ -118,5 +184,35 @@
     "zhCN": "中文",
     "enUS": "English", 
     "jaJP": "日本語"
+  },
+  "validation": {
+    "required": "此字段为必填项",
+    "invalidFormat": "格式无效",
+    "minLength": "最小长度为 {{min}}",
+    "maxLength": "最大长度为 {{max}}",
+    "minValue": "最小值为 {{min}}",
+    "maxValue": "最大值为 {{max}}",
+    "invalidEmail": "邮箱格式无效",
+    "invalidPhone": "手机号格式无效",
+    "invalidUrl": "URL格式无效",
+    "passwordMismatch": "两次输入的密码不一致",
+    "invalidUsername": "用户名格式无效"
+  },
+  "confirmations": {
+    "deleteConfirm": "确定要删除吗？",
+    "saveConfirm": "确定要保存更改吗？",
+    "cancelConfirm": "确定要取消吗？未保存的更改将丢失。",
+    "logoutConfirm": "确定要退出登录吗？",
+    "refreshConfirm": "确定要刷新页面吗？未保存的更改将丢失。"
+  },
+  "errors": {
+    "networkError": "网络错误，请检查网络连接",
+    "serverError": "服务器错误，请稍后重试",
+    "timeoutError": "请求超时，请稍后重试",
+    "unauthorizedError": "未授权访问，请重新登录",
+    "forbiddenError": "访问被拒绝",
+    "notFoundError": "请求的资源不存在",
+    "validationError": "输入数据验证失败",
+    "unknownError": "未知错误，请稍后重试"
   }
 }
