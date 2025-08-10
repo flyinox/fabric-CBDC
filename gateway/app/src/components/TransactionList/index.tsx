@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { List, Tag, InfiniteScroll, SpinLoading } from 'antd-mobile';
+import { useTranslation } from 'react-i18next';
 import type { Transaction } from '../../types';
 import './index.css';
 
@@ -19,6 +20,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
   pageSize = 10
 }) => {
   const [loadingMore, setLoadingMore] = useState(false);
+  const { t } = useTranslation();
 
   const handleLoadMore = async () => {
     if (loadingMore || !hasMore) return;
@@ -42,11 +44,11 @@ const TransactionList: React.FC<TransactionListProps> = ({
 
   const getTransactionTypeText = (type: string) => {
     const typeMap = {
-      'transfer': '转账',
-      'approve': '授权',
-      'transferFrom': '授权转账',
-      'mint': '铸币',
-      'burn': '销毁'
+      'transfer': t('transaction.types.transfer'),
+      'approve': t('transaction.types.approve'),
+      'transferFrom': t('transaction.types.transferFrom'),
+      'mint': t('transaction.types.mint'),
+      'burn': t('transaction.types.burn')
     };
     return typeMap[type as keyof typeof typeMap] || type;
   };
@@ -62,9 +64,9 @@ const TransactionList: React.FC<TransactionListProps> = ({
 
   const getStatusText = (status: string) => {
     const statusMap = {
-      'success': '成功',
-      'pending': '待确认',
-      'failed': '失败'
+      'success': t('transaction.status.success'),
+      'pending': t('transaction.status.pending'),
+      'failed': t('transaction.status.failed')
     };
     return statusMap[status as keyof typeof statusMap] || status;
   };
@@ -74,18 +76,18 @@ const TransactionList: React.FC<TransactionListProps> = ({
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     if (diff < 60000) {
-      return '刚刚';
+      return t('common.justNow');
     } else if (diff < 3600000) {
-      return `${Math.floor(diff / 60000)}分钟前`;
+      return t('common.minutesAgo', { count: Math.floor(diff / 60000) });
     } else if (diff < 86400000) {
-      return `${Math.floor(diff / 3600000)}小时前`;
+      return t('common.hoursAgo', { count: Math.floor(diff / 3600000) });
     } else {
-      return `${Math.floor(diff / 86400000)}天前`;
+      return t('common.daysAgo', { count: Math.floor(diff / 86400000) });
     }
   };
 
   const formatAddress = (address: string) => {
-    if (address === '0x0000000000000000') return '销毁地址';
+    if (address === '0x0000000000000000') return t('transactions.burnAddress');
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
@@ -94,7 +96,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
       <div className="transaction-list-loading">
         <div className="loading-container">
           <SpinLoading color="#1677ff" />
-          <div className="loading-text">加载交易记录中...</div>
+          <div className="loading-text">{t('transactions.loading')}</div>
         </div>
       </div>
     );
@@ -130,26 +132,26 @@ const TransactionList: React.FC<TransactionListProps> = ({
                 <div className="transaction-addresses">
                   {tx.type === 'approve' ? (
                     <>
-                      <span>授权者 {formatAddress(tx.from)}</span>
+                      <span>{t('transactions.approver')} {formatAddress(tx.from)}</span>
                       <span> → </span>
-                      <span>被授权者 {formatAddress(tx.to)}</span>
+                      <span>{t('transactions.authorized')} {formatAddress(tx.to)}</span>
                     </>
                   ) : tx.type === 'transferFrom' ? (
                     <>
-                      <span>从 {formatAddress(tx.from)}</span>
+                      <span>{t('transactions.from')} {formatAddress(tx.from)}</span>
                       <span> → </span>
-                      <span>到 {formatAddress(tx.to)}</span>
+                      <span>{t('transactions.to')} {formatAddress(tx.to)}</span>
                       {tx.spender && (
                         <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                          执行者: {formatAddress(tx.spender)}
+                          {t('transactions.executor')}: {formatAddress(tx.spender)}
                         </div>
                       )}
                     </>
                   ) : (
                     <>
-                  <span>从 {formatAddress(tx.from)}</span>
+                  <span>{t('transactions.from')} {formatAddress(tx.from)}</span>
                   <span> → </span>
-                  <span>到 {formatAddress(tx.to)}</span>
+                  <span>{t('transactions.to')} {formatAddress(tx.to)}</span>
                     </>
                   )}
                 </div>
@@ -171,7 +173,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
           loadingMore ? (
             <div className="loading-more">
               <SpinLoading color="#1677ff" style={{ '--size': '16px' }} />
-              <span>加载更多...</span>
+              <span>{t('transactions.loadMore')}</span>
             </div>
           ) : null
         }

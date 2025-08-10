@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, Form, Input, Button, Toast } from 'antd-mobile';
+import { useTranslation } from 'react-i18next';
 import type { User } from '../../types';
 import { transferFrom } from '../../services/walletApi';
 import { useUserContext } from '../../context/UserContext';
@@ -19,10 +20,11 @@ const TransferFromModal: React.FC<TransferFromModalProps> = ({
   const { currentUser, refreshUserBalances } = useUserContext();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
 
   const handleSubmit = async (values: any) => {
     if (!currentUser) {
-      Toast.show('请先选择用户');
+      Toast.show(t('common.pleaseSelectUser'));
       return;
     }
 
@@ -32,7 +34,7 @@ const TransferFromModal: React.FC<TransferFromModalProps> = ({
       
       if (result.success) {
         Toast.show({
-          content: '授权转账成功',
+          content: t('messages.authTransferSuccess'),
           icon: 'success'
         });
         form.resetFields();
@@ -44,13 +46,13 @@ const TransferFromModal: React.FC<TransferFromModalProps> = ({
         onClose();
       } else {
         Toast.show({
-          content: result.message || '授权转账失败',
+          content: result.message || t('messages.authTransferFailed'),
           icon: 'fail'
         });
       }
     } catch (error: any) {
       Toast.show({
-        content: '授权转账失败',
+        content: t('messages.authTransferFailed'),
         icon: 'fail'
       });
     } finally {
@@ -62,13 +64,15 @@ const TransferFromModal: React.FC<TransferFromModalProps> = ({
   const validateAddress = (address: string, fieldName: string) => {
     // 简单的地址格式验证，可以根据实际需求调整
     if (!address || address.trim() === '') {
-      return `请输入${fieldName}地址`;
+      return fieldName === t('modals.transferFrom.ownerAddress') ? 
+        t('validation.pleaseEnterOwner') : 
+        t('validation.pleaseEnterRecipient');
     }
     if (address.length < 50) {
-      return '地址长度不能少于50个字符';
+      return t('validation.addressTooShort');
     }
     if (address === currentUser?.id) {
-      return `不能使用自己的地址作为${fieldName}`;
+      return t('validation.cannotUseSelfAsOwner', { fieldName });
     }
     return null;
   };
@@ -78,12 +82,12 @@ const TransferFromModal: React.FC<TransferFromModalProps> = ({
       visible={visible}
       onClose={onClose}
       closeOnMaskClick
-      title="授权转账"
+      title={t('modals.transferFrom.title')}
       content={
         <div className="transfer-from-modal">
           <div className="transfer-from-description">
-            <p>使用被授权的代币进行转账操作</p>
-            <p>您需要先获得代币所有者的授权才能执行此操作</p>
+            <p>{t('modals.transferFrom.description1')}</p>
+            <p>{t('modals.transferFrom.description2')}</p>
           </div>
 
           <Form
@@ -93,40 +97,40 @@ const TransferFromModal: React.FC<TransferFromModalProps> = ({
             className="transfer-from-form"
           >
             <Form.Item
-              label="代币所有者地址"
+              label={t('modals.transferFrom.ownerAddress')}
               name="from"
               rules={[
-                { required: true, message: '请输入代币所有者地址' },
+                { required: true, message: t('validation.pleaseEnterOwner') },
                 {
                   validator: (_, value) => {
-                    const error = validateAddress(value, '代币所有者');
+                    const error = validateAddress(value, t('modals.transferFrom.ownerAddress'));
                     return error ? Promise.reject(new Error(error)) : Promise.resolve();
                   }
                 }
               ]}
             >
               <Input
-                placeholder="请输入代币所有者地址"
+                placeholder={t('modals.transferFrom.ownerPlaceholder')}
                 type="text"
                 maxLength={500}
               />
             </Form.Item>
             
             <Form.Item
-              label="接收者地址"
+              label={t('modals.transferFrom.recipientAddress')}
               name="to"
               rules={[
-                { required: true, message: '请输入接收者地址' },
+                { required: true, message: t('validation.pleaseEnterRecipient') },
                 {
                   validator: (_, value) => {
-                    const error = validateAddress(value, '接收者');
+                    const error = validateAddress(value, t('modals.transferFrom.recipientAddress'));
                     return error ? Promise.reject(new Error(error)) : Promise.resolve();
                   }
                 }
               ]}
             >
               <Input
-                placeholder="请输入接收者地址"
+                placeholder={t('modals.transferFrom.recipientPlaceholder')}
                 type="text"
                 maxLength={500}
               />
@@ -134,14 +138,14 @@ const TransferFromModal: React.FC<TransferFromModalProps> = ({
             
             <Form.Item
               name='amount'
-              label='转账金额'
+              label={t('modals.transferFrom.transferAmount')}
               rules={[
-                { required: true, message: '请输入转账金额' },
-                { pattern: /^[1-9]\d*$/, message: '请输入正整数' }
+                { required: true, message: t('validation.pleaseEnterAmount') },
+                { pattern: /^[1-9]\d*$/, message: t('validation.pleaseEnterPositiveInteger') }
               ]}
             >
               <Input
-                placeholder="请输入转账金额"
+                placeholder={t('modals.transferFrom.amountPlaceholder')}
                 type="text"
                 inputMode="numeric"
               />
@@ -155,7 +159,7 @@ const TransferFromModal: React.FC<TransferFromModalProps> = ({
                 loading={loading}
                 disabled={!currentUser}
               >
-                确认转账
+                {t('modals.transferFrom.confirmTransfer')}
               </Button>
               <Button
                 block
@@ -163,7 +167,7 @@ const TransferFromModal: React.FC<TransferFromModalProps> = ({
                 onClick={onClose}
                 style={{ marginTop: 12 }}
               >
-                取消
+                {t('common.cancel')}
               </Button>
             </div>
           </Form>

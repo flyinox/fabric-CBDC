@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, Form, Input, Button, Toast } from 'antd-mobile';
+import { useTranslation } from 'react-i18next';
 import type { User } from '../../types';
 import { mint } from '../../services/walletApi';
 import './index.css';
@@ -19,6 +20,7 @@ const MintModal: React.FC<MintModalProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
 
   const handleSubmit = async (values: any) => {
     console.log('🔍 MintModal: 开始铸币操作');
@@ -27,7 +29,7 @@ const MintModal: React.FC<MintModalProps> = ({
     
     if (!currentUser) {
       console.log('❌ MintModal: 用户未选择');
-      Toast.show('请先选择用户');
+      Toast.show(t('common.pleaseSelectUser'));
       return;
     }
 
@@ -47,7 +49,7 @@ const MintModal: React.FC<MintModalProps> = ({
       if (result.success) {
         console.log('🔍 MintModal: 铸币成功');
         Toast.show({
-          content: '铸币成功',
+          content: t('messages.mintSuccess'),
           icon: 'success'
         });
         
@@ -64,7 +66,7 @@ const MintModal: React.FC<MintModalProps> = ({
       } else {
         console.log('❌ MintModal: 铸币失败:', result.message);
         Toast.show({
-          content: result.message || '铸币失败',
+          content: result.message || t('messages.mintFailed'),
           icon: 'fail'
         });
       }
@@ -72,7 +74,7 @@ const MintModal: React.FC<MintModalProps> = ({
     } catch (error) {
       console.error('❌ MintModal: 铸币失败:', error);
       Toast.show({
-        content: '铸币失败',
+        content: t('messages.mintFailed'),
         icon: 'fail'
       });
     } finally {
@@ -86,12 +88,12 @@ const MintModal: React.FC<MintModalProps> = ({
       visible={visible}
       onClose={onClose}
       closeOnMaskClick
-      title="铸币"
+      title={t('modals.mint.title')}
       content={
         <div className="mint-modal">
           <div className="mint-description">
-            <p>铸币操作将向指定用户账户增加代币</p>
-            <p>此操作仅限央行用户执行，请谨慎操作</p>
+            <p>{t('modals.mint.description1')}</p>
+            <p>{t('modals.mint.description2')}</p>
           </div>
 
           <Form
@@ -101,15 +103,15 @@ const MintModal: React.FC<MintModalProps> = ({
             className="mint-form"
           >
             <Form.Item
-              label="铸币金额"
+              label={t('modals.mint.mintAmount')}
               name="amount"
               rules={[
-                { required: true, message: '请输入铸币金额' },
-                { pattern: /^[1-9]\d*$/, message: '请输入正整数' }
+                { required: true, message: t('validation.pleaseEnterMintAmount') },
+                { pattern: /^[1-9]\d*$/, message: t('validation.pleaseEnterPositiveInteger') }
               ]}
             >
               <Input
-                placeholder="请输入铸币金额"
+                placeholder={t('modals.mint.amountPlaceholder')}
                 type="text"
                 inputMode="numeric"
               />
@@ -123,7 +125,7 @@ const MintModal: React.FC<MintModalProps> = ({
                 loading={loading}
                 disabled={!currentUser}
               >
-                确认铸币
+                {t('modals.mint.confirmMint')}
               </Button>
               <Button
                 block
@@ -131,7 +133,7 @@ const MintModal: React.FC<MintModalProps> = ({
                 onClick={onClose}
                 style={{ marginTop: 12 }}
               >
-                取消
+                {t('common.cancel')}
               </Button>
             </div>
           </Form>

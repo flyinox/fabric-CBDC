@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Menu, Card, Row, Col, Statistic, Button, Space, Tag, Modal, Spin, Empty, message, Typography, Form, Input, Select, InputNumber, Divider, Alert } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { 
   ReloadOutlined, 
   DesktopOutlined, 
@@ -14,6 +15,7 @@ import {
   LockOutlined,
   LoginOutlined
 } from '@ant-design/icons';
+import LanguageSelector from './components/LanguageSelector';
 import './App.css';
 
 const { Content, Sider } = Layout;
@@ -54,6 +56,8 @@ interface LoginForm {
 }
 
 const App: React.FC = () => {
+  const { t } = useTranslation();
+  
   // 登录状态
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
@@ -1022,7 +1026,7 @@ const App: React.FC = () => {
         <Sider width={200} theme="dark">
           <div className="logo">
             <Title level={4} style={{ color: 'white', textAlign: 'center', margin: '16px 0' }}>
-              CBDC 管理后台
+              {t('admin.title')}
             </Title>
           </div>
           <Menu
@@ -1044,6 +1048,16 @@ const App: React.FC = () => {
           </div>
         </Sider>
         <Layout>
+          <div style={{ 
+            padding: '16px 24px', 
+            background: '#fff', 
+            borderBottom: '1px solid #f0f0f0',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'center'
+          }}>
+            <LanguageSelector />
+          </div>
           <Content style={{ padding: '24px', overflow: 'auto' }}>
             {renderContent()}
           </Content>

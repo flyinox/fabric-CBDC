@@ -1,0 +1,122 @@
+{
+  "admin": {
+    "title": "CBDC Admin Console"
+  },
+  "common": {
+    "loading": "Loading...",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "success": "Success",
+    "failed": "Failed",
+    "error": "Error",
+    "close": "Close",
+    "refresh": "Refresh",
+    "start": "Start",
+    "stop": "Stop",
+    "restart": "Restart",
+    "clean": "Clean",
+    "setup": "Setup",
+    "add": "Add",
+    "delete": "Delete",
+    "test": "Test",
+    "reset": "Reset",
+    "unknown": "Unknown",
+    "running": "Running",
+    "stopped": "Stopped",
+    "noData": "No data",
+    "noInfo": "No node information",
+    "noLogs": "No logs"
+  },
+  "login": {
+    "title": "CBDC Management Backend",
+    "username": "Username",
+    "password": "Password",
+    "usernamePlaceholder": "Enter username",
+    "passwordPlaceholder": "Enter password",
+    "loginButton": "Login",
+    "logout": "Logout",
+    "loginSuccess": "Login successful",
+    "loginFailed": "Invalid username or password",
+    "networkError": "Login failed, please check network connection"
+  },
+  "navigation": {
+    "monitor": "Monitor",
+    "network": "Network Management",
+    "token": "Token Initialization",
+    "users": "User Management"
+  },
+  "monitor": {
+    "title": "System Monitor",
+    "networkMonitor": "Network Monitor",
+    "nodeStatus": "Node Status",
+    "totalNodes": "Total Nodes",
+    "runningNodes": "Running Nodes",
+    "networkStatus": "Network Status",
+    "refreshStatus": "Refresh Status",
+    "updateTime": "Updated: {{time}}",
+    "viewLogs": "Logs",
+    "logsTitle": "{{nodeName}} Logs",
+    "loadingLogs": "Loading logs..."
+  },
+  "network": {
+    "title": "Network Configuration Management",
+    "centralBankId": "Central Bank ID",
+    "centralBankPlaceholder": "Central Bank ID",
+    "participatingBanks": "Participating Banks Configuration",
+    "bankId": "Bank ID",
+    "bankPlaceholder": "Bank ID",
+    "addBank": "Add Bank",
+    "deleteBank": "Delete",
+    "startNetwork": "Start Network",
+    "reconfigure": "Reconfigure",
+    "startConfirm": "This will clean the existing network. Are you sure?",
+    "reconfigureConfirm": "Are you sure to reconfigure the network? This will reset the network according to current configuration.",
+    "networkStartSuccess": "Network started successfully",
+    "networkStartFailed": "Failed to start network",
+    "networkCleanSuccess": "Network cleaned successfully, starting network...",
+    "networkConfigSuccess": "Network configured successfully",
+    "networkConfigFailed": "Failed to configure network"
+  },
+  "token": {
+    "title": "Token Initialization Management",
+    "initialized": "Token initialized: {{info}}",
+    "notInitialized": "Token not initialized, please use central bank admin to initialize token",
+    "tokenName": "Token Name",
+    "tokenSymbol": "Token Symbol",
+    "decimals": "Decimals",
+    "centralBankAdmin": "Central Bank Admin",
+    "namePlaceholder": "Enter token name",
+    "symbolPlaceholder": "Enter token symbol (letters and numbers only)",
+    "decimalsPlaceholder": "Enter decimals (0-18)",
+    "adminPlaceholder": "Select central bank admin user",
+    "initializeToken": "Initialize Token",
+    "resetParams": "Reset Parameters",
+    "testEnvironment": "Test Environment",
+    "initSuccess": "Token initialized successfully",
+    "initFailed": "Failed to initialize token"
+  },
+  "users": {
+    "title": "User Management",
+    "selectBank": "Select Bank",
+    "bankPlaceholder": "Please select a bank",
+    "userCount": "User Count",
+    "addUsers": "Add Users",
+    "addSuccess": "Successfully added {{count}} users for {{bank}}",
+    "addFailed": "Failed to add users"
+  },
+  "messages": {
+    "getStatusFailed": "Failed to get network status",
+    "getLogsFailed": "Failed to get logs",
+    "getBanksFailed": "Failed to get bank list",
+    "getCentralBankUsersFailed": "Failed to get central bank users",
+    "getTokenInfoFailed": "Failed to get token information",
+    "environmentCheckComplete": "Environment check completed, please check console logs",
+    "environmentCheckFailed": "Environment check failed"
+  },
+  "language": {
+    "title": "Language",
+    "zhCN": "中文",
+    "enUS": "English",
+    "jaJP": "日本語"
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "admin": {
+    "title": "CBDC 管理后台"
+  },
+  "common": {
+    "loading": "加载中...",
+    "confirm": "确认",
+    "cancel": "取消",
+    "success": "成功",
+    "failed": "失败",
+    "error": "错误",
+    "close": "关闭",
+    "refresh": "刷新",
+    "start": "启动",
+    "stop": "停止",
+    "restart": "重启",
+    "clean": "清除",
+    "setup": "设置",
+    "add": "添加",
+    "delete": "删除",
+    "test": "测试",
+    "reset": "重置",
+    "unknown": "未知",
+    "running": "运行中",
+    "stopped": "已停止",
+    "noData": "暂无数据",
+    "noInfo": "暂无节点信息",
+    "noLogs": "暂无日志"
+  },
+  "login": {
+    "title": "CBDC 管理后台",
+    "username": "用户名",
+    "password": "密码",
+    "usernamePlaceholder": "请输入用户名",
+    "passwordPlaceholder": "请输入密码",
+    "loginButton": "登录",
+    "logout": "退出登录",
+    "loginSuccess": "登录成功",
+    "loginFailed": "用户名或密码错误",
+    "networkError": "登录失败，请检查网络连接"
+  },
+  "navigation": {
+    "monitor": "运行监控",
+    "network": "网络管理",
+    "token": "代币初始化",
+    "users": "用户管理"
+  },
+  "monitor": {
+    "title": "运行监控",
+    "networkMonitor": "网络监控",
+    "nodeStatus": "节点状态",
+    "totalNodes": "总节点数",
+    "runningNodes": "运行中节点",
+    "networkStatus": "网络状态",
+    "refreshStatus": "刷新状态",
+    "updateTime": "更新时间: {{time}}",
+    "viewLogs": "日志",
+    "logsTitle": "{{nodeName}} 日志",
+    "loadingLogs": "加载日志中..."
+  },
+  "network": {
+    "title": "网络配置管理",
+    "centralBankId": "央行标识",
+    "centralBankPlaceholder": "央行标识",
+    "participatingBanks": "参与银行配置",
+    "bankId": "银行标识",
+    "bankPlaceholder": "银行标识",
+    "addBank": "添加银行",
+    "deleteBank": "删除",
+    "startNetwork": "启动网络",
+    "reconfigure": "重新配置",
+    "startConfirm": "如果执行，将会清除现有网络，是否确认？",
+    "reconfigureConfirm": "确定要重新配置网络吗？这将根据当前配置重新设置网络。",
+    "networkStartSuccess": "网络启动成功",
+    "networkStartFailed": "网络启动失败",
+    "networkCleanSuccess": "网络清除成功，正在启动网络...",
+    "networkConfigSuccess": "网络配置成功",
+    "networkConfigFailed": "网络配置失败"
+  },
+  "token": {
+    "title": "代币初始化管理",
+    "initialized": "代币已初始化: {{info}}",
+    "notInitialized": "代币未初始化, 请使用央行管理员身份初始化代币",
+    "tokenName": "代币名称",
+    "tokenSymbol": "代币符号",
+    "decimals": "小数位数",
+    "centralBankAdmin": "央行管理员",
+    "namePlaceholder": "请输入代币名称",
+    "symbolPlaceholder": "请输入代币符号（仅英文和数字）",
+    "decimalsPlaceholder": "请输入小数位数（0-18）",
+    "adminPlaceholder": "请选择央行管理员用户",
+    "initializeToken": "初始化代币",
+    "resetParams": "重置参数",
+    "testEnvironment": "测试环境",
+    "initSuccess": "代币初始化成功",
+    "initFailed": "代币初始化失败"
+  },
+  "users": {
+    "title": "用户管理",
+    "selectBank": "选择银行",
+    "bankPlaceholder": "请选择银行",
+    "userCount": "用户数量",
+    "addUsers": "添加用户",
+    "addSuccess": "成功为{{bank}}添加{{count}}个用户",
+    "addFailed": "添加用户失败"
+  },
+  "messages": {
+    "getStatusFailed": "获取网络状态失败",
+    "getLogsFailed": "获取日志失败",
+    "getBanksFailed": "获取银行列表失败",
+    "getCentralBankUsersFailed": "获取央行用户失败",
+    "getTokenInfoFailed": "获取代币信息失败",
+    "environmentCheckComplete": "环境检查完成，请查看控制台日志",
+    "environmentCheckFailed": "环境检查失败"
+  },
+  "language": {
+    "title": "语言",
+    "zhCN": "中文",
+    "enUS": "English", 
+    "jaJP": "日本語"
+  }
+}

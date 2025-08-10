@@ -6,12 +6,14 @@ import {
   BillOutline,
   SetOutline
 } from 'antd-mobile-icons';
+import { useTranslation } from 'react-i18next';
 import WalletPage from './pages/Wallet';
 import ManagePage from './pages/Manage';
 import AuthorizationPage from './pages/Authorization';
 import './App.css';
 import { UserProvider, useUserContext } from './context/UserContext';
 import UserSelectorDrawer from './components/UserSelectorDrawer';
+import LanguageSelector from './components/LanguageSelector';
 
 
 const AppContent: React.FC = () => {
@@ -19,6 +21,7 @@ const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const [activeKey, setActiveKey] = useState(location.pathname);
   const { currentUser } = useUserContext();
+  const { t } = useTranslation();
 
   useEffect(() => {
     setActiveKey(location.pathname);
@@ -29,12 +32,12 @@ const AppContent: React.FC = () => {
     const baseTabs = [
       {
         key: '/wallet',
-        title: '钱包',
+        title: t('navigation.wallet'),
         icon: () => <PayCircleOutline />
       },
       {
         key: '/authorization',
-        title: '授权',
+        title: t('navigation.authorization'),
         icon: () => <SetOutline />
       }
     ];
@@ -44,7 +47,7 @@ const AppContent: React.FC = () => {
     if (currentUser?.canManage) {
       baseTabs.push({
         key: '/manage',
-        title: '管理',
+        title: t('navigation.manage'),
         icon: () => <BillOutline />
       });
     }
@@ -62,6 +65,16 @@ const AppContent: React.FC = () => {
     <>
       {/* 主内容区 */}
       <div className="app-content">
+        {/* 顶部头部区域 */}
+        <div className="app-header">
+          <div className="app-header-left">
+            {/* 空白区域或者可以放标题 */}
+          </div>
+          <div className="app-header-right">
+            <LanguageSelector />
+          </div>
+        </div>
+        
         {/* 全局用户选择入口，独立一行 */}
         <div
           style={{
@@ -94,10 +107,10 @@ const AppContent: React.FC = () => {
                 borderRadius: '50%',
                 animation: 'spin 1s linear infinite'
               }} />
-              切换用户中...
+              {t('common.switchingUser')}
             </div>
           ) : (
-            currentUser ? `${currentUser.name}（${currentUser.organization}）` : '请选择用户'
+            currentUser ? `${currentUser.name}（${currentUser.organization}）` : t('user.selectUser')
           )}
         </div>
         <UserSelectorDrawer
@@ -108,6 +121,7 @@ const AppContent: React.FC = () => {
           onSelect={user => { setCurrentUser(user); setDrawerVisible(false); }}
           switchingUser={switchingUser}
         />
+        
         <Routes>
           <Route path="/wallet" element={<WalletPage />} />
           <Route path="/authorization" element={<AuthorizationPage />} />

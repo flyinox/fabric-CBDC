@@ -1,0 +1,246 @@
+{
+  "common": {
+    "loading": "加载中...",
+    "confirm": "确认",
+    "cancel": "取消",
+    "success": "成功",
+    "failed": "失败",
+    "pending": "待确认",
+    "error": "错误",
+    "close": "关闭",
+    "copy": "复制",
+    "copied": "已复制",
+    "unknown": "未知",
+    "submit": "提交",
+    "reset": "重置",
+    "add": "添加",
+    "delete": "删除",
+    "edit": "编辑",
+    "save": "保存",
+    "refresh": "刷新",
+    "search": "搜索",
+    "filter": "筛选",
+    "clear": "清除",
+    "select": "选择",
+    "current": "当前",
+    "switching": "切换中",
+    "switchingUser": "切换用户中...",
+    "pleaseSelectUser": "请先选择用户",
+    "noData": "暂无数据",
+    "noRecords": "暂无记录",
+    "noAuth": "无权限",
+    "unlimited": "无限制",
+    "justNow": "刚刚",
+    "minutesAgo": "{{count}}分钟前",
+    "hoursAgo": "{{count}}小时前",
+    "daysAgo": "{{count}}天前"
+  },
+  "navigation": {
+    "wallet": "钱包",
+    "authorization": "授权", 
+    "manage": "管理"
+  },
+  "user": {
+    "selectUser": "请选择用户",
+    "userAddress": "用户地址",
+    "balance": "余额",
+    "organization": "组织",
+    "copyAddress": "复制地址",
+    "addressCopied": "用户地址已复制到剪贴板",
+    "copyFailed": "复制失败",
+    "addressLoading": "用户地址正在加载中，请稍后再试"
+  },
+  "wallet": {
+    "title": "钱包",
+    "myTransactions": "我的交易记录",
+    "transfer": "转账",
+    "receive": "收款",
+    "approve": "授权",
+    "records": "记录",
+    "receiveFeature": "收款功能开发中...",
+    "recordsFeature": "记录功能开发中..."
+  },
+  "authorization": {
+    "title": "授权",
+    "authInfo": "授权信息",
+    "accountBalance": "账户余额",
+    "maxCanApprove": "可授权金额",
+    "totalApproved": "已授权总额",
+    "totalUsed": "已使用总额",
+    "totalRemaining": "剩余总额",
+    "totalIncomingAllowance": "收到的授权总额",
+    "approveAction": "批准授权",
+    "transferFromAction": "授权转账",
+    "authRecords": "授权记录",
+    "noAuthRecords": "暂无授权记录",
+    "authRecordsDesc": "您可以批准授权给其他用户，或使用其他用户给您的授权",
+    "outgoing": "我授权的",
+    "incoming": "我被授权的",
+    "owner": "授权者",
+    "spender": "被授权者",
+    "remaining": "剩余",
+    "used": "使用",
+    "usage": "使用",
+    "authorizer": "授权者",
+    "authorized": "被授权者",
+    "canApprove": "可授权",
+    "verifyInBackground": "后台验证授权额度",
+    "tips": "💡 提示：",
+    "tipsList": {
+      "tip1": "可授权金额基于您的账户余额",
+      "tip2": "授权转账需要您先获得其他用户的授权",
+      "tip3": "系统会在后台验证授权额度，无需预先检查"
+    },
+    "helpTitle": "📖 授权功能说明",
+    "helpSections": {
+      "approve": {
+        "title": "批准授权",
+        "desc": "允许其他用户使用您的代币进行转账操作。授权后，被授权者可以在授权额度内使用您的代币。"
+      },
+      "transferFrom": {
+        "title": "授权转账",
+        "desc": "使用其他用户授权给您的代币进行转账。系统会在后台验证您是否有足够的授权额度。"
+      },
+      "records": {
+        "title": "授权记录",
+        "desc": "显示您已授权给其他用户的记录。由于隐私保护，不显示您收到的授权记录。"
+      }
+    }
+  },
+  "transaction": {
+    "types": {
+      "transfer": "转账",
+      "approve": "授权",
+      "transferFrom": "授权转账",
+      "mint": "铸币",
+      "burn": "销毁"
+    },
+    "status": {
+      "success": "成功",
+      "pending": "待确认",
+      "failed": "失败"
+    }
+  },
+  "manage": {
+    "title": "管理",
+    "mint": "铸币",
+    "burn": "销毁",
+    "globalTransactions": "全网交易记录",
+    "orgTransactions": "本组织交易记录",
+    "noManageAuth": "无管理权限"
+  },
+  "modals": {
+    "transfer": {
+      "title": "转账",
+      "transferType": "转账类型:",
+      "directTransfer": "直接转账",
+      "approveTransfer": "授权转账",
+      "recipientAddress": "接收者地址",
+      "transferAmount": "转账金额",
+      "approveAmount": "授权金额",
+      "confirmTransfer": "确认转账",
+      "recipientPlaceholder": "请输入接收者地址",
+      "amountPlaceholder": "请输入转账金额",
+      "approvePlaceholder": "请输入授权金额"
+    },
+    "mint": {
+      "title": "铸币",
+      "mintAmount": "铸币金额",
+      "confirmMint": "确认铸币",
+      "amountPlaceholder": "请输入铸币金额",
+      "description1": "铸币操作将向指定用户账户增加代币",
+      "description2": "此操作仅限央行用户执行，请谨慎操作"
+    },
+    "burn": {
+      "title": "销毁",
+      "burnAmount": "销毁金额",
+      "confirmBurn": "确认销毁",
+      "amountPlaceholder": "请输入销毁金额",
+      "description1": "销毁操作将从指定用户账户减少代币",
+      "description2": "此操作仅限央行用户执行，请谨慎操作"
+    },
+    "approve": {
+      "title": "批准授权",
+      "spenderAddress": "被授权者地址",
+      "approveAmount": "授权金额",
+      "confirmApprove": "确认授权",
+      "spenderPlaceholder": "请输入被授权者地址",
+      "amountPlaceholder": "请输入授权金额 (最大: ¥{{maxAmount}})",
+      "description1": "授权允许其他用户使用您的代币进行转账操作",
+      "description2": "授权后，被授权者可以在授权额度内使用您的代币",
+      "maxAmountInfo": "可授权金额: ¥{{amount}}"
+    },
+    "transferFrom": {
+      "title": "授权转账",
+      "ownerAddress": "代币所有者地址",
+      "recipientAddress": "接收者地址",
+      "transferAmount": "转账金额",
+      "confirmTransfer": "确认转账",
+      "ownerPlaceholder": "请输入代币所有者地址",
+      "recipientPlaceholder": "请输入接收者地址",
+      "amountPlaceholder": "请输入转账金额",
+      "description1": "使用被授权的代币进行转账操作",
+      "description2": "您需要先获得代币所有者的授权才能执行此操作"
+    }
+  },
+  "transactions": {
+    "title": "交易记录",
+    "total": "共 {{count}} 笔交易",
+    "transfer": "转账",
+    "approve": "授权",
+    "transferFrom": "授权转账",
+    "mint": "铸币",
+    "burn": "销毁",
+    "from": "从",
+    "to": "到",
+    "owner": "授权者",
+    "spender": "被授权者",
+    "executor": "执行者",
+    "burnAddress": "销毁地址"
+  },
+  "validation": {
+    "required": "此字段为必填项",
+    "pleaseEnterRecipient": "请输入接收者地址",
+    "pleaseEnterAmount": "请输入转账金额",
+    "pleaseEnterMintAmount": "请输入铸币金额",
+    "pleaseEnterBurnAmount": "请输入销毁金额",
+    "pleaseEnterApproveAmount": "请输入授权金额",
+    "pleaseEnterSpender": "请输入被授权者地址",
+    "pleaseEnterOwner": "请输入代币所有者地址",
+    "pleaseEnterPositiveInteger": "请输入正整数",
+    "addressTooShort": "地址长度不能少于50个字符",
+    "cannotTransferToSelf": "不能转账给自己",
+    "cannotApproveToSelf": "不能授权给自己",
+    "cannotUseSelfAsOwner": "不能使用自己的地址作为{{fieldName}}",
+    "approveAmountExceedsMax": "授权金额不能超过可授权金额 ¥{{maxAmount}}"
+  },
+  "manage": {
+    "mint": "铸币",
+    "burn": "销毁",
+    "networkRecords": "全网交易记录",
+    "orgRecords": "本组织交易记录",
+    "noPermission": "无管理权限"
+  },
+  "messages": {
+    "transferSuccess": "转账成功",
+    "transferFailed": "转账失败",
+    "mintSuccess": "铸币成功",
+    "mintFailed": "铸币失败",
+    "burnSuccess": "销毁成功",
+    "burnFailed": "销毁失败",
+    "approveSuccess": "授权成功",
+    "approveFailed": "授权失败",
+    "authTransferSuccess": "授权转账成功",
+    "authTransferFailed": "授权转账失败",
+    "loadUsersFailed": "加载用户失败",
+    "loadTransactionsFailed": "加载交易记录失败",
+    "loadBalanceFailed": "加载用户余额失败",
+    "loadAllowanceFailed": "加载授权信息失败"
+  },
+  "language": {
+    "title": "语言",
+    "zhCN": "中文",
+    "enUS": "English",
+    "jaJP": "日本語"
+  }
+}

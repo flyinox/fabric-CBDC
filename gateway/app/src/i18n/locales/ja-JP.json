@@ -1,0 +1,250 @@
+{
+  "common": {
+    "loading": "読み込み中...",
+    "confirm": "確認",
+    "cancel": "キャンセル",
+    "success": "成功",
+    "failed": "失敗",
+    "pending": "保留中",
+    "error": "エラー",
+    "close": "閉じる",
+    "copy": "コピー",
+    "copied": "コピー済み",
+    "unknown": "不明",
+    "submit": "送信",
+    "reset": "リセット",
+    "add": "追加",
+    "delete": "削除",
+    "edit": "編集",
+    "save": "保存",
+    "refresh": "更新",
+    "search": "検索",
+    "filter": "フィルター",
+    "clear": "クリア",
+    "select": "選択",
+    "current": "現在",
+    "switching": "切り替え中",
+    "switchingUser": "ユーザー切り替え中...",
+    "pleaseSelectUser": "まずユーザーを選択してください",
+    "noData": "データなし",
+    "noRecords": "記録なし",
+    "noAuth": "権限なし",
+    "unlimited": "無制限",
+    "justNow": "たった今",
+    "minutesAgo": "{{count}}分前",
+    "hoursAgo": "{{count}}時間前",
+    "daysAgo": "{{count}}天前"
+  },
+  "navigation": {
+    "wallet": "ウォレット",
+    "authorization": "承認", 
+    "manage": "管理"
+  },
+  "user": {
+    "selectUser": "ユーザーを選択してください",
+    "userAddress": "ユーザーアドレス",
+    "balance": "残高",
+    "organization": "組織",
+    "copyAddress": "アドレスをコピー",
+    "addressCopied": "ユーザーアドレスがクリップボードにコピーされました",
+    "copyFailed": "コピーに失敗しました",
+    "addressLoading": "ユーザーアドレスを読み込み中です。しばらくお待ちください"
+  },
+  "wallet": {
+    "title": "ウォレット",
+    "myTransactions": "私の取引記録",
+    "transfer": "送金",
+    "receive": "受取",
+    "approve": "承認",
+    "records": "記録",
+    "receiveFeature": "受取機能は開発中です...",
+    "recordsFeature": "記録機能は開発中です..."
+  },
+  "authorization": {
+    "title": "承認",
+    "authInfo": "承認情報",
+    "accountBalance": "アカウント残高",
+    "maxCanApprove": "最大承認可能額",
+    "totalApproved": "承認済み総額",
+    "totalUsed": "使用済み総額",
+    "totalRemaining": "残り総額",
+    "totalIncomingAllowance": "受信承認総額",
+    "approveAction": "承認",
+    "transferFromAction": "承認送金",
+    "authRecords": "承認記録",
+    "noAuthRecords": "承認記録がありません",
+    "authRecordsDesc": "他のユーザーに承認を与えるか、他のユーザーからの承認を使用できます",
+    "outgoing": "私が承認した",
+    "incoming": "私が承認された",
+    "owner": "所有者",
+    "spender": "使用者",
+    "remaining": "残り",
+    "used": "使用済み",
+    "usage": "使用率",
+    "authorizer": "承認者",
+    "authorized": "被承認者",
+    "canApprove": "承認可能",
+    "verifyInBackground": "バックグラウンドで承認額を検証",
+    "tips": "💡 ヒント:",
+    "tipsList": {
+      "tip1": "承認可能額はアカウント残高に基づきます",
+      "tip2": "承認送金には他のユーザーからの事前承認が必要です",
+      "tip3": "システムが自動で承認限度額を検証します"
+    },
+    "helpTitle": "📖 承認機能ガイド",
+    "helpSections": {
+      "approve": {
+        "title": "承認",
+        "desc": "他のユーザーがあなたのトークンを送金に使用することを許可します。承認後、承認されたユーザーは承認限度額内であなたのトークンを使用できます。"
+      },
+      "transferFrom": {
+        "title": "承認送金",
+        "desc": "他のユーザーがあなたに承認したトークンを使用して送金を行います。システムが自動で十分な承認額があるかを検証します。"
+      },
+      "records": {
+        "title": "承認記録",
+        "desc": "あなたが他のユーザーに与えた承認の記録を表示します。プライバシー保護のため、受信した承認は表示されません。"
+      }
+    }
+  },
+  "transaction": {
+    "types": {
+      "transfer": "送金",
+      "approve": "承認",
+      "transferFrom": "承認送金",
+      "mint": "発行",
+      "burn": "破棄"
+    },
+    "status": {
+      "success": "成功",
+      "pending": "保留中",
+      "failed": "失敗"
+    }
+  },
+  "manage": {
+    "title": "管理",
+    "mint": "鋳造",
+    "burn": "焼却",
+    "globalTransactions": "グローバル取引記録",
+    "orgTransactions": "組織取引記録",
+    "noManageAuth": "管理権限がありません"
+  },
+  "modals": {
+    "transfer": {
+      "title": "送金",
+      "transferType": "送金タイプ:",
+      "directTransfer": "直接送金",
+      "approveTransfer": "承認送金",
+      "recipientAddress": "受取人アドレス",
+      "transferAmount": "送金額",
+      "approveAmount": "承認額",
+      "confirmTransfer": "送金確認",
+      "recipientPlaceholder": "受取人アドレスを入力",
+      "amountPlaceholder": "送金額を入力",
+      "approvePlaceholder": "承認額を入力"
+    },
+    "mint": {
+      "title": "鋳造",
+      "mintAmount": "鋳造額",
+      "confirmMint": "鋳造確認",
+      "amountPlaceholder": "鋳造額を入力",
+      "description1": "鋳造操作により指定されたユーザーアカウントにトークンが追加されます",
+      "description2": "この操作は中央銀行ユーザーのみ実行可能です。慎重に操作してください"
+    },
+    "burn": {
+      "title": "焼却",
+      "burnAmount": "焼却額",
+      "confirmBurn": "焼却確認",
+      "amountPlaceholder": "焼却額を入力",
+      "description1": "焼却操作により指定されたユーザーアカウントからトークンが減少します",
+      "description2": "この操作は中央銀行ユーザーのみ実行可能です。慎重に操作してください"
+    },
+    "approve": {
+      "title": "承認",
+      "spenderAddress": "使用者アドレス",
+      "approveAmount": "承認額",
+      "confirmApprove": "承認確認",
+      "spenderPlaceholder": "使用者アドレスを入力",
+      "amountPlaceholder": "承認額を入力 (最大: ¥{{maxAmount}})",
+      "description1": "承認により他のユーザーがあなたのトークンを送金操作に使用できるようになります",
+      "description2": "承認後、承認されたユーザーは承認限度額内であなたのトークンを使用できます",
+      "maxAmountInfo": "最大承認可能額: ¥{{amount}}"
+    },
+    "transferFrom": {
+      "title": "承認送金",
+      "ownerAddress": "トークン所有者アドレス",
+      "recipientAddress": "受取人アドレス",
+      "transferAmount": "送金額",
+      "confirmTransfer": "送金確認",
+      "ownerPlaceholder": "トークン所有者アドレスを入力",
+      "recipientPlaceholder": "受取人アドレスを入力",
+      "amountPlaceholder": "送金額を入力",
+      "description1": "承認されたトークンを使用して送金操作を行います",
+      "description2": "この操作を実行する前に、トークン所有者からの承認を取得する必要があります"
+    }
+  },
+  "transactions": {
+    "title": "取引記録",
+    "total": "合計 {{count}} 件の取引",
+    "transfer": "送金",
+    "approve": "承認",
+    "transferFrom": "承認送金",
+    "mint": "鋳造",
+    "burn": "焼却",
+    "from": "送信者",
+    "to": "受信者",
+    "owner": "所有者",
+    "spender": "使用者",
+    "executor": "実行者",
+    "burnAddress": "焼却アドレス",
+    "loading": "取引記録を読み込み中...",
+    "loadMore": "さらに読み込み...",
+    "approver": "承認者",
+    "authorized": "承認済み"
+  },
+  "validation": {
+    "required": "この項目は必須です",
+    "pleaseEnterRecipient": "受取人アドレスを入力してください",
+    "pleaseEnterAmount": "送金額を入力してください",
+    "pleaseEnterMintAmount": "鋳造額を入力してください",
+    "pleaseEnterBurnAmount": "焼却額を入力してください",
+    "pleaseEnterApproveAmount": "承認額を入力してください",
+    "pleaseEnterSpender": "使用者アドレスを入力してください",
+    "pleaseEnterOwner": "トークン所有者アドレスを入力してください",
+    "pleaseEnterPositiveInteger": "正の整数を入力してください",
+    "addressTooShort": "アドレスの長さは50文字以上である必要があります",
+    "cannotTransferToSelf": "自分に送金することはできません",
+    "cannotApproveToSelf": "自分に承認することはできません",
+    "cannotUseSelfAsOwner": "自分のアドレスを{{fieldName}}として使用することはできません",
+    "approveAmountExceedsMax": "承認額は最大承認可能額 ¥{{maxAmount}} を超えることはできません"
+  },
+  "manage": {
+    "mint": "発行",
+    "burn": "破棄",
+    "networkRecords": "ネットワーク取引記録",
+    "orgRecords": "組織取引記録",
+    "noPermission": "管理権限なし"
+  },
+  "messages": {
+    "transferSuccess": "送金が成功しました",
+    "transferFailed": "送金に失敗しました",
+    "mintSuccess": "鋳造が成功しました",
+    "mintFailed": "鋳造に失敗しました",
+    "burnSuccess": "焼却が成功しました",
+    "burnFailed": "焼却に失敗しました",
+    "approveSuccess": "承認が成功しました",
+    "approveFailed": "承認に失敗しました",
+    "authTransferSuccess": "承認送金が成功しました",
+    "authTransferFailed": "承認送金に失敗しました",
+    "loadUsersFailed": "ユーザーの読み込みに失敗しました",
+    "loadTransactionsFailed": "取引記録の読み込みに失敗しました",
+    "loadBalanceFailed": "ユーザー残高の読み込みに失敗しました",
+    "loadAllowanceFailed": "承認情報の読み込みに失敗しました"
+  },
+  "language": {
+    "title": "言語",
+    "zhCN": "中文",
+    "enUS": "English",
+    "jaJP": "日本語"
+  }
+}

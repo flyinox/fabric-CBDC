@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Toast, List, Tag, Selector } from 'antd-mobile';
+import { useTranslation } from 'react-i18next';
 import type { Transaction, User } from '../../types';
 import { getTransactions, getUsersWithBalances } from '../../services/walletApi';
 import './index.css';
@@ -9,6 +10,7 @@ const RecordsPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
 
   useEffect(() => {
     loadUsers();
@@ -28,7 +30,7 @@ const RecordsPage: React.FC = () => {
         setCurrentUser(userList[0]);
       }
     } catch (error) {
-      Toast.show('加载用户失败');
+      Toast.show(t('messages.loadUsersFailed'));
     }
   };
 
@@ -41,7 +43,7 @@ const RecordsPage: React.FC = () => {
       const sortedTx = txList.sort((a, b) => b.timestamp - a.timestamp);
       setTransactions(sortedTx);
     } catch (error) {
-      Toast.show('加载交易记录失败');
+      Toast.show(t('messages.loadTransactionsFailed'));
       setTransactions([]);
     } finally {
       setLoading(false);

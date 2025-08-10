@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Grid, Toast, List, Tag, Selector, Divider } from 'antd-mobile';
+import { useTranslation } from 'react-i18next';
 import type { User } from '../../types';
 import { getAllowance, getUserBalance, getUserAccountId } from '../../services/walletApi';
 import { useUserContext } from '../../context/UserContext';
@@ -61,6 +62,7 @@ const AuthorizationPage: React.FC = () => {
     maxCanApprove: 0,
     totalIncomingAllowance: 0
   });
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (currentUser) {
@@ -75,12 +77,12 @@ const AuthorizationPage: React.FC = () => {
   const handleCopyAddress = () => {
     if (accountId) {
       navigator.clipboard.writeText(accountId).then(() => {
-        Toast.show('用户地址已复制到剪贴板');
+        Toast.show(t('user.addressCopied'));
       }).catch(() => {
-        Toast.show('复制失败');
+        Toast.show(t('user.copyFailed'));
       });
     } else {
-      Toast.show('用户地址正在加载中，请稍后再试');
+      Toast.show(t('user.addressLoading'));
     }
   };
 
@@ -175,9 +177,9 @@ const AuthorizationPage: React.FC = () => {
 
   const getAuthorizationType = (allowance: AllowanceInfo) => {
     if (allowance.owner === currentUser?.id) {
-      return { type: 'outgoing', label: '我授权的', color: 'primary' };
+      return { type: 'outgoing', label: t('authorization.outgoing'), color: 'primary' };
     } else {
-      return { type: 'incoming', label: '我被授权的', color: 'success' };
+      return { type: 'incoming', label: t('authorization.incoming'), color: 'success' };
     }
   };
 
@@ -185,7 +187,7 @@ const AuthorizationPage: React.FC = () => {
     return (
       <div className="authorization-page loading">
         <div>
-          {switchingUser ? '切换用户中...' : '加载中...'}
+          {switchingUser ? t('common.switchingUser') : t('common.loading')}
         </div>
       </div>
     );
@@ -202,13 +204,13 @@ const AuthorizationPage: React.FC = () => {
               <div className="user-org">{currentUser.organization}</div>
             </div>
             <div className="user-balance">
-              <div className="balance-label">余额</div>
+              <div className="balance-label">{t('user.balance')}</div>
               <div className="balance-amount">¥{currentUser.balance}</div>
             </div>
             <div className="user-address">
-              <div className="address-label">用户地址</div>
+              <div className="address-label">{t('user.userAddress')}</div>
               <div className="address-value" onClick={handleCopyAddress} style={{wordBreak: 'break-all'}}>
-                {accountId || '加载中...'}
+                {accountId || t('common.loading')}
                 <span className="copy-icon">📋</span>
               </div>
             </div>
@@ -219,25 +221,25 @@ const AuthorizationPage: React.FC = () => {
       {/* 授权统计信息 */}
       <Card className="stats-card">
         <div className="stats-header">
-          <h3>授权信息</h3>
+          <h3>{t('authorization.authInfo')}</h3>
         </div>
         <div className="stats-content">
           <div className="stats-row">
             <div className="stats-item">
-              <div className="stats-label">账户余额</div>
+              <div className="stats-label">{t('authorization.accountBalance')}</div>
               <div className="stats-value">¥{stats.availableBalance}</div>
             </div>
             <div className="stats-item">
-              <div className="stats-label">可授权金额</div>
+              <div className="stats-label">{t('authorization.maxCanApprove')}</div>
               <div className="stats-value highlight">¥{stats.maxCanApprove}</div>
             </div>
           </div>
           <div className="stats-description">
-            <p>💡 提示：</p>
+            <p>{t('authorization.tips')}</p>
             <ul>
-              <li>可授权金额基于您的账户余额</li>
-              <li>授权转账需要您先获得其他用户的授权</li>
-              <li>系统会在后台验证授权额度，无需预先检查</li>
+              <li>{t('authorization.tipsList.tip1')}</li>
+              <li>{t('authorization.tipsList.tip2')}</li>
+              <li>{t('authorization.tipsList.tip3')}</li>
             </ul>
           </div>
         </div>
@@ -253,9 +255,9 @@ const AuthorizationPage: React.FC = () => {
               onClick={() => setApproveModalVisible(true)}
               disabled={stats.maxCanApprove <= 0}
             >
-              批准授权
+              {t('authorization.approveAction')}
               {stats.maxCanApprove > 0 && (
-                <div className="button-subtitle">可授权: ¥{stats.maxCanApprove}</div>
+                <div className="button-subtitle">{t('authorization.canApprove')}: ¥{stats.maxCanApprove}</div>
               )}
             </Button>
           </Grid.Item>
@@ -265,8 +267,8 @@ const AuthorizationPage: React.FC = () => {
               color="success"
               onClick={() => setTransferFromModalVisible(true)}
             >
-              授权转账
-              <div className="button-subtitle">后台验证授权额度</div>
+              {t('authorization.transferFromAction')}
+              <div className="button-subtitle">{t('authorization.verifyInBackground')}</div>
             </Button>
           </Grid.Item>
         </Grid>
@@ -275,27 +277,27 @@ const AuthorizationPage: React.FC = () => {
       {/* 使用说明 */}
       <Card className="help-card">
         <div className="help-header">
-          <h4>📖 授权功能说明</h4>
+          <h4>{t('authorization.helpTitle')}</h4>
         </div>
         <div className="help-content">
           <div className="help-section">
-            <h5>批准授权</h5>
-            <p>允许其他用户使用您的代币进行转账操作。授权后，被授权者可以在授权额度内使用您的代币。</p>
+            <h5>{t('authorization.helpSections.approve.title')}</h5>
+            <p>{t('authorization.helpSections.approve.desc')}</p>
           </div>
           <div className="help-section">
-            <h5>授权转账</h5>
-            <p>使用其他用户授权给您的代币进行转账。系统会在后台验证您是否有足够的授权额度。</p>
+            <h5>{t('authorization.helpSections.transferFrom.title')}</h5>
+            <p>{t('authorization.helpSections.transferFrom.desc')}</p>
           </div>
           <div className="help-section">
-            <h5>授权记录</h5>
-            <p>显示您已授权给其他用户的记录。由于隐私保护，不显示您收到的授权记录。</p>
+            <h5>{t('authorization.helpSections.records.title')}</h5>
+            <p>{t('authorization.helpSections.records.desc')}</p>
           </div>
         </div>
       </Card>
 
       {/* 授权记录 */}
       <div className="allowance-section">
-        <div className="allowance-title">授权记录</div>
+        <div className="allowance-title">{t('authorization.authRecords')}</div>
         {allowances.length > 0 ? (
           <List className="allowance-list">
             {allowances.map((allowance, index) => {
@@ -321,16 +323,16 @@ const AuthorizationPage: React.FC = () => {
                 >
                   <div className="allowance-info">
                     <div className="allowance-owner">
-                      授权者: {getUserName(allowance.owner)}
+                      {t('authorization.authorizer')}: {getUserName(allowance.owner)}
                     </div>
                     <div className="allowance-spender">
-                      被授权者: {getUserName(allowance.spender)}
+                      {t('authorization.authorized')}: {getUserName(allowance.spender)}
                     </div>
                     {allowance.remainingAmount !== undefined && (
                       <div className="allowance-usage">
                         <div className="usage-info">
-                          <span>剩余: ¥{allowance.remainingAmount}</span>
-                          <span>使用: {usagePercent}%</span>
+                          <span>{t('authorization.remaining')}: ¥{allowance.remainingAmount}</span>
+                          <span>{t('authorization.used')}: {usagePercent}%</span>
                         </div>
                         <ProgressBar 
                           percent={usagePercent} 
@@ -345,8 +347,8 @@ const AuthorizationPage: React.FC = () => {
           </List>
         ) : (
           <div className="no-allowance">
-            <p>暂无授权记录</p>
-            <p>您可以批准授权给其他用户，或使用其他用户给您的授权</p>
+            <p>{t('authorization.noAuthRecords')}</p>
+            <p>{t('authorization.authRecordsDesc')}</p>
           </div>
         )}
       </div>

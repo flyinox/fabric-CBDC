@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, Form, Input, Button, Toast, Selector } from 'antd-mobile';
+import { useTranslation } from 'react-i18next';
 import type { User } from '../../types';
 import { transfer } from '../../services/walletApi';
 import { useUserContext } from '../../context/UserContext';
@@ -22,10 +23,11 @@ const TransferModal: React.FC<TransferModalProps> = ({
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [transferType, setTransferType] = useState<'direct' | 'approve'>('direct');
+  const { t } = useTranslation();
 
   const handleSubmit = async (values: any) => {
     if (!currentUser) {
-      Toast.show('请先选择用户');
+      Toast.show(t('common.pleaseSelectUser'));
       return;
     }
 
@@ -35,7 +37,7 @@ const TransferModal: React.FC<TransferModalProps> = ({
       
       if (result.success) {
         Toast.show({
-          content: '转账成功',
+          content: t('messages.transferSuccess'),
           icon: 'success'
         });
         form.resetFields();
@@ -47,14 +49,14 @@ const TransferModal: React.FC<TransferModalProps> = ({
         onClose();
       } else {
         Toast.show({
-          content: result.message || '转账失败',
+          content: result.message || t('messages.transferFailed'),
           icon: 'fail'
         });
       }
     } catch (error) {
       console.error('转账失败:', error);
       Toast.show({
-        content: '转账失败',
+        content: t('messages.transferFailed'),
         icon: 'fail'
       });
     } finally {
@@ -66,13 +68,13 @@ const TransferModal: React.FC<TransferModalProps> = ({
   const validateAddress = (address: string) => {
     // 简单的地址格式验证，可以根据实际需求调整
     if (!address || address.trim() === '') {
-      return '请输入接收者地址';
+      return t('validation.pleaseEnterRecipient');
     }
     if (address.length < 50) {
-      return '地址长度不能少于50个字符';
+      return t('validation.addressTooShort');
     }
     if (address === currentUser?.id) {
-      return '不能转账给自己';
+      return t('validation.cannotTransferToSelf');
     }
     return null;
   };
@@ -82,15 +84,15 @@ const TransferModal: React.FC<TransferModalProps> = ({
       visible={visible}
       onClose={onClose}
       closeOnMaskClick
-      title="转账"
+      title={t('modals.transfer.title')}
       content={
         <div className="transfer-modal">
           <div className="transfer-type-selector">
-            <div className="transfer-type-label">转账类型:</div>
+            <div className="transfer-type-label">{t('modals.transfer.transferType')}</div>
             <Selector
               options={[
-                { label: '直接转账', value: 'direct' },
-                { label: '授权转账', value: 'approve' }
+                { label: t('modals.transfer.directTransfer'), value: 'direct' },
+                { label: t('modals.transfer.approveTransfer'), value: 'approve' }
               ]}
               value={[transferType]}
               onChange={(arr) => setTransferType(arr[0] as 'direct' | 'approve')}
@@ -104,10 +106,10 @@ const TransferModal: React.FC<TransferModalProps> = ({
             className="transfer-form"
           >
             <Form.Item
-              label="接收者地址"
+              label={t('modals.transfer.recipientAddress')}
               name="recipient"
               rules={[
-                { required: true, message: '请输入接收者地址' },
+                { required: true, message: t('validation.pleaseEnterRecipient') },
                 {
                   validator: (_, value) => {
                     const error = validateAddress(value);
@@ -117,22 +119,22 @@ const TransferModal: React.FC<TransferModalProps> = ({
               ]}
             >
               <Input
-                placeholder="请输入接收者地址"
+                placeholder={t('modals.transfer.recipientPlaceholder')}
                 type="text"
                 maxLength={5000}
               />
             </Form.Item>
 
             <Form.Item
-              label="转账金额"
+              label={t('modals.transfer.transferAmount')}
               name="amount"
               rules={[
-                { required: true, message: '请输入转账金额' },
-                { pattern: /^[1-9]\d*$/, message: '请输入正整数' }
+                { required: true, message: t('validation.pleaseEnterAmount') },
+                { pattern: /^[1-9]\d*$/, message: t('validation.pleaseEnterPositiveInteger') }
               ]}
             >
               <Input
-                placeholder="请输入转账金额"
+                placeholder={t('modals.transfer.amountPlaceholder')}
                 type="text"
                 inputMode="numeric"
               />
@@ -140,15 +142,15 @@ const TransferModal: React.FC<TransferModalProps> = ({
 
             {transferType === 'approve' && (
               <Form.Item
-                label="授权金额"
+                label={t('modals.transfer.approveAmount')}
                 name="approveAmount"
                 rules={[
-                  { required: true, message: '请输入授权金额' },
-                  { pattern: /^[1-9]\d*$/, message: '请输入正整数' }
+                  { required: true, message: t('validation.pleaseEnterApproveAmount') },
+                  { pattern: /^[1-9]\d*$/, message: t('validation.pleaseEnterPositiveInteger') }
                 ]}
               >
                 <Input
-                  placeholder="请输入授权金额"
+                  placeholder={t('modals.transfer.approvePlaceholder')}
                   type="text"
                   inputMode="numeric"
                 />
@@ -163,7 +165,7 @@ const TransferModal: React.FC<TransferModalProps> = ({
                 loading={loading}
                 disabled={!currentUser}
               >
-                确认转账
+                {t('modals.transfer.confirmTransfer')}
               </Button>
               <Button
                 block
@@ -171,7 +173,7 @@ const TransferModal: React.FC<TransferModalProps> = ({
                 onClick={onClose}
                 style={{ marginTop: 12 }}
               >
-                取消
+                {t('common.cancel')}
               </Button>
             </div>
           </Form>

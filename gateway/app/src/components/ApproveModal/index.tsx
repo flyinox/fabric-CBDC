@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, Form, Input, Button, Toast } from 'antd-mobile';
+import { useTranslation } from 'react-i18next';
 import type { User } from '../../types';
 import { approve } from '../../services/walletApi';
 import './index.css';
@@ -21,10 +22,11 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
 
   const handleSubmit = async (values: any) => {
     if (!currentUser) {
-      Toast.show('请先选择用户');
+      Toast.show(t('common.pleaseSelectUser'));
       return;
     }
 
@@ -34,7 +36,7 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
       
       if (result.success) {
         Toast.show({
-          content: '授权成功',
+          content: t('messages.approveSuccess'),
           icon: 'success'
         });
         form.resetFields();
@@ -42,14 +44,14 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
         onClose();
       } else {
         Toast.show({
-          content: result.message || '授权失败',
+          content: result.message || t('messages.approveFailed'),
           icon: 'fail'
         });
       }
     } catch (error) {
       console.error('授权失败:', error);
       Toast.show({
-        content: '授权失败',
+        content: t('messages.approveFailed'),
         icon: 'fail'
       });
     } finally {
@@ -61,13 +63,13 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
   const validateAddress = (address: string) => {
     // 简单的地址格式验证，可以根据实际需求调整
     if (!address || address.trim() === '') {
-      return '请输入被授权者地址';
+      return t('validation.pleaseEnterSpender');
     }
     if (address.length < 50) {
-      return '地址长度不能少于50个字符';
+      return t('validation.addressTooShort');
     }
     if (address === currentUser?.id) {
-      return '不能授权给自己';
+      return t('validation.cannotApproveToSelf');
     }
     return null;
   };
@@ -77,12 +79,12 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
       visible={visible}
       onClose={onClose}
       closeOnMaskClick
-      title="批准授权"
+      title={t('modals.approve.title')}
       content={
         <div className="approve-modal">
           <div className="approve-description">
-            <p>授权允许其他用户使用您的代币进行转账操作</p>
-            <p>授权后，被授权者可以在授权额度内使用您的代币</p>
+            <p>{t('modals.approve.description1')}</p>
+            <p>{t('modals.approve.description2')}</p>
           </div>
 
           <Form
@@ -92,10 +94,10 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
             className="approve-form"
           >
             <Form.Item
-              label="被授权者地址"
+              label={t('modals.approve.spenderAddress')}
               name="spender"
               rules={[
-                { required: true, message: '请输入被授权者地址' },
+                { required: true, message: t('validation.pleaseEnterSpender') },
                 {
                   validator: (_, value) => {
                     const error = validateAddress(value);
@@ -105,22 +107,22 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
               ]}
             >
               <Input
-                placeholder="请输入被授权者地址"
+                placeholder={t('modals.approve.spenderPlaceholder')}
                 type="text"
                 maxLength={500}
               />
             </Form.Item>
 
             <Form.Item
-              label="授权金额"
+              label={t('modals.approve.approveAmount')}
               name="amount"
               rules={[
-                { required: true, message: '请输入授权金额' },
-                { pattern: /^[1-9]\d*$/, message: '请输入正整数' },
+                { required: true, message: t('validation.pleaseEnterApproveAmount') },
+                { pattern: /^[1-9]\d*$/, message: t('validation.pleaseEnterPositiveInteger') },
                 {
                   validator: (_, value) => {
                     if (maxAmount !== undefined && parseInt(value) > maxAmount) {
-                      return Promise.reject(new Error(`授权金额不能超过可授权金额 ¥${maxAmount}`));
+                      return Promise.reject(new Error(t('validation.approveAmountExceedsMax', { maxAmount })));
                     }
                     return Promise.resolve();
                   }
@@ -128,7 +130,7 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
               ]}
             >
               <Input
-                placeholder={`请输入授权金额 (最大: ¥${maxAmount || '无限制'})`}
+                placeholder={t('modals.approve.amountPlaceholder', { maxAmount: maxAmount || t('common.unlimited') })}
                 type="text"
                 inputMode="numeric"
               />
@@ -136,7 +138,7 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
             
             {maxAmount !== undefined && maxAmount > 0 && (
               <div className="max-amount-info">
-                <span>可授权金额: ¥{maxAmount}</span>
+                <span>{t('modals.approve.maxAmountInfo', { amount: maxAmount })}</span>
               </div>
             )}
 
@@ -148,7 +150,7 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
                 loading={loading}
                 disabled={!currentUser}
               >
-                确认授权
+                {t('modals.approve.confirmApprove')}
               </Button>
               <Button
                 block
@@ -156,7 +158,7 @@ const ApproveModal: React.FC<ApproveModalProps> = ({
                 onClick={onClose}
                 style={{ marginTop: 12 }}
               >
-                取消
+                {t('common.cancel')}
               </Button>
             </div>
           </Form>

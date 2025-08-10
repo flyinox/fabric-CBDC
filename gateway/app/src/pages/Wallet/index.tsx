@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Toast, Card, Button, Grid, Dropdown } from 'antd-mobile';
+import { useTranslation } from 'react-i18next';
 import type { User } from '../../types';
 import { getUserBalance, getUserAccountId } from '../../services/walletApi';
 import { useUserContext } from '../../context/UserContext';
@@ -13,6 +14,7 @@ const WalletPage: React.FC = () => {
   const [transferModalVisible, setTransferModalVisible] = useState(false);
   const [approveModalVisible, setApproveModalVisible] = useState(false);
   const [accountId, setAccountId] = useState<string>('');
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (currentUser) {
@@ -25,12 +27,12 @@ const WalletPage: React.FC = () => {
   const handleCopyAddress = () => {
     if (accountId) {
       navigator.clipboard.writeText(accountId).then(() => {
-        Toast.show('用户地址已复制到剪贴板');
+        Toast.show(t('user.addressCopied'));
       }).catch(() => {
-        Toast.show('复制失败');
+        Toast.show(t('user.copyFailed'));
       });
     } else {
-      Toast.show('用户地址正在加载中，请稍后再试');
+      Toast.show(t('user.addressLoading'));
     }
   };
 
@@ -42,14 +44,14 @@ const WalletPage: React.FC = () => {
   const handleApproveSuccess = async () => {
     // 授权成功后刷新用户余额
     await refreshUserBalances();
-    Toast.show('授权操作成功');
+    Toast.show(t('messages.approveSuccess'));
   };
 
   if (loading || switchingUser) {
     return (
       <div className="wallet-page loading">
         <div>
-          {switchingUser ? '切换用户中...' : '加载中...'}
+          {switchingUser ? t('common.switchingUser') : t('common.loading')}
         </div>
       </div>
     );
@@ -65,9 +67,9 @@ const WalletPage: React.FC = () => {
               <div className="user-card-amount">¥{currentUser.balance}</div>
               <div className="user-card-address-row">
                 <span className="user-card-address">
-                {accountId || '加载中...'}
+                {accountId || t('common.loading')}
                 </span>
-                <span className="user-card-copy" onClick={handleCopyAddress} title="复制地址">📋</span>
+                <span className="user-card-copy" onClick={handleCopyAddress} title={t('user.copyAddress')}>📋</span>
               </div>
             </div>
           </div>
@@ -85,15 +87,15 @@ const WalletPage: React.FC = () => {
               block 
               onClick={() => setTransferModalVisible(true)}
             >
-              转账
+              {t('wallet.transfer')}
             </Button>
           </Grid.Item>
           <Grid.Item>
             <Button 
               block 
-              onClick={() => { Toast.show('收款功能开发中...'); }}
+              onClick={() => { Toast.show(t('wallet.receiveFeature')); }}
             >
-              收款
+              {t('wallet.receive')}
             </Button>
           </Grid.Item>
           <Grid.Item>
@@ -101,15 +103,15 @@ const WalletPage: React.FC = () => {
               block 
               onClick={() => setApproveModalVisible(true)}
             >
-              授权
+              {t('wallet.approve')}
             </Button>
           </Grid.Item>
           <Grid.Item>
             <Button 
               block 
-              onClick={() => { Toast.show('记录功能开发中...'); }}
+              onClick={() => { Toast.show(t('wallet.recordsFeature')); }}
             >
-              记录
+              {t('wallet.records')}
             </Button>
           </Grid.Item>
         </Grid>
@@ -117,7 +119,7 @@ const WalletPage: React.FC = () => {
 
       {/* 本用户交易记录 */}
       <div className="user-records-section">
-        <div className="user-records-title">我的交易记录</div>
+        <div className="user-records-title">{t('wallet.myTransactions')}</div>
         <UserRecords user={currentUser} pageSize={10} />
       </div>
 

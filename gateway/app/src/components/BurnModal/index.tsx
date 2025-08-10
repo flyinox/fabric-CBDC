@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, Form, Input, Button, Toast } from 'antd-mobile';
+import { useTranslation } from 'react-i18next';
 import type { User } from '../../types';
 import { burn } from '../../services/walletApi';
 import './index.css';
@@ -19,6 +20,7 @@ const BurnModal: React.FC<BurnModalProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
 
   const handleSubmit = async (values: any) => {
     console.log('🔍 BurnModal: 开始销毁操作');
@@ -27,7 +29,7 @@ const BurnModal: React.FC<BurnModalProps> = ({
     
     if (!currentUser) {
       console.log('❌ BurnModal: 用户未选择');
-      Toast.show('请先选择用户');
+      Toast.show(t('common.pleaseSelectUser'));
       return;
     }
 
@@ -47,7 +49,7 @@ const BurnModal: React.FC<BurnModalProps> = ({
       if (result.success) {
         console.log('🔍 BurnModal: 销毁成功');
         Toast.show({
-          content: '销毁成功',
+          content: t('messages.burnSuccess'),
           icon: 'success'
         });
         
@@ -64,7 +66,7 @@ const BurnModal: React.FC<BurnModalProps> = ({
       } else {
         console.log('❌ BurnModal: 销毁失败:', result.message);
         Toast.show({
-          content: result.message || '销毁失败',
+          content: result.message || t('messages.burnFailed'),
           icon: 'fail'
         });
       }
@@ -72,7 +74,7 @@ const BurnModal: React.FC<BurnModalProps> = ({
     } catch (error) {
       console.error('❌ BurnModal: 销毁失败:', error);
       Toast.show({
-        content: '销毁失败',
+        content: t('messages.burnFailed'),
         icon: 'fail'
       });
     } finally {
@@ -86,12 +88,12 @@ const BurnModal: React.FC<BurnModalProps> = ({
       visible={visible}
       onClose={onClose}
       closeOnMaskClick
-      title="销毁"
+      title={t('modals.burn.title')}
       content={
         <div className="burn-modal">
           <div className="burn-description">
-            <p>销毁操作将从指定用户账户减少代币</p>
-            <p>此操作仅限央行用户执行，请谨慎操作</p>
+            <p>{t('modals.burn.description1')}</p>
+            <p>{t('modals.burn.description2')}</p>
           </div>
 
           <Form
@@ -101,15 +103,15 @@ const BurnModal: React.FC<BurnModalProps> = ({
             className="burn-form"
           >
             <Form.Item
-              label="销毁金额"
+              label={t('modals.burn.burnAmount')}
               name="amount"
               rules={[
-                { required: true, message: '请输入销毁金额' },
-                { pattern: /^[1-9]\d*$/, message: '请输入正整数' }
+                { required: true, message: t('validation.pleaseEnterBurnAmount') },
+                { pattern: /^[1-9]\d*$/, message: t('validation.pleaseEnterPositiveInteger') }
               ]}
             >
               <Input
-                placeholder="请输入销毁金额"
+                placeholder={t('modals.burn.amountPlaceholder')}
                 type="text"
                 inputMode="numeric"
               />
@@ -123,7 +125,7 @@ const BurnModal: React.FC<BurnModalProps> = ({
                 loading={loading}
                 disabled={!currentUser}
               >
-                确认销毁
+                {t('modals.burn.confirmBurn')}
               </Button>
               <Button
                 block
@@ -131,7 +133,7 @@ const BurnModal: React.FC<BurnModalProps> = ({
                 onClick={onClose}
                 style={{ marginTop: 12 }}
               >
-                取消
+                {t('common.cancel')}
               </Button>
             </div>
           </Form>

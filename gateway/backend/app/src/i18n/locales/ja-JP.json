@@ -1,0 +1,122 @@
+{
+  "admin": {
+    "title": "CBDC 管理コンソール"
+  },
+  "common": {
+    "loading": "読み込み中...",
+    "confirm": "確認",
+    "cancel": "キャンセル",
+    "success": "成功",
+    "failed": "失敗",
+    "error": "エラー",
+    "close": "閉じる",
+    "refresh": "更新",
+    "start": "開始",
+    "stop": "停止",
+    "restart": "再起動",
+    "clean": "クリア",
+    "setup": "設定",
+    "add": "追加",
+    "delete": "削除",
+    "test": "テスト",
+    "reset": "リセット",
+    "unknown": "不明",
+    "running": "実行中",
+    "stopped": "停止済み",
+    "noData": "データなし",
+    "noInfo": "ノード情報なし",
+    "noLogs": "ログなし"
+  },
+  "login": {
+    "title": "CBDC 管理バックエンド",
+    "username": "ユーザー名",
+    "password": "パスワード",
+    "usernamePlaceholder": "ユーザー名を入力",
+    "passwordPlaceholder": "パスワードを入力",
+    "loginButton": "ログイン",
+    "logout": "ログアウト",
+    "loginSuccess": "ログインが成功しました",
+    "loginFailed": "ユーザー名またはパスワードが間違っています",
+    "networkError": "ログインに失敗しました。ネットワーク接続を確認してください"
+  },
+  "navigation": {
+    "monitor": "監視",
+    "network": "ネットワーク管理",
+    "token": "トークン初期化",
+    "users": "ユーザー管理"
+  },
+  "monitor": {
+    "title": "システム監視",
+    "networkMonitor": "ネットワーク監視",
+    "nodeStatus": "ノードステータス",
+    "totalNodes": "総ノード数",
+    "runningNodes": "実行中ノード",
+    "networkStatus": "ネットワークステータス",
+    "refreshStatus": "ステータス更新",
+    "updateTime": "更新時刻: {{time}}",
+    "viewLogs": "ログ",
+    "logsTitle": "{{nodeName}} ログ",
+    "loadingLogs": "ログ読み込み中..."
+  },
+  "network": {
+    "title": "ネットワーク設定管理",
+    "centralBankId": "中央銀行ID",
+    "centralBankPlaceholder": "中央銀行ID",
+    "participatingBanks": "参加銀行設定",
+    "bankId": "銀行ID",
+    "bankPlaceholder": "銀行ID",
+    "addBank": "銀行追加",
+    "deleteBank": "削除",
+    "startNetwork": "ネットワーク開始",
+    "reconfigure": "再設定",
+    "startConfirm": "実行すると既存のネットワークがクリアされます。よろしいですか？",
+    "reconfigureConfirm": "ネットワークを再設定しますか？現在の設定に従ってネットワークがリセットされます。",
+    "networkStartSuccess": "ネットワークが正常に開始されました",
+    "networkStartFailed": "ネットワークの開始に失敗しました",
+    "networkCleanSuccess": "ネットワークのクリアが成功しました。ネットワークを開始しています...",
+    "networkConfigSuccess": "ネットワーク設定が成功しました",
+    "networkConfigFailed": "ネットワーク設定に失敗しました"
+  },
+  "token": {
+    "title": "トークン初期化管理",
+    "initialized": "トークン初期化済み: {{info}}",
+    "notInitialized": "トークンが初期化されていません。中央銀行管理者でトークンを初期化してください",
+    "tokenName": "トークン名",
+    "tokenSymbol": "トークンシンボル",
+    "decimals": "小数点桁数",
+    "centralBankAdmin": "中央銀行管理者",
+    "namePlaceholder": "トークン名を入力",
+    "symbolPlaceholder": "トークンシンボルを入力（英数字のみ）",
+    "decimalsPlaceholder": "小数点桁数を入力（0-18）",
+    "adminPlaceholder": "中央銀行管理者ユーザーを選択",
+    "initializeToken": "トークン初期化",
+    "resetParams": "パラメータリセット",
+    "testEnvironment": "環境テスト",
+    "initSuccess": "トークン初期化が成功しました",
+    "initFailed": "トークン初期化に失敗しました"
+  },
+  "users": {
+    "title": "ユーザー管理",
+    "selectBank": "銀行選択",
+    "bankPlaceholder": "銀行を選択してください",
+    "userCount": "ユーザー数",
+    "addUsers": "ユーザー追加",
+    "addSuccess": "{{bank}}に{{count}}人のユーザーを正常に追加しました",
+    "addFailed": "ユーザーの追加に失敗しました"
+  },
+  "messages": {
+    "getStatusFailed": "ネットワークステータスの取得に失敗しました",
+    "getLogsFailed": "ログの取得に失敗しました",
+    "getBanksFailed": "銀行リストの取得に失敗しました",
+    "getCentralBankUsersFailed": "中央銀行ユーザーの取得に失敗しました",
+    "getTokenInfoFailed": "トークン情報の取得に失敗しました",
+    "environmentCheckComplete": "環境チェックが完了しました。コンソールログを確認してください",
+    "environmentCheckFailed": "環境チェックに失敗しました"
+  },
+  "language": {
+    "title": "言語",
+    "zhCN": "中文",
+    "enUS": "English",
+    "jaJP": "日本語"
+  }
+}

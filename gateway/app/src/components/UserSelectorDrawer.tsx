@@ -1,5 +1,6 @@
 import React from 'react';
 import { Popup, List } from 'antd-mobile';
+import { useTranslation } from 'react-i18next';
 import type { User } from '../types';
 
 interface UserSelectorDrawerProps {
@@ -12,6 +13,7 @@ interface UserSelectorDrawerProps {
 }
 
 const UserSelectorDrawer: React.FC<UserSelectorDrawerProps> = ({ visible, onClose, users, currentUser, onSelect, switchingUser = false }) => {
+  const { t } = useTranslation();
   return (
     <Popup
       visible={visible}
@@ -58,9 +60,9 @@ const UserSelectorDrawer: React.FC<UserSelectorDrawerProps> = ({ visible, onClos
                         borderRadius: '50%',
                         animation: 'spin 1s linear infinite'
                       }} />
-                      切换中
+                      {t('common.switching')}
                     </div>
-                  ) : '当前'
+                  ) : t('common.current')
                 ) : ''
               }
             >

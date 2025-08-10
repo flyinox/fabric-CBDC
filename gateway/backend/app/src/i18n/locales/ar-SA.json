@@ -1,0 +1,20 @@
+{
+  "admin": {
+    "title": "نظام إدارة البنك المركزي"
+  },
+  "common": {
+    "loading": "جارٍ التحميل...",
+    "confirm": "تأكيد",
+    "cancel": "إلغاء",
+    "success": "نجح",
+    "failed": "فشل"
+  },
+  "language": {
+    "title": "اللغة",
+    "zhCN": "中文",
+    "enUS": "English",
+    "jaJP": "日本語",
+    "arSA": "العربية",
+    "ruRU": "Русский"
+  }
+}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from 'antd-mobile';
+import { useTranslation } from 'react-i18next';
 import { useUserContext } from '../../context/UserContext';
 import MintModal from '../../components/MintModal';
 import BurnModal from '../../components/BurnModal';
@@ -29,6 +30,7 @@ const ManagePage: React.FC = () => {
   const [mintModalVisible, setMintModalVisible] = useState(false);
   const [burnModalVisible, setBurnModalVisible] = useState(false);
   const [centralBankInfo, setCentralBankInfo] = useState({ centralBankId: 'c1', centralBankName: 'c1' });
+  const { t } = useTranslation();
 
   useEffect(() => {
     // 加载央行信息
@@ -43,7 +45,7 @@ const ManagePage: React.FC = () => {
   if (!currentUser || switchingUser) {
     return (
       <div className="manage-page loading">
-        {switchingUser ? '切换用户中...' : '加载中...'}
+        {switchingUser ? t('common.switchingUser') : t('common.loading')}
       </div>
     );
   }
@@ -72,16 +74,16 @@ const ManagePage: React.FC = () => {
             console.log('🔍 ManagePage: 用户组织:', currentUser?.organization);
             console.log('🔍 ManagePage: 是否央行用户:', isCentralBank);
             setMintModalVisible(true);
-          }}>铸币</Button>
+          }}>{t('manage.mint')}</Button>
           <Button color="danger" style={{ marginLeft: 12 }} onClick={() => {
             console.log('🔍 ManagePage: 点击销毁按钮');
             console.log('🔍 ManagePage: 当前用户:', currentUser);
             console.log('🔍 ManagePage: 用户组织:', currentUser?.organization);
             console.log('🔍 ManagePage: 是否央行用户:', isCentralBank);
             setBurnModalVisible(true);
-          }}>销毁</Button>
+          }}>{t('manage.burn')}</Button>
         </div>
-        <div className="manage-title">全网交易记录</div>
+        <div className="manage-title">{t('manage.networkRecords')}</div>
         <ManageRecords
           user={currentUser}
           users={users}
@@ -93,7 +95,7 @@ const ManagePage: React.FC = () => {
   } else if (isOrgAdmin) {
     content = (
       <>
-        <div className="manage-title">本组织交易记录</div>
+        <div className="manage-title">{t('manage.orgRecords')}</div>
         <ManageRecords
           user={currentUser}
           users={users}
@@ -103,7 +105,7 @@ const ManagePage: React.FC = () => {
       </>
     );
   } else {
-    content = <div className="manage-noauth">无管理权限</div>;
+    content = <div className="manage-noauth">{t('manage.noPermission')}</div>;
   }
 
   return (

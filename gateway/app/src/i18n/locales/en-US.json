@@ -1,0 +1,250 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "success": "Success",
+    "failed": "Failed",
+    "pending": "Pending",
+    "error": "Error",
+    "close": "Close",
+    "copy": "Copy",
+    "copied": "Copied",
+    "unknown": "Unknown",
+    "submit": "Submit",
+    "reset": "Reset",
+    "add": "Add",
+    "delete": "Delete",
+    "edit": "Edit",
+    "save": "Save",
+    "refresh": "Refresh",
+    "search": "Search",
+    "filter": "Filter",
+    "clear": "Clear",
+    "select": "Select",
+    "current": "Current",
+    "switching": "Switching",
+    "switchingUser": "Switching user...",
+    "pleaseSelectUser": "Please select a user first",
+    "noData": "No data",
+    "noRecords": "No records",
+    "noAuth": "No permission",
+    "unlimited": "Unlimited",
+    "justNow": "Just now",
+    "minutesAgo": "{{count}} minutes ago",
+    "hoursAgo": "{{count}} hours ago",
+    "daysAgo": "{{count}} days ago"
+  },
+  "navigation": {
+    "wallet": "Wallet",
+    "authorization": "Authorization", 
+    "manage": "Manage"
+  },
+  "user": {
+    "selectUser": "Please select a user",
+    "userAddress": "User Address",
+    "balance": "Balance",
+    "organization": "Organization",
+    "copyAddress": "Copy Address",
+    "addressCopied": "User address copied to clipboard",
+    "copyFailed": "Copy failed",
+    "addressLoading": "User address is loading, please try again later"
+  },
+  "wallet": {
+    "title": "Wallet",
+    "myTransactions": "My Transaction Records",
+    "transfer": "Transfer",
+    "receive": "Receive",
+    "approve": "Approve",
+    "records": "Records",
+    "receiveFeature": "Receive feature is under development...",
+    "recordsFeature": "Records feature is under development..."
+  },
+  "authorization": {
+    "title": "Authorization",
+    "authInfo": "Authorization Info",
+    "accountBalance": "Account Balance",
+    "maxCanApprove": "Max Approvable Amount",
+    "totalApproved": "Total Approved",
+    "totalUsed": "Total Used",
+    "totalRemaining": "Total Remaining",
+    "totalIncomingAllowance": "Total Incoming Allowance",
+    "approveAction": "Approve",
+    "transferFromAction": "Transfer From",
+    "authRecords": "Authorization Records",
+    "noAuthRecords": "No authorization records",
+    "authRecordsDesc": "You can approve allowances to other users or use allowances from others",
+    "outgoing": "I Approved",
+    "incoming": "I'm Approved",
+    "owner": "Owner",
+    "spender": "Spender",
+    "remaining": "Remaining",
+    "used": "Used",
+    "usage": "Usage",
+    "authorizer": "Authorizer",
+    "authorized": "Authorized",
+    "canApprove": "Can Approve",
+    "verifyInBackground": "Verify allowance in background",
+    "tips": "💡 Tips:",
+    "tipsList": {
+      "tip1": "Approvable amount is based on your account balance",
+      "tip2": "Transfer from requires prior authorization from other users",
+      "tip3": "The system will verify allowance limits in the background"
+    },
+    "helpTitle": "📖 Authorization Guide",
+    "helpSections": {
+      "approve": {
+        "title": "Approve",
+        "desc": "Allow other users to use your tokens for transfers. After approval, the approved user can use your tokens within the approved limit."
+      },
+      "transferFrom": {
+        "title": "Transfer From",
+        "desc": "Use tokens that other users have approved for you to transfer. The system will verify if you have sufficient allowance in the background."
+      },
+      "records": {
+        "title": "Authorization Records",
+        "desc": "Shows records of allowances you've approved to other users. For privacy protection, incoming allowances are not displayed."
+      }
+    }
+  },
+  "transaction": {
+    "types": {
+      "transfer": "Transfer",
+      "approve": "Approve",
+      "transferFrom": "Transfer From",
+      "mint": "Mint",
+      "burn": "Burn"
+    },
+    "status": {
+      "success": "Success",
+      "pending": "Pending",
+      "failed": "Failed"
+    }
+  },
+  "manage": {
+    "title": "Manage",
+    "mint": "Mint",
+    "burn": "Burn",
+    "globalTransactions": "Global Transaction Records",
+    "orgTransactions": "Organization Transaction Records",
+    "noManageAuth": "No management permission"
+  },
+  "modals": {
+    "transfer": {
+      "title": "Transfer",
+      "transferType": "Transfer Type:",
+      "directTransfer": "Direct Transfer",
+      "approveTransfer": "Approve Transfer",
+      "recipientAddress": "Recipient Address",
+      "transferAmount": "Transfer Amount",
+      "approveAmount": "Approve Amount",
+      "confirmTransfer": "Confirm Transfer",
+      "recipientPlaceholder": "Enter recipient address",
+      "amountPlaceholder": "Enter transfer amount",
+      "approvePlaceholder": "Enter approve amount"
+    },
+    "mint": {
+      "title": "Mint",
+      "mintAmount": "Mint Amount",
+      "confirmMint": "Confirm Mint",
+      "amountPlaceholder": "Enter mint amount",
+      "description1": "Mint operation will add tokens to the specified user account",
+      "description2": "This operation is limited to central bank users, please operate with caution"
+    },
+    "burn": {
+      "title": "Burn",
+      "burnAmount": "Burn Amount",
+      "confirmBurn": "Confirm Burn",
+      "amountPlaceholder": "Enter burn amount",
+      "description1": "Burn operation will reduce tokens from the specified user account",
+      "description2": "This operation is limited to central bank users, please operate with caution"
+    },
+    "approve": {
+      "title": "Approve",
+      "spenderAddress": "Spender Address",
+      "approveAmount": "Approve Amount",
+      "confirmApprove": "Confirm Approve",
+      "spenderPlaceholder": "Enter spender address",
+      "amountPlaceholder": "Enter approve amount (Max: ¥{{maxAmount}})",
+      "description1": "Approval allows other users to use your tokens for transfer operations",
+      "description2": "After approval, the approved user can use your tokens within the approved limit",
+      "maxAmountInfo": "Max approvable amount: ¥{{amount}}"
+    },
+    "transferFrom": {
+      "title": "Transfer From",
+      "ownerAddress": "Token Owner Address",
+      "recipientAddress": "Recipient Address",
+      "transferAmount": "Transfer Amount",
+      "confirmTransfer": "Confirm Transfer",
+      "ownerPlaceholder": "Enter token owner address",
+      "recipientPlaceholder": "Enter recipient address",
+      "amountPlaceholder": "Enter transfer amount",
+      "description1": "Use approved tokens for transfer operations",
+      "description2": "You need to obtain authorization from the token owner before executing this operation"
+    }
+  },
+  "transactions": {
+    "title": "Transaction Records",
+    "total": "Total {{count}} transactions",
+    "transfer": "Transfer",
+    "approve": "Approve",
+    "transferFrom": "Transfer From",
+    "mint": "Mint",
+    "burn": "Burn",
+    "from": "From",
+    "to": "To",
+    "owner": "Owner",
+    "spender": "Spender",
+    "executor": "Executor",
+    "burnAddress": "Burn Address",
+    "loading": "Loading transaction records...",
+    "loadMore": "Loading more...",
+    "approver": "Approver",
+    "authorized": "Authorized"
+  },
+  "validation": {
+    "required": "This field is required",
+    "pleaseEnterRecipient": "Please enter recipient address",
+    "pleaseEnterAmount": "Please enter transfer amount",
+    "pleaseEnterMintAmount": "Please enter mint amount",
+    "pleaseEnterBurnAmount": "Please enter burn amount",
+    "pleaseEnterApproveAmount": "Please enter approve amount",
+    "pleaseEnterSpender": "Please enter spender address",
+    "pleaseEnterOwner": "Please enter token owner address",
+    "pleaseEnterPositiveInteger": "Please enter a positive integer",
+    "addressTooShort": "Address length cannot be less than 50 characters",
+    "cannotTransferToSelf": "Cannot transfer to yourself",
+    "cannotApproveToSelf": "Cannot approve to yourself",
+    "cannotUseSelfAsOwner": "Cannot use your own address as {{fieldName}}",
+    "approveAmountExceedsMax": "Approve amount cannot exceed max approvable amount ¥{{maxAmount}}"
+  },
+  "manage": {
+    "mint": "Mint",
+    "burn": "Burn",
+    "networkRecords": "Network Transaction Records",
+    "orgRecords": "Organization Transaction Records",
+    "noPermission": "No Management Permission"
+  },
+  "messages": {
+    "transferSuccess": "Transfer successful",
+    "transferFailed": "Transfer failed",
+    "mintSuccess": "Mint successful",
+    "mintFailed": "Mint failed",
+    "burnSuccess": "Burn successful",
+    "burnFailed": "Burn failed",
+    "approveSuccess": "Approve successful",
+    "approveFailed": "Approve failed",
+    "authTransferSuccess": "Authorization transfer successful",
+    "authTransferFailed": "Authorization transfer failed",
+    "loadUsersFailed": "Failed to load users",
+    "loadTransactionsFailed": "Failed to load transaction records",
+    "loadBalanceFailed": "Failed to load user balance",
+    "loadAllowanceFailed": "Failed to load authorization info"
+  },
+  "language": {
+    "title": "Language",
+    "zhCN": "中文",
+    "enUS": "English",
+    "jaJP": "日本語"
+  }
+}
