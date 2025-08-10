@@ -104,19 +104,37 @@ class TokenService extends BaseService {
     try {
       await this.connect(currentUser);
 
-      // 查询代币信息（这里假设链码有相应的查询函数）
+      // 查询代币信息
       const nameResult = await this.evaluateTransaction('Name');
       const symbolResult = await this.evaluateTransaction('Symbol');
-      const decimalsResult = await this.evaluateTransaction('Decimals');
-      const totalSupplyResult = await this.evaluateTransaction('TotalSupply');
+
+      // 有些链码版本未实现 Decimals 函数，这里做兼容
+      let decimalsValue = null;
+      try {
+        const decimalsResult = await this.evaluateTransaction('Decimals');
+        const parsed = parseInt(decimalsResult.toString());
+        if (!Number.isNaN(parsed)) decimalsValue = parsed;
+      } catch (e) {
+        // 兼容: 缺少 Decimals 不影响“已初始化”的判断
+      }
+
+      // TotalSupply 存在于合约，若出错按0处理不影响初始化判断
+      let totalSupplyValue = 0;
+      try {
+        const totalSupplyResult = await this.evaluateTransaction('TotalSupply');
+        const parsed = parseInt(totalSupplyResult.toString());
+        if (!Number.isNaN(parsed)) totalSupplyValue = parsed;
+      } catch (e) {
+        totalSupplyValue = 0;
+      }
 
       return {
         success: true,
         data: {
           name: nameResult.toString(),
           symbol: symbolResult.toString(),
-          decimals: parseInt(decimalsResult.toString()),
-          totalSupply: parseInt(totalSupplyResult.toString())
+          decimals: decimalsValue, // 可能为 null，前端只用来展示
+          totalSupply: totalSupplyValue
         }
       };
     } catch (error) {

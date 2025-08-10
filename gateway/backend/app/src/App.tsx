@@ -536,6 +536,14 @@ const App: React.FC = () => {
     }
   }, [isLoggedIn]);
 
+  // 切换到“代币初始化”页时，自动刷新一次初始化状态与央行用户列表
+  useEffect(() => {
+    if (isLoggedIn && selectedMenu === 'token') {
+      fetchTokenInfo();
+      fetchCentralBankUsers();
+    }
+  }, [isLoggedIn, selectedMenu]);
+
   const totalNodes = networkStatus?.nodes?.length || 0;
   const runningNodes = networkStatus?.nodes?.filter(node => node.status === 'running').length || 0;
 
@@ -815,7 +823,7 @@ const App: React.FC = () => {
           console.log('[前端] 渲染代币状态，tokenInfo:', tokenInfo);
           return tokenInfo?.initialized ? (
             <Alert
-              message={`代币已初始化: ${tokenInfo.info}`}
+              message={`代币已初始化: ${tokenInfo.info ?? ''}`}
               type="success"
               showIcon
               style={{ marginBottom: 24 }}
@@ -823,6 +831,7 @@ const App: React.FC = () => {
           ) : (
             <Alert
               message="代币未初始化, 请使用央行管理员身份初始化代币"
+              description={tokenInfo?.error || undefined}
               type="warning"
               showIcon
               style={{ marginBottom: 24 }}

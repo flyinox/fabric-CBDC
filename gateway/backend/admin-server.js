@@ -1071,11 +1071,56 @@ router.get('/api/admin/token/info', async (ctx) => {
       return;
     }
 
-    // 通过 Node 执行 gateway 的 TokenService 查询，输出 JSON
-    const cmd = `cd ${gatewayPath} && ${nodeCheck.path} -e "const TokenService=require('./services/TokenService');(async()=>{try{const s=new TokenService();const r=await s.getTokenInfo();process.stdout.write(JSON.stringify(r));}catch(e){process.stdout.write(JSON.stringify({success:false,error:e.message}));}})()"`;
+    // 选择用于查询的身份（优先已选择用户；其次央行Admin；否则扫描钱包找央行Admin）
+    let identityName = null;
+    try {
+      // 1) 优先使用当前已选择用户（如果存在）
+      const currentUserFile = path.join(gatewayPath, '.current-user');
+      if (fs.existsSync(currentUserFile)) {
+        const currentName = fs.readFileSync(currentUserFile, 'utf8').trim();
+        if (currentName) identityName = currentName;
+      }
+
+      // 2) 如果未找到，则从配置识别央行Admin
+      if (fs.existsSync(configPath)) {
+        const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        const cbOrg = (cfg.network?.organizations || []).find(o => o.type === 'central_bank');
+        if (cbOrg && cbOrg.name) {
+          identityName = `${cbOrg.name}_Admin`;
+        }
+      }
+      // 3) 兜底：扫描钱包查找央行Admin
+      if (!identityName) {
+        const walletDir = path.join(gatewayPath, 'wallet');
+        if (fs.existsSync(walletDir)) {
+          const files = fs.readdirSync(walletDir).filter(f => f.endsWith('.id'));
+          for (const f of files) {
+            try {
+              const data = JSON.parse(fs.readFileSync(path.join(walletDir, f), 'utf8'));
+              if (data?.orgType === 'central_bank' && (data?.userName || '').toLowerCase() === 'admin') {
+                identityName = f.replace('.id','');
+                break;
+              }
+            } catch(_) {}
+          }
+        }
+      }
+    } catch (e) {
+      console.log(`[代币信息查询] 选择身份失败（忽略继续）: ${e.message}`);
+    }
+
+    // 通过 Node 执行 gateway 的 TokenService 查询，输出纯 JSON，屏蔽 console.log 干扰
+    const nodeCode = (
+      `console.log=function(){};` +
+      `const TokenService=require('./services/TokenService');` +
+      `(async()=>{try{const s=new TokenService();` +
+      (identityName ? `const r=await s.getTokenInfo(${JSON.stringify(identityName)});` : `const r=await s.getTokenInfo();`) +
+      `process.stdout.write(JSON.stringify(r));}catch(e){process.stdout.write(JSON.stringify({success:false,error:e.message}));}})();`
+    );
+
     const queryResult = await new Promise((resolve) => {
-      const child = spawn('bash', ['-c', cmd], {
-        cwd: networkRoot,
+      const child = spawn(nodeCheck.path, ['-e', nodeCode], {
+        cwd: gatewayPath,
         stdio: ['pipe', 'pipe', 'pipe'],
         env: { ...process.env, FORCE_COLOR: '0' }
       });
@@ -1088,7 +1133,15 @@ router.get('/api/admin/token/info', async (ctx) => {
     });
 
     try {
-      const parsed = JSON.parse((queryResult.stdout || '').trim() || '{}');
+      const out = (queryResult.stdout || '').trim();
+      const jsonStart = out.indexOf('{');
+      const jsonStr = jsonStart >= 0 ? out.slice(jsonStart) : out;
+      const parsed = JSON.parse(jsonStr || '{}');
+      console.log(`[代币信息查询] 子进程stdout片段: ${out.substring(0, 200)}`);
+      if (queryResult.stderr) {
+        console.log(`[代币信息查询] 子进程stderr片段: ${queryResult.stderr.substring(0, 200)}`);
+      }
+      console.log(`[代币信息查询] 解析结果: success=${parsed?.success}, data=${parsed?.data ? JSON.stringify(parsed.data) : 'null'}, error=${parsed?.error || ''}`);
       if (parsed && parsed.success) {
         ctx.body = { success: true, data: { initialized: true, ...parsed.data } };
       } else {
