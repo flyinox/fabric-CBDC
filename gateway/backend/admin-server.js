@@ -191,7 +191,79 @@ router.post('/api/admin/network/start', async (ctx) => {
     
     if (result.success) {
       console.log('[启动网络] 操作成功');
-      ctx.body = { success: true, message: '网络启动成功', output: result.output };
+      // 启动成功后，自动选择央行管理员为当前用户（如果可能）
+      try {
+        const networkRootAbs = path.resolve(__dirname, '../../');
+        const gatewayPath = path.join(networkRootAbs, 'gateway');
+        const configPath = path.join(networkRootAbs, 'network-config.json');
+
+        let centralBankIdentity = null;
+        if (fs.existsSync(configPath)) {
+          try {
+            const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            const centralBankOrg = (configData.network?.organizations || []).find(org => org.type === 'central_bank');
+            if (centralBankOrg && centralBankOrg.name) {
+              centralBankIdentity = `${centralBankOrg.name}_Admin`;
+            }
+          } catch (e) {
+            console.log(`[启动网络] 读取网络配置失败，跳过自动选择用户: ${e.message}`);
+          }
+        }
+
+        if (centralBankIdentity) {
+          // 检查 Node 是否可用
+          const nodeCheck = await new Promise((resolve) => {
+            exec('which node', (error, stdout) => {
+              if (error || !stdout.trim()) {
+                resolve({ available: false, error: 'Node.js not found' });
+              } else {
+                resolve({ available: true, path: stdout.trim() });
+              }
+            });
+          });
+
+          if (nodeCheck.available) {
+            const selectUserScript = path.join(gatewayPath, 'cli/selectUser.js');
+            if (fs.existsSync(selectUserScript)) {
+              const selectCmd = `cd ${gatewayPath} && ${nodeCheck.path} ${selectUserScript} -select "${centralBankIdentity}"`;
+              const selectRes = await new Promise((resolve) => {
+                const child = spawn('bash', ['-c', selectCmd], {
+                  cwd: networkRootAbs,
+                  stdio: ['pipe', 'pipe', 'pipe'],
+                  env: { ...process.env, FORCE_COLOR: '0' }
+                });
+                let stdout = '';
+                let stderr = '';
+                child.stdout.on('data', d => { stdout += d.toString(); });
+                child.stderr.on('data', d => { stderr += d.toString(); });
+                child.on('close', code => {
+                  resolve({ success: code === 0, stdout, stderr });
+                });
+                child.on('error', error => resolve({ success: false, stderr: error.message }));
+              });
+              if (selectRes.success) {
+                console.log(`[启动网络] 已自动选择央行管理员用户: ${centralBankIdentity}`);
+                ctx.body = { success: true, message: `网络启动成功，并已选择央行管理员用户: ${centralBankIdentity}` };
+              } else {
+                console.log(`[启动网络] 自动选择央行管理员失败: ${selectRes.stderr || 'unknown error'}`);
+                ctx.body = { success: true, message: '网络启动成功（自动选择央行管理员失败，可手动选择）' };
+              }
+            } else {
+              console.log(`[启动网络] 未找到 selectUser 脚本，跳过自动选择`);
+              ctx.body = { success: true, message: '网络启动成功（未找到选择用户脚本，已跳过自动选择）' };
+            }
+          } else {
+            console.log(`[启动网络] Node.js 不可用，跳过自动选择央行管理员`);
+            ctx.body = { success: true, message: '网络启动成功（Node.js 不可用，已跳过自动选择）' };
+          }
+        } else {
+          console.log('[启动网络] 未能从配置中识别央行组织，跳过自动选择');
+          ctx.body = { success: true, message: '网络启动成功（未识别央行组织，已跳过自动选择）' };
+        }
+      } catch (autoSelErr) {
+        console.log(`[启动网络] 自动选择央行管理员异常: ${autoSelErr.message}`);
+        ctx.body = { success: true, message: '网络启动成功（自动选择央行管理员异常，已跳过）' };
+      }
     } else {
       console.log('[启动网络] 操作失败:', result.error);
       ctx.status = 500;
@@ -990,9 +1062,43 @@ router.get('/api/admin/token/info', async (ctx) => {
       });
     });
     
-    // 由于我们已经确认代币初始化成功，直接返回成功状态
-    console.log(`[代币信息查询] 返回代币已初始化状态`);
-    ctx.body = { success: true, data: { initialized: true, info: "代币名称: 数字人民币, 代币符号: DCEP, 小数位数: 2" } };
+    // 实时查询链上代币信息，而不是固定返回
+    console.log(`[代币信息查询] 通过 TokenService 实时查询`);
+    
+    if (!nodeCheck.available) {
+      ctx.status = 500;
+      ctx.body = { error: '获取代币信息失败', details: 'Node.js环境不可用，请检查Node.js安装' };
+      return;
+    }
+
+    // 通过 Node 执行 gateway 的 TokenService 查询，输出 JSON
+    const cmd = `cd ${gatewayPath} && ${nodeCheck.path} -e "const TokenService=require('./services/TokenService');(async()=>{try{const s=new TokenService();const r=await s.getTokenInfo();process.stdout.write(JSON.stringify(r));}catch(e){process.stdout.write(JSON.stringify({success:false,error:e.message}));}})()"`;
+    const queryResult = await new Promise((resolve) => {
+      const child = spawn('bash', ['-c', cmd], {
+        cwd: networkRoot,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env, FORCE_COLOR: '0' }
+      });
+      let stdout = '';
+      let stderr = '';
+      child.stdout.on('data', d => { stdout += d.toString(); });
+      child.stderr.on('data', d => { stderr += d.toString(); });
+      child.on('close', code => resolve({ code, stdout, stderr }));
+      child.on('error', error => resolve({ code: 1, stdout: '', stderr: error.message }));
+    });
+
+    try {
+      const parsed = JSON.parse((queryResult.stdout || '').trim() || '{}');
+      if (parsed && parsed.success) {
+        ctx.body = { success: true, data: { initialized: true, ...parsed.data } };
+      } else {
+        // 若查询失败，返回未初始化
+        ctx.body = { success: true, data: { initialized: false }, error: parsed?.error || queryResult.stderr || '查询失败' };
+      }
+    } catch (parseErr) {
+      ctx.status = 500;
+      ctx.body = { error: '获取代币信息失败', details: queryResult.stderr || parseErr.message };
+    }
   } catch (error) {
     ctx.status = 500;
     ctx.body = { error: '获取代币信息失败', details: error.message };
