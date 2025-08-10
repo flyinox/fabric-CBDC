@@ -373,6 +373,39 @@ router.post('/api/transfer', async (ctx) => {
   }
 });
 
+// 批量转账API：按顺序执行，任意一条失败会继续执行并返回每条结果
+router.post('/api/batch-transfer', async (ctx) => {
+  const { transfers, identityName } = ctx.request.body || {};
+  if (!identityName || !Array.isArray(transfers)) {
+    ctx.status = 400;
+    ctx.body = { success: false, message: 'identityName 必填且 transfers 必须为数组' };
+    return;
+  }
+  try {
+    const tokenService = new TokenService();
+    const results = [];
+    for (const item of transfers) {
+      const recipient = item?.recipient;
+      const amount = item?.amount;
+      if (!recipient || !amount) {
+        results.push({ success: false, message: '参数无效', recipient, amount });
+        continue;
+      }
+      try {
+        const res = await tokenService.transfer({ recipient, amount, identityName });
+        results.push({ success: !!res?.success, ...res, recipient, amount });
+      } catch (e) {
+        results.push({ success: false, message: '转账失败', error: e.message, recipient, amount });
+      }
+    }
+    const ok = results.every(r => r.success);
+    ctx.body = { success: ok, data: { results } };
+  } catch (error) {
+    ctx.status = 500;
+    ctx.body = { success: false, message: '批量转账失败', error: error.message };
+  }
+});
+
 // 铸币API
 router.post('/api/mint', async (ctx) => {
   const { 
@@ -562,6 +595,75 @@ router.post('/api/allowance', async (ctx) => {
       message: '查询授权额度失败',
       error: error.message
     };
+  }
+});
+
+// 获取当前选择的用户
+router.get('/api/current-user', async (ctx) => {
+  try {
+    const currentUserFile = path.resolve(__dirname, '../.current-user');
+    if (!fs.existsSync(currentUserFile)) {
+      ctx.body = { success: true, data: { identityName: null } };
+      return;
+    }
+    const identityName = fs.readFileSync(currentUserFile, 'utf8').trim();
+    const walletPath = path.resolve(__dirname, '../wallet');
+    const identityPath = path.join(walletPath, `${identityName}.id`);
+    let identityInfo = null;
+    if (fs.existsSync(identityPath)) {
+      try {
+        identityInfo = JSON.parse(fs.readFileSync(identityPath, 'utf8'));
+      } catch (_) {}
+    }
+    ctx.body = { success: true, data: { identityName, identityInfo } };
+  } catch (error) {
+    ctx.status = 500;
+    ctx.body = { success: false, message: '读取当前用户失败', error: error.message };
+  }
+});
+
+// 选择当前用户（仅限传入钱包中存在的身份文件名，不带 .id）
+router.post('/api/select-user', async (ctx) => {
+  const { identityName } = ctx.request.body || {};
+  if (!identityName || typeof identityName !== 'string') {
+    ctx.status = 400;
+    ctx.body = { success: false, message: 'identityName 是必需的' };
+    return;
+  }
+
+  try {
+    const cliDir = path.resolve(__dirname, '../cli');
+    const scriptPath = path.join(cliDir, 'selectUser.js');
+    if (!fs.existsSync(scriptPath)) {
+      ctx.status = 500;
+      ctx.body = { success: false, message: 'selectUser 脚本不存在' };
+      return;
+    }
+
+    const result = await new Promise((resolve) => {
+      const child = spawn('node', ['selectUser.js', '-select', identityName], {
+        cwd: cliDir,
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+      let stdout = '';
+      let stderr = '';
+      child.stdout.on('data', d => { stdout += d.toString(); });
+      child.stderr.on('data', d => { stderr += d.toString(); });
+      child.on('close', code => {
+        resolve({ code, stdout, stderr });
+      });
+      child.on('error', error => resolve({ code: 1, stdout: '', stderr: error.message }));
+    });
+
+    if (result.code === 0) {
+      ctx.body = { success: true, message: '选择用户成功', output: result.stdout };
+    } else {
+      ctx.status = 500;
+      ctx.body = { success: false, message: '选择用户失败', error: result.stderr || 'unknown error' };
+    }
+  } catch (error) {
+    ctx.status = 500;
+    ctx.body = { success: false, message: '选择用户失败', error: error.message };
   }
 });
 
