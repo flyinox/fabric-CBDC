@@ -160,10 +160,13 @@
       "approveTransfer": "تحويل بموافقة",
       "recipientAddress": "عنوان المستلم",
       "enterRecipientAddress": "أدخل عنوان المستلم",
+      "recipientPlaceholder": "أدخل عنوان المستلم",
       "transferAmount": "مبلغ التحويل",
       "enterTransferAmount": "أدخل مبلغ التحويل",
+      "amountPlaceholder": "أدخل مبلغ التحويل",
       "approveAmount": "مبلغ الموافقة",
       "enterApproveAmount": "أدخل مبلغ الموافقة",
+      "approvePlaceholder": "أدخل مبلغ الموافقة",
       "confirmTransfer": "تأكيد التحويل"
     },
     "approve": {

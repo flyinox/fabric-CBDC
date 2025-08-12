@@ -160,10 +160,13 @@
       "approveTransfer": "Перевод с одобрением",
       "recipientAddress": "Адрес получателя",
       "enterRecipientAddress": "Введите адрес получателя",
+      "recipientPlaceholder": "Введите адрес получателя",
       "transferAmount": "Сумма перевода",
       "enterTransferAmount": "Введите сумму перевода",
+      "amountPlaceholder": "Введите сумму перевода",
       "approveAmount": "Сумма одобрения",
       "enterApproveAmount": "Введите сумму одобрения",
+      "approvePlaceholder": "Введите сумму одобрения",
       "confirmTransfer": "Подтвердить перевод"
     },
     "approve": {
