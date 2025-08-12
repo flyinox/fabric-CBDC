@@ -11,6 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -216,6 +217,11 @@ func (s *SmartContract) Mint(ctx contractapi.TransactionContextInterface, amount
 
 	log.Printf("minter account %s balance updated from %d to %d", minter, currentBalance, updatedBalance)
 
+	// ISO 20022 结构化日志（pacs.008 + camt.053）
+	if err := s.logISO20022Pacs008AndCamt053(ctx, "mint", "0x0", minter, amount, ""); err != nil {
+		log.Printf("ISO20022 logging (mint) failed: %v", err)
+	}
+
 	return nil
 }
 
@@ -362,6 +368,11 @@ func (s *SmartContract) Burn(ctx contractapi.TransactionContextInterface, amount
 
 	log.Printf("minter account %s balance updated from %d to %d", minter, currentBalance, updatedBalance)
 
+	// ISO 20022 结构化日志（pacs.008 + camt.053）
+	if err := s.logISO20022Pacs008AndCamt053(ctx, "burn", minter, "0x0", amount, ""); err != nil {
+		log.Printf("ISO20022 logging (burn) failed: %v", err)
+	}
+
 	return nil
 }
 
@@ -495,6 +506,11 @@ func (s *SmartContract) Transfer(ctx contractapi.TransactionContextInterface, re
 	}
 
 	log.Printf("Private transfer completed: %s -> %s, amount: %d, txID: %s", sender, recipient, amount, txID)
+
+	// ISO 20022 结构化日志（pacs.008 + camt.053）
+	if err := s.logISO20022Pacs008AndCamt053(ctx, "transfer", sender, recipient, amount, ""); err != nil {
+		log.Printf("ISO20022 logging (transfer) failed: %v", err)
+	}
 	return nil
 }
 
@@ -859,6 +875,11 @@ func (s *SmartContract) Approve(ctx contractapi.TransactionContextInterface, spe
 
 	log.Printf("client %s approved a withdrawal of %d tokens for spender %s", owner, value, spender)
 
+	// ISO 20022 结构化日志（pacs.008 + camt.053）——非清算授权事件
+	if err := s.logISO20022Pacs008AndCamt053(ctx, "approve", owner, spender, value, spender); err != nil {
+		log.Printf("ISO20022 logging (approve) failed: %v", err)
+	}
+
 	return nil
 }
 
@@ -1060,7 +1081,221 @@ func (s *SmartContract) TransferFrom(ctx contractapi.TransactionContextInterface
 
 	log.Printf("spender %s allowance updated from %d to %d", spender, currentAllowance, updatedAllowance)
 
+	// ISO 20022 结构化日志（pacs.008 + camt.053）
+	if err := s.logISO20022Pacs008AndCamt053(ctx, "transferFrom", from, to, value, spender); err != nil {
+		log.Printf("ISO20022 logging (transferFrom) failed: %v", err)
+	}
+
 	return nil
+}
+
+// ========== ISO 20022 结构化日志辅助函数 ==========
+
+// logISO20022Pacs008AndCamt053 构建并打印符合 ISO 20022 语义的结构化日志
+// - txType: transfer | transferFrom | mint | burn | approve
+// - from, to: 客户链上账户标识（Fabric 客户端ID）或特殊地址"0x0"
+// - amount: 以最小单位计数的整数金额
+// - spender: 授权/代扣场景下的代扣方（可为空）
+func (s *SmartContract) logISO20022Pacs008AndCamt053(
+	ctx contractapi.TransactionContextInterface,
+	txType string,
+	from string,
+	to string,
+	amount int,
+	spender string,
+) error {
+	// 基础上下文
+	stub := ctx.GetStub()
+	txID := stub.GetTxID()
+	channelID := stub.GetChannelID()
+	ts, _ := stub.GetTxTimestamp()
+	// 使用链上时间戳（epoch 秒/纳秒），不依赖本地时钟
+	var eventSeconds int64
+	var eventNanos int32
+	if ts != nil {
+		eventSeconds = ts.Seconds
+		eventNanos = ts.Nanos
+	}
+	// CreDtTm 使用秒级时间字符串；如需 RFC3339 可在链下转换
+	eventTimeStr := fmt.Sprintf("%d", eventSeconds)
+
+	// 代币元数据
+	tokenSymbol, tokenDecimals, err := s.getTokenMeta(ctx)
+	if err != nil {
+		return fmt.Errorf("get token meta failed: %w", err)
+	}
+	amountStr := s.formatAmount(amount, tokenDecimals)
+
+	// 机构/账户映射
+	senderMSP, _ := ctx.GetClientIdentity().GetMSPID() // 调用者MSP（不一定等于from的MSP，但对于大多数自转账/授权发起场景等价）
+	fromOrg, _ := s.extractDomainFromClientID(from)
+	toOrg, _ := s.extractDomainFromClientID(to)
+
+	// UETR（端到端追踪）——基于链上确定性数据
+	uetr := generateDeterministicUETR(txID, channelID, eventSeconds, eventNanos)
+
+	// 是否为非清算（授权等）
+	nonSettlement := (txType == "approve")
+
+	// pacs.008 语义日志
+	pacs := map[string]interface{}{
+		"_std": "ISO20022",
+		"_msg": "pacs.008",
+		"GrpHdr": map[string]interface{}{
+			"MsgId":   fmt.Sprintf("%s@%s", txID, channelID),
+			"CreDtTm": eventTimeStr,
+			"NbOfTxs": 1,
+			"CtrlSum": amountStr,
+			"InstgAgt": map[string]interface{}{
+				"FinInstnId": map[string]interface{}{
+					"Othr": map[string]interface{}{"Id": senderMSP},
+				},
+			},
+		},
+		"CdtTrfTxInf": map[string]interface{}{
+			"PmtId": map[string]interface{}{
+				"InstrId":    txID,
+				"EndToEndId": txID,
+				"UETR":       uetr,
+			},
+			"Amt": map[string]interface{}{
+				"InstdAmt": map[string]interface{}{"Ccy": tokenSymbol, "_text": amountStr},
+			},
+			"Dbtr": map[string]interface{}{"Nm": from},
+			"DbtrAcct": map[string]interface{}{
+				"Id": map[string]interface{}{"Othr": map[string]interface{}{"Id": from}},
+			},
+			"DbtrAgt": map[string]interface{}{
+				"FinInstnId": map[string]interface{}{"Othr": map[string]interface{}{"Id": fromOrg}},
+			},
+			"CdtrAgt": map[string]interface{}{
+				"FinInstnId": map[string]interface{}{"Othr": map[string]interface{}{"Id": toOrg}},
+			},
+			"Cdtr": map[string]interface{}{"Nm": to},
+			"CdtrAcct": map[string]interface{}{
+				"Id": map[string]interface{}{"Othr": map[string]interface{}{"Id": to}},
+			},
+			"RmtInf": map[string]interface{}{
+				"Ustrd": fmt.Sprintf("FabricChannel=%s;FabricTxId=%s;TxType=%s", channelID, txID, txType),
+			},
+			"SplmtryData": map[string]interface{}{
+				"Envlp": map[string]interface{}{
+					"BlockchainInfo": map[string]interface{}{
+						"ChainName":             "Hyperledger Fabric",
+						"TokenSymbol":           tokenSymbol,
+						"TokenDecimals":         tokenDecimals,
+						"TxId":                  txID,
+						"ChannelId":             channelID,
+						"BlockTimestampSeconds": eventSeconds,
+						"BlockTimestampNanos":   eventNanos,
+						"From":                  from,
+						"To":                    to,
+						"FromOrg":               fromOrg,
+						"ToOrg":                 toOrg,
+						"Spender":               spender,
+						"TransactionType":       txType,
+						"NonSettlement":         nonSettlement,
+					},
+				},
+			},
+		},
+	}
+
+	// camt.053 账户分录语义日志（借方与贷方各一条）
+	camt := map[string]interface{}{
+		"_std": "ISO20022",
+		"_msg": "camt.053",
+		"Stmt": map[string]interface{}{
+			"Id":      fmt.Sprintf("%s@%s", txID, channelID),
+			"CreDtTm": eventTimeStr,
+			"Ntry": []map[string]interface{}{
+				{
+					"Amt":          map[string]interface{}{"Ccy": tokenSymbol, "_text": amountStr},
+					"CdtDbtInd":    "DBIT",
+					"AcctSvcrRef":  txID,
+					"RltdPties":    map[string]interface{}{"Dbtr": from, "Cdtr": to},
+					"AddtlNtryInf": fmt.Sprintf("TxType=%s;FromOrg=%s;ToOrg=%s", txType, fromOrg, toOrg),
+				},
+				{
+					"Amt":          map[string]interface{}{"Ccy": tokenSymbol, "_text": amountStr},
+					"CdtDbtInd":    "CRDT",
+					"AcctSvcrRef":  txID,
+					"RltdPties":    map[string]interface{}{"Dbtr": from, "Cdtr": to},
+					"AddtlNtryInf": fmt.Sprintf("TxType=%s;FromOrg=%s;ToOrg=%s", txType, fromOrg, toOrg),
+				},
+			},
+		},
+	}
+
+	// 打印结构化 JSON
+	pacsJSON, _ := json.Marshal(pacs)
+	log.Printf("ISO20022 PACS008: %s", string(pacsJSON))
+	camtJSON, _ := json.Marshal(camt)
+	log.Printf("ISO20022 CAMT053: %s", string(camtJSON))
+
+	return nil
+}
+
+// getTokenMeta 获取代币符号与精度
+func (s *SmartContract) getTokenMeta(ctx contractapi.TransactionContextInterface) (string, int, error) {
+	symbolBytes, err := ctx.GetStub().GetState(symbolKey)
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to get token symbol: %w", err)
+	}
+	decBytes, err := ctx.GetStub().GetState(decimalsKey)
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to get token decimals: %w", err)
+	}
+	symbol := string(symbolBytes)
+	decStr := string(decBytes)
+	decimals := 0
+	if decStr != "" {
+		if d, err := strconv.Atoi(decStr); err == nil {
+			decimals = d
+		}
+	}
+	return symbol, decimals, nil
+}
+
+// formatAmount 将整数金额按 decimals 转换为十进制字符串
+func (s *SmartContract) formatAmount(amount int, decimals int) string {
+	if decimals <= 0 {
+		return strconv.Itoa(amount)
+	}
+	absolute := amount
+	neg := false
+	if amount < 0 {
+		neg = true
+		absolute = -amount
+	}
+	// 10^decimals
+	divisor := 1
+	for i := 0; i < decimals; i++ {
+		divisor *= 10
+	}
+	intPart := absolute / divisor
+	fracPart := absolute % divisor
+	fracStr := strconv.Itoa(fracPart)
+	// 左侧补零以满足小数位长度
+	if len(fracStr) < decimals {
+		fracStr = strings.Repeat("0", decimals-len(fracStr)) + fracStr
+	}
+	res := fmt.Sprintf("%d.%s", intPart, fracStr)
+	if neg {
+		res = "-" + res
+	}
+	return res
+}
+
+// generateDeterministicUETR 基于链上确定性数据生成 UUID 形式的 UETR
+func generateDeterministicUETR(txID string, channelID string, seconds int64, nanos int32) string {
+	seed := fmt.Sprintf("%s|%s|%d|%d", channelID, txID, seconds, nanos)
+	sum := sha256.Sum256([]byte(seed))
+	b := sum[0:16]
+	// 伪 UUID v4 编码（设置版本和变体位）
+	b[6] = (b[6] & 0x0f) | 0x40
+	b[8] = (b[8] & 0x3f) | 0x80
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], sum[10:16])
 }
 
 // Name 返回代币的名称
