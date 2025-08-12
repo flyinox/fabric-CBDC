@@ -5,19 +5,32 @@ const bodyParser = require('koa-bodyparser');
 const { spawn, exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { initI18n, t, changeLanguage, getCurrentLanguage, getSupportedLanguages } = require('./i18n');
 
 const app = new Koa();
 const router = new Router();
 
+// 初始化 i18n
+initI18n();
+
 app.use(cors());
 app.use(bodyParser());
+
+// 语言切换中间件
+app.use(async (ctx, next) => {
+  const lang = ctx.headers['accept-language'] || ctx.query.lang;
+  if (lang && ['zh-CN', 'en-US', 'ja-JP'].includes(lang)) {
+    await changeLanguage(lang);
+  }
+  await next();
+});
 
 // 认证中间件
 const authMiddleware = async (ctx, next) => {
   const authHeader = ctx.headers.authorization;
   if (!authHeader) {
     ctx.status = 401;
-    ctx.body = { error: '需要认证' };
+    ctx.body = { error: t('auth.needAuth') };
     return;
   }
   
@@ -26,7 +39,7 @@ const authMiddleware = async (ctx, next) => {
   
   if (username !== 'admin' || password !== 'admin123') {
     ctx.status = 401;
-    ctx.body = { error: '用户名或密码错误' };
+    ctx.body = { error: t('auth.invalidCredentials') };
     return;
   }
   
@@ -43,7 +56,7 @@ app.use(async (ctx, next) => {
 
 // 执行命令
 function executeCommand(command, args = [], cwd = process.cwd()) {
-  console.log(`[执行命令] ${command} ${args.join(' ')} (cwd: ${cwd})`);
+  console.log(`[${t('docker.commandExecuted')}] ${command} ${args.join(' ')} (cwd: ${cwd})`);
   return new Promise((resolve) => {
     const child = spawn(command, args, { 
       cwd, 
@@ -62,16 +75,16 @@ function executeCommand(command, args = [], cwd = process.cwd()) {
     });
     
     child.on('close', (code) => {
-      console.log(`[命令完成] 退出码: ${code}, 输出长度: ${stdout.length}, 错误长度: ${stderr.length}`);
+      console.log(`[${t('docker.commandCompleted')}] ${t('docker.exitCode')}: ${code}, ${t('docker.outputLength')}: ${stdout.length}, ${t('docker.errorLength')}: ${stderr.length}`);
       if (code === 0) {
         resolve({ success: true, output: stdout });
       } else {
-        resolve({ success: false, error: stderr || '命令执行失败' });
+        resolve({ success: false, error: stderr || t('docker.commandFailed') });
       }
     });
     
     child.on('error', (error) => {
-      console.log(`[命令错误] ${error.message}`);
+      console.log(`[${t('docker.commandError')}] ${error.message}`);
       resolve({ success: false, error: error.message });
     });
   });
@@ -85,9 +98,48 @@ router.get('/', async (ctx) => {
 // 健康检查API端点（无需认证）
 router.get('/health', async (ctx) => {
   ctx.body = { 
-    message: 'CBDC 管理后台服务运行正常',
+    message: t('health.message'),
     version: '1.0.0',
     timestamp: new Date().toISOString()
+  };
+});
+
+// 获取支持的语言列表（无需认证）
+router.get('/api/languages', async (ctx) => {
+  ctx.body = {
+    supported: getSupportedLanguages(),
+    current: getCurrentLanguage(),
+    default: 'zh-CN'
+  };
+});
+
+// 切换语言（无需认证）
+router.post('/api/language', async (ctx) => {
+  try {
+    const { language } = ctx.request.body;
+    if (!language) {
+      ctx.status = 400;
+      ctx.body = { error: t('api.badRequest') };
+      return;
+    }
+    
+    await changeLanguage(language);
+    ctx.body = {
+      success: true,
+      message: `Language changed to ${language}`,
+      current: getCurrentLanguage()
+    };
+  } catch (error) {
+    ctx.status = 400;
+    ctx.body = { error: error.message };
+  }
+});
+
+// 获取当前语言（无需认证）
+router.get('/api/language', async (ctx) => {
+  ctx.body = {
+    current: getCurrentLanguage(),
+    default: 'zh-CN'
   };
 });
 

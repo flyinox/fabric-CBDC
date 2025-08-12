@@ -153,7 +153,7 @@
     "testEnvironment": "Тест среды",
     "initSuccess": "Токен успешно инициализирован",
     "initFailed": "Не удалось инициализировать токен",
-    "digitalRMB": "Цифровой юань",
+    "digitalRMB": "Цифровая валюта",
     "environmentCheckComplete": "Проверка среды завершена, проверьте логи консоли",
     "environmentCheckFailed": "Проверка среды не удалась",
     "getTokenInfoFailed": "Не удалось получить информацию о токене"

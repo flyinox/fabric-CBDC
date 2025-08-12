@@ -96,7 +96,7 @@ const App: React.FC = () => {
   
   // 代币初始化状态
   const [tokenInitConfig, setTokenInitConfig] = useState({
-    name: '数字人民币',
+    name: 'Digital Currency',
     symbol: 'DCEP',
     decimals: '2',
     adminUser: 'Admin@pboc.example.com'
@@ -108,7 +108,7 @@ const App: React.FC = () => {
   // 登录处理
   const handleLogin = async () => {
     if (!loginForm.username || !loginForm.password) {
-      message.error('请输入用户名和密码');
+      message.error(t('login.pleaseEnterUsernamePassword'));
       return;
     }
 
@@ -123,17 +123,17 @@ const App: React.FC = () => {
 
       if (response.ok) {
         setIsLoggedIn(true);
-        message.success('登录成功');
+        message.success(t('login.loginSuccess'));
         // 登录成功后加载数据
         fetchNetworkStatus();
         fetchAvailableBanks();
         fetchTokenInfo();
         fetchCentralBankUsers();
       } else {
-        message.error('用户名或密码错误');
+        message.error(t('login.loginFailed'));
       }
     } catch (error) {
-      message.error('登录失败，请检查网络连接');
+      message.error(t('login.networkError'));
     } finally {
       setLoginLoading(false);
     }
@@ -143,7 +143,7 @@ const App: React.FC = () => {
   const handleLogout = () => {
     setIsLoggedIn(false);
     setSelectedMenu('monitor');
-    message.success('已退出登录');
+    message.success(t('login.logoutSuccess'));
   };
 
   // 检查登录状态
@@ -229,7 +229,7 @@ const App: React.FC = () => {
   const startNetworkWithClean = async () => {
     if (!isLoggedIn) return;
     
-    if (!confirm('如果执行，将会清除现有网络，是否确认？')) {
+    if (!confirm(t('network.startConfirm'))) {
       return;
     }
     
@@ -257,7 +257,7 @@ const App: React.FC = () => {
       }
       
       console.log('[前端] 清除网络成功，开始启动网络...');
-      message.success('网络清除成功，正在启动网络...');
+      message.success(t('network.networkCleanSuccess'));
       
       // 等待一下再启动网络
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -278,15 +278,15 @@ const App: React.FC = () => {
       
       if (startResponse.ok) {
         console.log('[前端] 启动网络成功');
-        message.success('网络启动成功');
+        message.success(t('network.networkStartSuccess'));
         fetchNetworkStatus();
       } else {
         console.error('[前端] 启动网络失败:', startData);
-        message.error(startData.error || '网络启动失败');
+        message.error(startData.error || t('network.startNetworkFailed'));
       }
     } catch (error) {
       console.error('[前端] 网络启动异常:', error);
-      message.error('网络启动失败');
+              message.error(t('network.networkOperationFailed'));
     } finally {
       setNetworkConfigLoading(false);
     }
@@ -295,7 +295,7 @@ const App: React.FC = () => {
   const setupNetwork = async () => {
     if (!isLoggedIn) return;
     
-    if (!confirm('确定要重新配置网络吗？这将根据当前配置重新设置网络。')) {
+    if (!confirm(t('network.reconfigureConfirm'))) {
       return;
     }
     
@@ -315,13 +315,13 @@ const App: React.FC = () => {
       });
       const data = await response.json();
       if (response.ok) {
-        message.success('网络配置成功');
+        message.success(t('network.networkConfigSuccess'));
         fetchNetworkStatus();
       } else {
-        message.error(data.error || '网络配置失败');
+        message.error(data.error || t('network.networkConfigFailed'));
       }
     } catch (error) {
-      message.error('网络配置失败');
+              message.error(t('network.networkOperationFailed'));
     } finally {
       setNetworkConfigLoading(false);
     }
@@ -361,7 +361,7 @@ const App: React.FC = () => {
     if (!isLoggedIn) return;
     
     if (!selectedBank) {
-      message.error('请选择银行');
+      message.error(t('users.pleaseSelectBank'));
       return;
     }
     
@@ -380,12 +380,12 @@ const App: React.FC = () => {
       });
       const data = await response.json();
       if (response.ok) {
-        message.success(`成功为${selectedBank}添加${userCount}个用户`);
+        message.success(t('users.addSuccess', { bank: selectedBank, count: userCount }));
       } else {
-        message.error(data.error || '添加用户失败');
+        message.error(data.error || t('users.addFailed'));
       }
     } catch (error) {
-      message.error('添加用户失败');
+              message.error(t('users.addFailed'));
     } finally {
       setUserManagementLoading(false);
     }
@@ -393,9 +393,9 @@ const App: React.FC = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'running': return '运行中';
-      case 'stopped': return '已停止';
-      default: return '未知';
+      case 'running': return t('common.running');
+      case 'stopped': return t('common.stopped');
+      default: return t('common.unknown');
     }
   };
 
@@ -427,18 +427,18 @@ const App: React.FC = () => {
       console.log('[前端] 代币初始化响应:', data);
       
       if (response.ok) {
-        message.success(data.message || '代币初始化成功');
+        message.success(data.message || t('token.initSuccess'));
         console.log('[前端] 代币初始化成功，开始刷新代币信息');
         // 延迟一下再刷新，确保后端处理完成
         setTimeout(() => {
           fetchTokenInfo();
         }, 1000);
       } else {
-        message.error(data.error || '代币初始化失败');
+        message.error(data.error || t('token.initFailed'));
       }
     } catch (error) {
       console.error('[前端] 代币初始化异常:', error);
-      message.error('代币初始化失败');
+              message.error(t('token.initFailed'));
     } finally {
       setTokenInitLoading(false);
     }
@@ -514,12 +514,12 @@ const App: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         console.log('环境检查结果:', data.data);
-        message.info('环境检查完成，请查看控制台日志');
+        message.info(t('token.environmentCheckComplete'));
       } else {
-        message.error('环境检查失败');
+        message.error(t('token.environmentCheckFailed'));
       }
     } catch (error) {
-      message.error('环境检查失败');
+              message.error(t('token.environmentCheckFailed'));
     }
   };
 
@@ -553,15 +553,15 @@ const App: React.FC = () => {
       <div className="login-card">
         <div className="login-header">
           <Title level={2} style={{ textAlign: 'center', marginBottom: 0 }}>
-            CBDC 管理后台
+            {t('login.title')}
           </Title>
         </div>
         
-        <Form layout="vertical" className="login-form">
-          <Form.Item label="用户名">
+          <Form layout="vertical" className="login-form">
+            <Form.Item label={t('login.username')}>
             <Input
               prefix={<UserOutlined />}
-              placeholder="请输入用户名"
+                placeholder={t('login.usernamePlaceholder')}
               value={loginForm.username}
               onChange={(e) => setLoginForm({
                 ...loginForm,
@@ -571,10 +571,10 @@ const App: React.FC = () => {
             />
           </Form.Item>
           
-          <Form.Item label="密码">
+            <Form.Item label={t('login.password')}>
             <Input.Password
               prefix={<LockOutlined />}
-              placeholder="请输入密码"
+                placeholder={t('login.passwordPlaceholder')}
               value={loginForm.password}
               onChange={(e) => setLoginForm({
                 ...loginForm,
@@ -591,7 +591,7 @@ const App: React.FC = () => {
               loading={loginLoading}
               onClick={handleLogin}
             >
-              登录
+                {t('login.loginButton')}
             </Button>
           </Form.Item>
         </Form>
@@ -607,7 +607,7 @@ const App: React.FC = () => {
         <Col xs={24} sm={8}>
           <Card className="stats-card">
             <Statistic
-              title="总节点数"
+              title={t('monitor.totalNodes')}
               value={totalNodes}
               prefix={<DesktopOutlined />}
             />
@@ -616,7 +616,7 @@ const App: React.FC = () => {
         <Col xs={24} sm={8}>
           <Card className="stats-card">
             <Statistic
-              title="运行中节点"
+              title={t('monitor.runningNodes')}
               value={runningNodes}
               prefix={<DesktopOutlined />}
               valueStyle={{ color: '#3f8600' }}
@@ -626,7 +626,7 @@ const App: React.FC = () => {
         <Col xs={24} sm={8}>
           <Card className="stats-card">
             <Statistic
-              title="网络状态"
+              title={t('monitor.networkStatus')}
               value={networkStatus ? getStatusText(networkStatus.status) : '-'}
               prefix={<SettingOutlined />}
               valueStyle={{ 
@@ -643,7 +643,7 @@ const App: React.FC = () => {
         title={
           <Space>
             <MonitorOutlined />
-            网络监控
+            {t('monitor.networkMonitor')}
           </Space>
         }
         className="control-card"
@@ -655,14 +655,14 @@ const App: React.FC = () => {
             onClick={fetchNetworkStatus}
             loading={loading}
           >
-            刷新状态
+            {t('monitor.refreshStatus')}
           </Button>
         </div>
         
         {networkStatus && (
           <div className="status-info">
             <Text type="secondary">
-              更新时间: {new Date(networkStatus.timestamp).toLocaleString()}
+              {t('monitor.updateTime', { time: new Date(networkStatus.timestamp).toLocaleString() })}
             </Text>
           </div>
         )}
@@ -673,7 +673,7 @@ const App: React.FC = () => {
         title={
           <Space>
             <DesktopOutlined />
-            节点状态
+            {t('monitor.nodeStatus')}
           </Space>
         }
         className="nodes-card"
@@ -681,7 +681,7 @@ const App: React.FC = () => {
         {loading ? (
           <div className="loading-container">
             <Spin size="large" />
-            <Text>加载中...</Text>
+            <Text>{t('common.loading')}</Text>
           </div>
         ) : networkStatus?.nodes?.length ? (
           <Row gutter={[16, 16]}>
@@ -704,7 +704,7 @@ const App: React.FC = () => {
                           icon={<EyeOutlined />}
                           onClick={() => viewNodeLogs(node.name)}
                         >
-                          日志
+                          {t('monitor.viewLogs')}
                         </Button>
                       </Space>
                     </div>
@@ -714,7 +714,7 @@ const App: React.FC = () => {
             ))}
           </Row>
         ) : (
-          <Empty description="暂无节点信息" />
+          <Empty description={t('monitor.noInfo')} />
         )}
       </Card>
     </div>
@@ -727,7 +727,7 @@ const App: React.FC = () => {
         title={
           <Space>
             <ApiOutlined />
-                          网络配置管理
+            {t('network.title')}
           </Space>
         }
         className="control-card"
@@ -736,7 +736,7 @@ const App: React.FC = () => {
           <Row gutter={24}>
             <Col span={24}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <span style={{ minWidth: 80, fontWeight: 500 }}>央行标识</span>
+                <span style={{ minWidth: 80, fontWeight: 500 }}>{t('network.centralBankId')}</span>
                 <Input
                   value={networkConfig.centralBankIdentifier}
                   onChange={(e) => setNetworkConfig({
@@ -744,24 +744,24 @@ const App: React.FC = () => {
                     centralBankName: e.target.value,
                     centralBankIdentifier: e.target.value
                   })}
-                  placeholder="央行标识"
+                  placeholder={t('network.centralBankPlaceholder')}
                   style={{ flex: 1 }}
                 />
               </div>
             </Col>
           </Row>
 
-          <Divider orientation="left">参与银行配置</Divider>
+          <Divider orientation="left">{t('network.participatingBanks')}</Divider>
           
           {networkConfig.banks.map((bank, index) => (
             <Row gutter={16} key={index} style={{ marginBottom: 16 }}>
               <Col span={24}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ minWidth: 80, fontWeight: 500 }}>银行标识</span>
+                  <span style={{ minWidth: 80, fontWeight: 500 }}>{t('network.bankId')}</span>
                   <Input
                     value={bank.identifier}
                     onChange={(e) => updateBank(index, 'name', e.target.value)}
-                    placeholder="银行标识"
+                    placeholder={t('network.bankPlaceholder')}
                     style={{ flex: 1 }}
                   />
                   <Button
@@ -771,7 +771,7 @@ const App: React.FC = () => {
                     onClick={() => removeBank(index)}
                     disabled={networkConfig.banks.length <= 1}
                   >
-                    删除
+                    {t('network.deleteBank')}
                   </Button>
                 </div>
               </Col>
@@ -784,7 +784,7 @@ const App: React.FC = () => {
             onClick={addBank}
             style={{ width: '100%', marginBottom: 24 }}
           >
-            添加银行
+            {t('network.addBank')}
           </Button>
 
           <Space>
@@ -793,14 +793,14 @@ const App: React.FC = () => {
               onClick={startNetworkWithClean}
               loading={networkConfigLoading}
             >
-              启动网络
+              {t('network.startNetwork')}
             </Button>
             <Button 
               type="default"
               onClick={setupNetwork}
               loading={networkConfigLoading}
             >
-              重新配置
+              {t('network.reconfigure')}
             </Button>
           </Space>
         </Form>
@@ -815,7 +815,7 @@ const App: React.FC = () => {
         title={
           <Space>
             <ApiOutlined />
-            代币初始化管理
+            {t('token.title')}
           </Space>
         }
       >
@@ -823,14 +823,14 @@ const App: React.FC = () => {
           console.log('[前端] 渲染代币状态，tokenInfo:', tokenInfo);
           return tokenInfo?.initialized ? (
             <Alert
-              message={`代币已初始化: ${tokenInfo.info ?? ''}`}
+              message={t('token.initialized', { info: tokenInfo.info ?? '' })}
               type="success"
               showIcon
               style={{ marginBottom: 24 }}
             />
           ) : (
             <Alert
-              message="代币未初始化, 请使用央行管理员身份初始化代币"
+              message={t('token.notInitialized')}
               description={tokenInfo?.error || undefined}
               type="warning"
               showIcon
@@ -842,26 +842,26 @@ const App: React.FC = () => {
         <Form layout="vertical">
           <Row gutter={24}>
             <Col span={12}>
-              <Form.Item label="代币名称">
+              <Form.Item label={t('token.tokenName')}>
                 <Input
                   value={tokenInitConfig.name}
                   onChange={(e) => setTokenInitConfig({
                     ...tokenInitConfig,
                     name: e.target.value
                   })}
-                  placeholder="请输入代币名称"
+                  placeholder={t('token.namePlaceholder')}
                 />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item label="代币符号">
+              <Form.Item label={t('token.tokenSymbol')}>
                 <Input
                   value={tokenInitConfig.symbol}
                   onChange={(e) => setTokenInitConfig({
                     ...tokenInitConfig,
                     symbol: e.target.value
                   })}
-                  placeholder="请输入代币符号（仅英文和数字）"
+                  placeholder={t('token.symbolPlaceholder')}
                 />
               </Form.Item>
             </Col>
@@ -869,26 +869,26 @@ const App: React.FC = () => {
           
           <Row gutter={24}>
             <Col span={12}>
-              <Form.Item label="小数位数">
+              <Form.Item label={t('token.decimals')}>
                 <Input
                   value={tokenInitConfig.decimals}
                   onChange={(e) => setTokenInitConfig({
                     ...tokenInitConfig,
                     decimals: e.target.value
                   })}
-                  placeholder="请输入小数位数（0-18）"
+                  placeholder={t('token.decimalsPlaceholder')}
                 />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item label="央行管理员">
+              <Form.Item label={t('token.centralBankAdmin')}>
                 <Select
                   value={tokenInitConfig.adminUser}
                   onChange={(value) => setTokenInitConfig({
                     ...tokenInitConfig,
                     adminUser: value
                   })}
-                  placeholder="请选择央行管理员用户"
+                  placeholder={t('token.adminPlaceholder')}
                   style={{ width: '100%' }}
                 >
                   {centralBankUsers.map(user => (
@@ -906,24 +906,24 @@ const App: React.FC = () => {
               loading={tokenInitLoading}
               disabled={tokenInfo?.initialized}
             >
-              初始化代币
+              {t('token.initializeToken')}
             </Button>
             <Button 
               type="default"
               onClick={() => setTokenInitConfig({
-                name: '数字人民币',
+                name: 'Digital Currency',
                 symbol: 'DCEP',
                 decimals: '2',
                 adminUser: 'Admin@pboc.example.com'
               })}
             >
-              重置参数
+              {t('token.resetParams')}
             </Button>
             <Button 
               type="dashed"
               onClick={testTokenEnvironment}
             >
-              测试环境
+              {t('token.testEnvironment')}
             </Button>
           </Space>
         </Form>
@@ -938,7 +938,7 @@ const App: React.FC = () => {
         title={
           <Space>
             <TeamOutlined />
-            用户管理
+            {t('users.title')}
           </Space>
         }
         className="control-card"
@@ -946,11 +946,11 @@ const App: React.FC = () => {
         <Form layout="vertical">
           <Row gutter={24}>
             <Col span={12}>
-              <Form.Item label="选择银行">
+              <Form.Item label={t('users.selectBank')}>
                 <Select
                   value={selectedBank}
                   onChange={setSelectedBank}
-                  placeholder="请选择银行"
+                  placeholder={t('users.bankPlaceholder')}
                   style={{ width: '100%' }}
                 >
                   {availableBanks.map(bank => (
@@ -960,7 +960,7 @@ const App: React.FC = () => {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item label="用户数量">
+              <Form.Item label={t('users.userCount')}>
                 <InputNumber
                   value={userCount}
                   onChange={(value) => setUserCount(value || 1)}
@@ -979,7 +979,7 @@ const App: React.FC = () => {
             loading={userManagementLoading}
             disabled={!selectedBank}
           >
-            添加用户
+            {t('users.addUsers')}
           </Button>
         </Form>
       </Card>
@@ -990,22 +990,22 @@ const App: React.FC = () => {
     {
       key: 'monitor',
       icon: <MonitorOutlined />,
-      label: '运行监控',
+      label: t('navigation.monitor'),
     },
     {
       key: 'network',
       icon: <ApiOutlined />,
-      label: '网络管理',
+      label: t('navigation.network'),
     },
     {
       key: 'token',
       icon: <ApiOutlined />,
-      label: '代币初始化',
+      label: t('navigation.token'),
     },
     {
       key: 'users',
       icon: <TeamOutlined />,
-      label: '用户管理',
+      label: t('navigation.users'),
     },
   ];
 
@@ -1052,7 +1052,7 @@ const App: React.FC = () => {
               onClick={handleLogout}
               style={{ color: 'white', width: '100%', textAlign: 'left' }}
             >
-              退出登录
+              {t('login.logout')}
             </Button>
           </div>
         </Sider>
@@ -1075,12 +1075,12 @@ const App: React.FC = () => {
 
       {/* 日志查看弹窗 */}
       <Modal
-        title={`${selectedNode} 日志`}
+        title={t('monitor.logsTitle', { nodeName: selectedNode })}
         open={showLogs}
         onCancel={() => setShowLogs(false)}
         footer={[
           <Button key="close" onClick={() => setShowLogs(false)}>
-            关闭
+            {t('common.close')}
           </Button>
         ]}
         width={1000}
@@ -1091,7 +1091,7 @@ const App: React.FC = () => {
           {logsLoading ? (
             <div className="loading-container">
               <Spin />
-              <Text>加载日志中...</Text>
+              <Text>{t('monitor.loadingLogs')}</Text>
             </div>
           ) : logs.length > 0 ? (
             <div className="logs-content">
@@ -1110,7 +1110,7 @@ const App: React.FC = () => {
               ))}
             </div>
           ) : (
-            <Empty description="暂无日志" />
+            <Empty description={t('monitor.noLogs')} />
           )}
       </div>
       </Modal>

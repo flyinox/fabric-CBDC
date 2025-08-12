@@ -153,7 +153,7 @@
     "testEnvironment": "اختبار البيئة",
     "initSuccess": "تم تهيئة الرمز المميز بنجاح",
     "initFailed": "فشل في تهيئة الرمز المميز",
-    "digitalRMB": "اليوان الرقمي",
+    "digitalRMB": "العملة الرقمية",
     "environmentCheckComplete": "اكتمل فحص البيئة، يرجى مراجعة سجلات وحدة التحكم",
     "environmentCheckFailed": "فشل فحص البيئة",
     "getTokenInfoFailed": "فشل في الحصول على معلومات الرمز المميز"

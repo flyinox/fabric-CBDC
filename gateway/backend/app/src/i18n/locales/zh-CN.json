@@ -153,7 +153,7 @@
     "testEnvironment": "测试环境",
     "initSuccess": "代币初始化成功",
     "initFailed": "代币初始化失败",
-    "digitalRMB": "数字人民币",
+    "digitalRMB": "数字货币",
     "environmentCheckComplete": "环境检查完成，请查看控制台日志",
     "environmentCheckFailed": "环境检查失败",
     "getTokenInfoFailed": "获取代币信息失败"

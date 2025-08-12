@@ -153,7 +153,7 @@
     "testEnvironment": "Test Environment",
     "initSuccess": "Token initialized successfully",
     "initFailed": "Failed to initialize token",
-    "digitalRMB": "Digital RMB",
+    "digitalRMB": "Digital Currency",
     "environmentCheckComplete": "Environment check completed, please check console logs",
     "environmentCheckFailed": "Environment check failed",
     "getTokenInfoFailed": "Failed to get token information"

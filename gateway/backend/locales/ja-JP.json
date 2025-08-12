@@ -1,0 +1,56 @@
+{
+  "common": {
+    "loading": "読み込み中...",
+    "success": "成功",
+    "failed": "失敗",
+    "error": "エラー",
+    "confirm": "確認",
+    "cancel": "キャンセル",
+    "close": "閉じる",
+    "save": "保存",
+    "delete": "削除",
+    "edit": "編集",
+    "add": "追加",
+    "search": "検索",
+    "refresh": "更新",
+    "back": "戻る",
+    "next": "次へ",
+    "previous": "前へ"
+  },
+  "auth": {
+    "needAuth": "認証が必要です",
+    "invalidCredentials": "ユーザー名またはパスワードが無効です",
+    "unauthorized": "認証されていないアクセス"
+  },
+  "network": {
+    "status": "ネットワーク状態",
+    "containers": "コンテナ",
+    "running": "実行中",
+    "stopped": "停止中",
+    "exited": "終了",
+    "health": "ヘルス状態",
+    "healthy": "健康",
+    "unhealthy": "不健康",
+    "unknown": "不明"
+  },
+  "docker": {
+    "commandExecuted": "コマンド実行",
+    "commandCompleted": "コマンド完了",
+    "exitCode": "終了コード",
+    "outputLength": "出力長",
+    "errorLength": "エラー長",
+    "commandFailed": "コマンド実行失敗",
+    "commandError": "コマンドエラー"
+  },
+  "health": {
+    "message": "CBDC管理バックエンドサービスが正常に動作しています",
+    "version": "バージョン",
+    "timestamp": "タイムスタンプ"
+  },
+  "api": {
+    "notFound": "APIが見つかりません",
+    "methodNotAllowed": "メソッドが許可されていません",
+    "internalError": "内部サーバーエラー",
+    "badRequest": "不正なリクエスト"
+  }
+}

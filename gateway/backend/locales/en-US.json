@@ -1,0 +1,56 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "success": "Success",
+    "failed": "Failed",
+    "error": "Error",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "close": "Close",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search",
+    "refresh": "Refresh",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous"
+  },
+  "auth": {
+    "needAuth": "Authentication required",
+    "invalidCredentials": "Invalid username or password",
+    "unauthorized": "Unauthorized access"
+  },
+  "network": {
+    "status": "Network Status",
+    "containers": "Containers",
+    "running": "Running",
+    "stopped": "Stopped",
+    "exited": "Exited",
+    "health": "Health Status",
+    "healthy": "Healthy",
+    "unhealthy": "Unhealthy",
+    "unknown": "Unknown"
+  },
+  "docker": {
+    "commandExecuted": "Command executed",
+    "commandCompleted": "Command completed",
+    "exitCode": "Exit code",
+    "outputLength": "Output length",
+    "errorLength": "Error length",
+    "commandFailed": "Command execution failed",
+    "commandError": "Command error"
+  },
+  "health": {
+    "message": "CBDC Management Backend Service is running normally",
+    "version": "Version",
+    "timestamp": "Timestamp"
+  },
+  "api": {
+    "notFound": "API not found",
+    "methodNotAllowed": "Method not allowed",
+    "internalError": "Internal server error",
+    "badRequest": "Bad request"
+  }
+}
