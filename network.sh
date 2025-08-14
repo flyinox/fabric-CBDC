@@ -392,6 +392,143 @@ function createOrgs() {
 # folder. This file defines the environment variables and file mounts that
 # point the crypto material and genesis block that were created in earlier.
 
+# ---------- Robust startup helpers (wait/verify/retry) ----------
+
+# Wait for a TCP port to accept connections
+function _wait_for_tcp() {
+  local host="$1"
+  local port="$2"
+  local timeout_secs="${3:-60}"
+  local start_ts=$(date +%s)
+
+  while true; do
+    if command -v nc >/dev/null 2>&1; then
+      nc -z "$host" "$port" >/dev/null 2>&1 && return 0
+    else
+      (echo > /dev/tcp/${host}/${port}) >/dev/null 2>&1 && return 0
+    fi
+    local now_ts=$(date +%s)
+    if [ $((now_ts - start_ts)) -ge "$timeout_secs" ]; then
+      return 1
+    fi
+    sleep 2
+  done
+}
+
+# Wait for CouchDB endpoints when enabled (best-effort)
+function _waitForCouchDBServices() {
+  if [ "${DATABASE}" != "couchdb" ]; then
+    return 0
+  fi
+
+  # If dynamic config is loaded, wait for each exposed CouchDB port
+  if [[ "$NETWORK_CONFIG_LOADED" == "true" ]] && [ "$NETWORK_ORGS_COUNT" -gt 0 ]; then
+    for i in $(seq 0 $((NETWORK_ORGS_COUNT - 1))); do
+      local couch_port="${NETWORK_ORG_COUCHDB_PORTS[$i]}"
+      if [ -n "$couch_port" ] && [ "$couch_port" != "null" ]; then
+        infoln "等待 CouchDB 在端口 ${couch_port} 就绪..."
+        if _wait_for_tcp 127.0.0.1 "$couch_port" 60; then
+          successln "CouchDB 端口 ${couch_port} 可用"
+        else
+          warnln "CouchDB 端口 ${couch_port} 等待超时，继续后续检查"
+        fi
+      fi
+    done
+  else
+    # 传统模式：无法确定端口，轻微等待以让 CouchDB 初始化
+    sleep 5
+  fi
+}
+
+# Compute expected peer count
+function _expectedPeerCount() {
+  if [[ "$NETWORK_CONFIG_LOADED" == "true" ]] && [ "$NETWORK_ORGS_COUNT" -gt 0 ]; then
+    echo "$NETWORK_ORGS_COUNT"
+  else
+    # 默认 org1/org2 两个 peer
+    echo 2
+  fi
+}
+
+# Collect peer container names (peer0.*)
+function _listPeerContainers() {
+  ${CONTAINER_CLI} ps --format '{{.Names}}' | grep -E '^peer0\.' || true
+}
+
+# Show diagnostics for peer containers
+function _showPeerDiagnostics() {
+  infoln "—— 同步诊断信息 ——"
+  ${CONTAINER_CLI} ps -a --filter name='^peer0\.' --format '{{.Names}}\t{{.Status}}'
+  local peers=$(_listPeerContainers)
+  for name in $peers; do
+    warnln "最近 60 行日志: $name"
+    ${CONTAINER_CLI} logs --tail 60 "$name" 2>/dev/null || true
+  done
+}
+
+# Wait until all expected peer containers are running
+function _waitForPeerContainers() {
+  local expected=$(_expectedPeerCount)
+  local timeout_secs="${1:-90}"
+  local start_ts=$(date +%s)
+
+  infoln "等待 ${expected} 个 peer 容器运行..."
+  while true; do
+    local running_count=$(${CONTAINER_CLI} ps --filter status=running --format '{{.Names}}' | grep -E '^peer0\.' | wc -l | tr -d ' ')
+    if [ "$running_count" -ge "$expected" ]; then
+      successln "✅ peer 容器已运行: ${running_count}/${expected}"
+      return 0
+    fi
+    local now_ts=$(date +%s)
+    if [ $((now_ts - start_ts)) -ge "$timeout_secs" ]; then
+      warnln "等待 peer 容器运行超时: ${running_count}/${expected}"
+      return 1
+    fi
+    sleep 2
+  done
+}
+
+# Compose up with limited retries and verification
+function _composeUpWithRetry() {
+  local max_retries="${1:-3}"
+  local attempt=1
+
+  while [ "$attempt" -le "$max_retries" ]; do
+    infoln "📦 启动容器 (尝试 ${attempt}/${max_retries})..."
+    DOCKER_SOCK="${DOCKER_SOCK}" ${CONTAINER_CLI_COMPOSE} ${COMPOSE_FILES} up -d 2>&1
+
+    # 等待依赖（如 CouchDB）以及 peer 就绪
+    _waitForCouchDBServices || true
+    if _waitForPeerContainers 90; then
+      successln "✅ 容器启动并验证通过"
+      return 0
+    fi
+
+    warnln "部分容器未就绪，进行诊断与重试..."
+    _showPeerDiagnostics || true
+
+    # 尝试重启未运行的 peer 容器
+    local not_running=$(${CONTAINER_CLI} ps -a --format '{{.Names}}\t{{.Status}}' | awk '/^peer0\./ && $0 !~ /Up/ {print $1}')
+    if [ -n "$not_running" ]; then
+      for name in $not_running; do
+        warnln "重启容器: $name"
+        ${CONTAINER_CLI} restart "$name" 2>/dev/null || true
+      done
+    fi
+
+    # 再次短暂等待
+    if _waitForPeerContainers 30; then
+      successln "✅ 重试后容器已就绪"
+      return 0
+    fi
+
+    attempt=$((attempt + 1))
+    sleep 3
+  done
+
+  return 1
+}
+
 # Bring up the peer and orderer nodes using docker compose.
 function networkUp() {
   checkPrereqs
@@ -422,12 +559,12 @@ function networkUp() {
     infoln "📁 Using traditional compose configuration (org1/org2)"
   fi
 
-  DOCKER_SOCK="${DOCKER_SOCK}" ${CONTAINER_CLI_COMPOSE} ${COMPOSE_FILES} up -d 2>&1
-
-  $CONTAINER_CLI ps -a
-  if [ $? -ne 0 ]; then
-    fatalln "Unable to start network"
+  if ! _composeUpWithRetry 3; then
+    _showPeerDiagnostics || true
+    fatalln "Unable to start network (peers not ready after retries)"
   fi
+
+  ${CONTAINER_CLI} ps -a | cat
 }
 
 # call the script to create the channel, join the peers of org1 and org2,
