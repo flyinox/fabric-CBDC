@@ -237,41 +237,97 @@ function checkPrereqs() {
 
 # Create Organization crypto material using cryptogen or CAs
 function createOrgs() {
+  infoln "🚀 ===== createOrgs 函数开始执行 ====="
+  infoln "🔍 当前 CRYPTO 变量: $CRYPTO"
+  infoln "🔍 当前工作目录: $(pwd)"
+  infoln "🔍 当前用户: $(whoami)"
+  
   if [ -d "organizations/peerOrganizations" ]; then
+    infoln "🧹 清理现有证书目录..."
     rm -Rf organizations/peerOrganizations && rm -Rf organizations/ordererOrganizations
+    infoln "✅ 现有证书目录已清理"
   fi
 
   # Generate dynamic crypto configs first
+  infoln "🔧 开始生成动态 crypto 配置..."
   generateCryptoConfigs
   
   # Generate dynamic configtx.yaml
+  infoln "🔧 开始生成动态 configtx.yaml..."
   generateConfigtx
 
   # Create crypto material using cryptogen
   if [ "$CRYPTO" == "cryptogen" ]; then
+    infoln "🔑 ===== 开始使用 cryptogen 生成证书 ====="
+    infoln "🔍 当前 CRYPTO 变量值: $CRYPTO"
+    infoln "🔍 当前 PATH: $PATH"
+    infoln "🔍 当前工作目录: $(pwd)"
+    
     which cryptogen
     if [ "$?" -ne 0 ]; then
       fatalln "cryptogen tool not found. exiting"
     fi
+    
+    infoln "✅ cryptogen 工具位置: $(which cryptogen)"
     infoln "Generating certificates using cryptogen tool"
 
     # Generate for dynamic or default organizations
     if [ "$NETWORK_CONFIG_LOADED" = true ]; then
+      infoln "🔄 使用动态组织配置生成证书..."
+      infoln "🔍 组织数量: $NETWORK_ORGS_COUNT"
+      infoln "🔍 组织名称: ${NETWORK_ORG_NAMES[*]}"
+      
       # Dynamic organization generation
       for i in $(seq 0 $((NETWORK_ORGS_COUNT - 1))); do
         local org_name="${NETWORK_ORG_NAMES[$i]}"
         local org_lower=$(echo "$org_name" | tr '[:upper:]' '[:lower:]')
+        local config_file="./organizations/cryptogen/crypto-config-${org_lower}.yaml"
+        
+        infoln "🔑 ===== 开始生成 ${org_name} 的证书 ====="
+        infoln "🔍 配置文件: $config_file"
+        infoln "🔍 配置文件存在: $([ -f "$config_file" ] && echo "是" || echo "否")"
+        
+        if [ -f "$config_file" ]; then
+          infoln "🔍 配置文件内容预览:"
+          head -10 "$config_file"
+        fi
         
         infoln "Creating ${org_name} Identities"
         
         set -x
-        cryptogen generate --config=./organizations/cryptogen/crypto-config-${org_lower}.yaml --output="organizations"
+        cryptogen generate --config="$config_file" --output="organizations"
         res=$?
         { set +x; } 2>/dev/null
+        
+        infoln "🔍 cryptogen 命令执行结果: $res"
+        
         if [ $res -ne 0 ]; then
           fatalln "Failed to generate certificates for ${org_name}..."
         fi
+        
+        infoln "✅ ${org_name} 证书生成成功"
+        
+        # 检查生成的文件
+        local org_domain="${NETWORK_ORG_DOMAINS[$i]}"
+        if [ -d "organizations/peerOrganizations/${org_domain}" ]; then
+          infoln "🔍 生成的文件结构:"
+          ls -la "organizations/peerOrganizations/${org_domain}/"
+        else
+          warnln "⚠️  警告: 未找到生成的目录 organizations/peerOrganizations/${org_domain}/"
+        fi
+        
+        infoln "🔑 ===== ${org_name} 证书生成完成 ====="
+        echo
       done
+      
+      infoln "🔑 ===== 开始生成 ${NETWORK_ORDERER_NAME} 的证书 ====="
+      infoln "🔍 Orderer 配置文件: ./organizations/cryptogen/crypto-config-orderer.yaml"
+      infoln "🔍 配置文件存在: $([ -f "./organizations/cryptogen/crypto-config-orderer.yaml" ] && echo "是" || echo "否")"
+      
+      if [ -f "./organizations/cryptogen/crypto-config-orderer.yaml" ]; then
+        infoln "🔍 Orderer 配置文件内容预览:"
+        head -10 "./organizations/cryptogen/crypto-config-orderer.yaml"
+      fi
       
       infoln "Creating ${NETWORK_ORDERER_NAME} Identities"
       
@@ -279,10 +335,26 @@ function createOrgs() {
       cryptogen generate --config=./organizations/cryptogen/crypto-config-orderer.yaml --output="organizations"
       res=$?
       { set +x; } 2>/dev/null
+      
+      infoln "🔍 Orderer cryptogen 命令执行结果: $res"
+      
       if [ $res -ne 0 ]; then
         fatalln "Failed to generate certificates for orderer..."
       fi
+      
+      infoln "✅ ${NETWORK_ORDERER_NAME} 证书生成成功"
+      
+      # 检查生成的 Orderer 文件
+      if [ -d "organizations/ordererOrganizations/${NETWORK_ORDERER_DOMAIN}" ]; then
+        infoln "🔍 生成的 Orderer 文件结构:"
+        ls -la "organizations/ordererOrganizations/${NETWORK_ORDERER_DOMAIN}/"
+      else
+        warnln "⚠️  警告: 未找到生成的 Orderer 目录 organizations/ordererOrganizations/${NETWORK_ORDERER_DOMAIN}/"
+      fi
+      
+      infoln "🔑 ===== ${NETWORK_ORDERER_NAME} 证书生成完成 ====="
     else
+      infoln "🔄 使用默认组织配置生成证书..."
       # Default organization generation (Org1, Org2, OrdererOrg)
       infoln "Creating Org1 Identities"
 
@@ -314,7 +386,23 @@ function createOrgs() {
         fatalln "Failed to generate certificates..."
       fi
     fi
+    
+    infoln "🎉 ===== 所有证书生成完成！====="
+    
+    # 最终验证
+    infoln "🔍 最终验证生成的证书文件..."
+    if [ -d "organizations/peerOrganizations" ] && [ -d "organizations/ordererOrganizations" ]; then
+      successln "✅ 证书目录结构验证通过"
+      infoln "🔍 Peer 组织目录:"
+      ls -la organizations/peerOrganizations/
+      infoln "🔍 Orderer 组织目录:"
+      ls -la organizations/ordererOrganizations/
+    else
+      fatalln "❌ 证书目录结构验证失败"
+    fi
 
+  else
+    infoln "⚠️  跳过 cryptogen，使用其他方式生成证书 (CRYPTO=$CRYPTO)"
   fi
 
   # Create crypto material using Fabric CA
@@ -364,6 +452,22 @@ function createOrgs() {
 
   infoln "Generating CCP (Connection Configuration Profile) files"
   # ./organizations/ccp-generate.sh  # Skip CCP generation for now
+  
+  infoln "🚀 ===== createOrgs 函数执行完成 ====="
+  infoln "🔍 最终检查证书目录:"
+  if [ -d "organizations/peerOrganizations" ]; then
+    infoln "✅ peerOrganizations 目录存在"
+    ls -la organizations/peerOrganizations/
+  else
+    warnln "⚠️  peerOrganizations 目录不存在"
+  fi
+  
+  if [ -d "organizations/ordererOrganizations" ]; then
+    infoln "✅ ordererOrganizations 目录存在"
+    ls -la organizations/ordererOrganizations/
+  else
+    warnln "⚠️  ordererOrganizations 目录不存在"
+  fi
 }
 
 # Once you create the organization crypto material, you need to create the
@@ -1306,5 +1410,6 @@ else
   printHelp
   exit 1
 fi
+
 
 
